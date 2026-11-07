@@ -71,6 +71,7 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - `Saison`, `Contrat`, `SoldeOuverture`, `Facture`, `Paiement` : réponses de Louis sur les taxes et les prix.
 - Textos et courriels : comptes Twilio, SMTP2GO et boîte IMAP.
 - Import des prix et des soldes dus : modèles `Contrat` et `SoldeOuverture`.
+- Deuxième déneigeur (PRD section P) : déplacer `/admin/` vers une adresse neutre réservée à JF (proposé : `admin.ledeneigeur.com`), et documenter l'ajout d'un sous-domaine (Cloudflare, `Caddyfile`, `DJANGO_ALLOWED_HOSTS`, fiche `Entreprise`). Attend qu'il y ait un deuxième déneigeur.
 
 ## Fait
 

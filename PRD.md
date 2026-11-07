@@ -1,8 +1,8 @@
-# LMAPP : Plan de projet (PRD v1.3)
+# LMAPP : Plan de projet (PRD v1.4)
 
 **Application de gestion pour Louis Méthot Déneigement**
 Porteur du projet : Jean-François Leroux
-Date : 7 novembre 2026 (v1.3 : phase 0 et prochaines étapes mises à jour, DNS, jeton Cloudflare, ouverture au routeur et comptes administrateur faits, netplan par MAC; v1.2 : Caddy dans un projet `edge` séparé, environnement de test en marche, vrais certificats Let's Encrypt par validation DNS, DNS `louis` et `test` en place; v1.1 : dépôt Git et pile Docker en marche sur `ld1` (validée sur le réseau interne), test sur `test.ledeneigeur.com`, ouverture au routeur filtrée par IP source, état du DNS Cloudflare et du disque en 6.1.1; v1.0 : sous-domaine louis.ledeneigeur.com, MAC dynamique, pas de port public au départ, CLAUDE.md déposé sur ld1; v0.9 : Claude Code réellement installé et connecté sur `ld1` (2.1.319); v0.8 : serveur `ld1` installé et sécurisé, IP fixe 172.16.4.100, état du serveur en 6.1.1; v0.7 : domaine ledeneigeur.com et découpage par sous-domaine; v0.6 : iPhone 17 Pro Max confirmé, décision de bâtir, SMTP2GO et boîte IMAP, hébergement sans frais, section O, specs de la VM)
+Date : 7 novembre 2026 (v1.4 : multi-entreprise précisé en section P, une installation, une fiche par déneigeur, administration à une adresse neutre; v1.3 : phase 0 et prochaines étapes mises à jour, DNS, jeton Cloudflare, ouverture au routeur et comptes administrateur faits, netplan par MAC; v1.2 : Caddy dans un projet `edge` séparé, environnement de test en marche, vrais certificats Let's Encrypt par validation DNS, DNS `louis` et `test` en place; v1.1 : dépôt Git et pile Docker en marche sur `ld1` (validée sur le réseau interne), test sur `test.ledeneigeur.com`, ouverture au routeur filtrée par IP source, état du DNS Cloudflare et du disque en 6.1.1; v1.0 : sous-domaine louis.ledeneigeur.com, MAC dynamique, pas de port public au départ, CLAUDE.md déposé sur ld1; v0.9 : Claude Code réellement installé et connecté sur `ld1` (2.1.319); v0.8 : serveur `ld1` installé et sécurisé, IP fixe 172.16.4.100, état du serveur en 6.1.1; v0.7 : domaine ledeneigeur.com et découpage par sous-domaine; v0.6 : iPhone 17 Pro Max confirmé, décision de bâtir, SMTP2GO et boîte IMAP, hébergement sans frais, section O, specs de la VM)
 Statut : brouillon à valider avant tout développement
 
 ---
@@ -266,6 +266,10 @@ Technologie : API Claude (Anthropic) appelée par le worker en arrière-plan, av
 - Paie et RH.
 - Contrats municipaux ou commerciaux à appels d'offres.
 - Offre de l'app à d'autres déneigeurs (multi-entreprise). Pas un objectif de V1, mais on garde la porte ouverte à peu de frais : une table `Entreprise` dès le départ, à laquelle tout le reste est rattaché, et aucune donnée de Louis codée en dur (nom, taxes, numéro de texto, textes des gabarits, tout en configuration). Ajouter un deuxième déneigeur deviendra une question d'écrans d'administration et de facturation de l'usage, pas une réécriture. Le nom de domaine générique ledeneigeur.com va dans ce sens.
+  Une seule installation de prod sert tous les déneigeurs : une fiche `Entreprise` par déneigeur, créée dans la même administration, chacun sur son sous-domaine (ex. `martin.ledeneigeur.com`). Trois morceaux :
+  1. ~~L'app choisit l'entreprise selon le domaine de la requête~~ **Fait le 7 novembre 2026** (`core.middleware.EntrepriseMiddleware`, champ « domaine » de la fiche; écrans de terrain réservés aux membres de cette entreprise).
+  2. Ajout d'un déneigeur, quelques minutes sans nouvelle installation : enregistrement A chez Cloudflare (DNS seulement), bloc dans `edge/Caddyfile` vers `lmapp-prod-app`, nom ajouté à `DJANGO_ALLOWED_HOSTS` dans `/srv/lmapp/.env`, puis la fiche `Entreprise` avec ce domaine. À documenter pas à pas le jour venu.
+  3. Administration à une adresse neutre réservée à JF (proposé : `admin.ledeneigeur.com`) dès qu'il y a un deuxième déneigeur : `/admin/` et la liste des entreprises ne doivent jamais répondre sur le sous-domaine d'un client. D'ici là, l'administration reste sur `louis.ledeneigeur.com/admin/`.
 
 ## 6. Architecture technique recommandée
 
