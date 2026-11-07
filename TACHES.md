@@ -14,9 +14,7 @@ Mise à jour : 7 novembre 2026.
 
 ### Ce qui bloque la suite
 
-- [ ] Créer ses comptes administrateur (depuis sa session SSH) :
-  - prod : `cd /srv/lmapp && docker compose exec app python manage.py createsuperuser`
-  - test : `cd /srv/lmapp/test && docker compose exec app python manage.py createsuperuser`
+- [x] Créer ses comptes administrateur (prod et test).
 - [ ] Créer la fiche de Louis dans `https://louis.ledeneigeur.com/admin/`, « Entreprises », « Ajouter » :
   - nom « Louis Méthot Déneigement », identifiant `louis`, domaine `louis.ledeneigeur.com`;
   - section « Villes desservies » : Sainte-Adèle, rayon 8 km, « ville par défaut » cochée (le centre se remplit seul);
@@ -75,4 +73,4 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 
 ## Fait
 
-- 7 novembre 2026 : dépôt Git (copie sur GitHub privé), squelette Django, Docker (projets `edge`, `lmapp`, `lmapp-test`), vrais certificats Let's Encrypt, ouverture filtrée par IP au routeur (IP réelle conservée), modèle des clients, import Excel et CSV avec gabarit, géocodage avec zone de service Sainte-Adèle, données d'essai, déploiements en prod.
+- 7 novembre 2026 : dépôt Git (copie sur GitHub privé), squelette Django, Docker (projets `edge`, `lmapp`, `lmapp-test`), vrais certificats Let's Encrypt, ouverture filtrée par IP au routeur (IP réelle conservée), modèle des clients, import Excel et CSV avec gabarit, géocodage avec zone de service Sainte-Adèle, données d'essai, déploiements en prod, comptes administrateur de JF en prod et en test.
