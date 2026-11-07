@@ -64,6 +64,7 @@ Versions en place : Python 3.13, Django 5.2 LTS (choisi plutôt que 6.x pour dur
 - Utilisateurs : modèle `User` de Django, **pas de modèle personnalisé** (les tables existaient déjà). Le rôle (administrateur, opérateur, lecture seule) et l'entreprise passent par `core.Membre`.
 - Téléphones toujours stockés en E.164 (`+1XXXXXXXXXX`) via `core.telephone.normaliser`, pour rattacher les textos reçus (E4). Courriels en minuscules, sans espaces, nettoyés dans `clean_fields()` (avant la validation du format).
 - Positions : `PointField` en `geography` (SRID 4326), distances en mètres (`position__dwithin=(point, D(m=800))`), index GIST.
+- Données d'essai : `cd /srv/lmapp/test && docker compose run --rm app python manage.py donnees_essai` crée « Déneigement Essai » (3 secteurs, 10 clients, 11 adresses). Refuse en prod. Cellulaires dans la plage fictive 555-0100 à 555-0199, courriels en `@example.com` : jamais de vraie donnée en test.
 - Tests : `cd /srv/lmapp/test && docker compose run --rm app python manage.py test`. Générer les migrations avec le code monté : `docker compose run --rm -v /srv/lmapp/src:/app app python manage.py makemigrations`, puis relire `sqlmigrate` avant d'appliquer.
 - Une seule image pour `app` (Gunicorn) et `worker` (`manage.py procrastinate worker`) : `lmapp:test` pour le test, `lmapp:latest` pour la prod. Utilisateur `lmapp` (UID 1000, comme `deploy`), système de fichiers en lecture seule sauf `/tmp` et les médias.
 - Réseaux Docker :

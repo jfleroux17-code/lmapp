@@ -80,3 +80,25 @@ class AdresseTests(TestCase):
         a_moins_de_800_m = Adresse.objects.filter(position__dwithin=(louis_est_ici, D(m=800)))
         self.assertEqual(set(a_moins_de_800_m), {proche1, proche2})
         self.assertAlmostEqual(proche1.latitude, 45.95)
+
+
+class DonneesEssaiTests(TestCase):
+    def test_refuse_en_prod(self):
+        from django.core.management import CommandError, call_command
+        from django.test import override_settings
+        with override_settings(LMAPP_ENV="prod"):
+            with self.assertRaises(CommandError):
+                call_command("donnees_essai", stdout=open("/dev/null", "w"))
+        self.assertEqual(Entreprise.objects.count(), 0)
+
+    def test_creation_puis_rien_en_double(self):
+        from django.core.management import call_command
+        from django.test import override_settings
+        with override_settings(LMAPP_ENV="test"):
+            call_command("donnees_essai", stdout=open("/dev/null", "w"))
+            call_command("donnees_essai", stdout=open("/dev/null", "w"))
+        self.assertEqual(Entreprise.objects.count(), 1)
+        self.assertEqual(Client.objects.count(), 10)
+        self.assertEqual(Adresse.objects.count(), 11)
+        # Tous les cellulaires dans la plage fictive 555-01XX
+        self.assertTrue(all(c.cellulaire.startswith("+1450555") and c.cellulaire[-4:-2] == "01" for c in Client.objects.all()))
