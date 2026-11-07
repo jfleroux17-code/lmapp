@@ -1,0 +1,35 @@
+# Secrets : jamais dans le dépôt
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Données et volumes locaux
+/data/
+/sauvegardes/
+*.sql
+*.sql.gz
+*.dump
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Django
+/staticfiles/
+/media/
+
+# Node (Tailwind)
+node_modules/
+
+# Éditeurs et système
+.vscode/
+.idea/
+*.swp
+.DS_Store
