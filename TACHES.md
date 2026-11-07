@@ -39,7 +39,7 @@ Mise à jour : 7 novembre 2026.
 - [ ] `sudo ufw status verbose` et `sudo ss -tlnp 'sport = :36789'` (processus inconnu sur un port local).
 - [ ] Donner les plages d'adresses des autres réseaux (VPN, bureau, centre de données) : conflit possible avec les plages 172.17 à 172.31 de Docker.
 - [x] Copie du dépôt hors de ld1 : GitHub privé `jfleroux17-code/lmapp`, poussé après chaque étape.
-- [ ] Brancher le dépôt GitHub dans le Projet Claude (claude.ai, connaissances du projet) : `PRD.md`, `CLAUDE.md`, `TACHES.md`.
+- [x] Dépôt GitHub branché dans le Projet Claude de JF (`PRD.md`, `CLAUDE.md`, `TACHES.md`). Après un envoi, synchroniser la source GitHub dans le projet pour voir la dernière version.
 - [ ] Où envoyer les sauvegardes nocturnes hors de la VM (stockage Peripheriq ou compartiment S3).
 - [ ] Trancher les fonctionnalités V1 dans le catalogue du PRD (section 5), au besoin.
 
