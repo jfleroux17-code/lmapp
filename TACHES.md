@@ -32,7 +32,7 @@ Mise à jour : 7 novembre 2026.
 
 ### Serveur (rien d'urgent)
 
-- [ ] Netplan par pilote (`hv_netvsc`) plutôt que par MAC, puisque la MAC reste dynamique. Depuis la console Hyper-V, `sudo netplan try`, instantané avant. Seul point qui peut faire perdre le réseau à la VM si elle est déplacée ou réimportée.
+- [ ] Netplan par MAC (décision du 7 novembre 2026), configuré par JF avec de l'aide. Instantané avant, `sudo netplan try` depuis la console Hyper-V. Si la MAC reste dynamique dans Hyper-V, la VM peut perdre son réseau quand elle est déplacée ou réimportée.
 - [ ] Redémarrer ld1 à un moment tranquille (services signalés par apt).
 - [ ] `sudo ufw status verbose` et `sudo ss -tlnp 'sport = :36789'` (processus inconnu sur un port local).
 - [ ] Donner les plages d'adresses des autres réseaux (VPN, bureau, centre de données) : conflit possible avec les plages 172.17 à 172.31 de Docker.
