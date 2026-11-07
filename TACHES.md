@@ -17,8 +17,8 @@ Mise à jour : 7 novembre 2026.
 - [x] Créer ses comptes administrateur (prod et test).
 - [ ] Essayer les premiers écrans sur son iPhone, en test : `https://test.ledeneigeur.com/` (avec son compte administrateur de test; réseau de la maison ou du bureau, à cause du filtre `_SLAPP`). Dans Safari : Partager, « Sur l'écran d'accueil ».
 - [x] Fiche de Louis créée en prod (Louis Méthot Déneigement, `louis`, `louis.ledeneigeur.com`, Sainte-Adèle 8 km, centre rempli).
-- [ ] Dans la fiche de Louis, ville Sainte-Adèle : cocher « ville par défaut » (sinon l'import exige une ville sur chaque ligne).
-- [ ] Créer l'utilisateur de Louis (Utilisateurs, Ajouter), puis l'ajouter aux membres de l'entreprise avec le rôle « Opérateur ». S'ajouter aussi comme membre « Administrateur » (facultatif : le superutilisateur entre déjà partout).
+- [x] Sainte-Adèle cochée « ville par défaut » dans la fiche de Louis.
+- [x] Utilisateur `louis` créé, membre « Opérateur » (entre dans l'app, pas dans l'administration).
 - [ ] Envoyer le gabarit d'import à Louis, ou transcrire ses papiers : `scp deploy@172.16.4.100:/srv/lmapp/gabarits/gabarit_import_clients.xlsx .`
 - [ ] Poser à Louis les questions de la section « Louis » ci-dessous.
 
