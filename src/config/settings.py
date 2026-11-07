@@ -49,7 +49,12 @@ INSTALLED_APPS = [
     "core",
 ]
 
+# IP des proxies dont on croit l'en-tête X-Forwarded-For : Caddy (projet edge),
+# IP fixe sur le réseau Docker edge.
+LMAPP_PROXIES_DE_CONFIANCE = env_liste("LMAPP_PROXIES_DE_CONFIANCE", "172.20.0.250")
+
 MIDDLEWARE = [
+    "core.middleware.IPReelleMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",

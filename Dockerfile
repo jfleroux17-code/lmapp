@@ -49,5 +49,6 @@ CMD ["gunicorn", "config.wsgi:application", \
      "--bind", "0.0.0.0:8000", \
      "--workers", "3", \
      "--timeout", "60", \
-     "--access-logfile", "-", \
-     "--forwarded-allow-ips", "*"]
+     "--access-logfile", "-"]
+# Proxies de confiance de Gunicorn : variable FORWARDED_ALLOW_IPS du .env
+# (l'IP fixe de Caddy). Sans elle, Gunicorn ne croit que 127.0.0.1.
