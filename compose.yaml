@@ -81,7 +81,7 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
 
-  # Sauvegarde nocturne de la base (PRD K3) : voir outils/sauvegarde_nocturne.sh.
+  # Sauvegarde de la base toutes les 12 heures (PRD K3) : voir outils/sauvegarde_nocturne.sh.
   # Écrit dans /srv/lmapp/sauvegardes, que COVE copie hors de ld1.
   sauvegarde:
     image: postgis/postgis:17-3.7
@@ -93,8 +93,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       PGPASSWORD: ${POSTGRES_PASSWORD}
       TZ: America/Toronto
-      SAUVEGARDE_HEURE: ${SAUVEGARDE_HEURE:-03:30}
-      SAUVEGARDE_GARDER: ${SAUVEGARDE_GARDER:-14}
+      SAUVEGARDE_HEURES: ${SAUVEGARDE_HEURES:-03:30 15:30}
+      SAUVEGARDE_GARDER: ${SAUVEGARDE_GARDER:-28}
     volumes:
       - ./sauvegardes:/sauvegardes
       - ./outils/sauvegarde_nocturne.sh:/outils/sauvegarde_nocturne.sh:ro

@@ -38,8 +38,8 @@ Mise à jour : 7 novembre 2026.
 - [x] Copie du dépôt hors de ld1 : GitHub privé `jfleroux17-code/lmapp`, poussé après chaque étape.
 - [x] Dépôt GitHub branché dans le Projet Claude de JF (`PRD.md`, `CLAUDE.md`, `TACHES.md`). Après un envoi, synchroniser la source GitHub dans le projet pour voir la dernière version.
 - [x] Sauvegardes hors de la VM : COVE, toutes les 12 heures (décision du 7 novembre 2026).
-- [ ] Donner les heures de passage de COVE, pour régler la sauvegarde nocturne une trentaine de minutes avant (aujourd'hui : 3 h 30).
-- [ ] Vérifier dans COVE que `/srv/lmapp/sauvegardes/` est bien inclus (si COVE sauvegarde des fichiers plutôt que la VM entière).
+- [x] Heures de COVE inconnues : la base est sauvegardée toutes les 12 heures (3 h 30 et 15 h 30), COVE emporte toujours une copie de moins de 12 heures.
+- [ ] Vérifier que COVE inclut `/srv/lmapp/sauvegardes/` : l'agent COVE tourne sur ld1 (`/opt/MXB`), il sauvegarde donc des dossiers choisis. Lecture seule : `sudo /opt/MXB/bin/ClientTool control.selection.list` (et `control.schedule.list` pour ses heures).
 - [ ] Trancher les fonctionnalités V1 dans le catalogue du PRD (section 5), au besoin.
 
 ## Louis
@@ -66,7 +66,7 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - [x] Premiers écrans de Louis (PWA mobile) : connexion, recherche, fiche client. En prod le 7 novembre 2026.
 - [x] Icône de l'app (flocon jaune, générique) : iPhone, manifeste PWA, onglet. En prod le 7 novembre 2026.
 - [ ] Avant l'ouverture à toutes les IP : limiter les essais de connexion (verrouillage après échecs).
-- [x] Sauvegarde nocturne de la base (K3) : en prod le 7 novembre 2026, test de restauration réussi.
+- [x] Sauvegarde de la base (K3) toutes les 12 heures : en prod le 7 novembre 2026, test de restauration réussi.
 - [ ] Test de restauration chaque mois (`sh outils/tester_restauration.sh`), prochain vers le 7 décembre 2026.
 
 ### En attente

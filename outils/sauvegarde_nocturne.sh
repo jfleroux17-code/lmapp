@@ -1,19 +1,23 @@
 #!/bin/sh
-# Sauvegarde nocturne de la base de prod (PRD K3), lancée par le service
-# « sauvegarde » de compose.yaml (image postgis : pg_dump de même version que
-# la base). Écrit dans /srv/lmapp/sauvegardes, que COVE copie hors de ld1.
+# Sauvegarde de la base de prod (PRD K3), lancée par le service « sauvegarde »
+# de compose.yaml (image postgis : pg_dump de même version que la base).
+# Écrit dans /srv/lmapp/sauvegardes, que COVE copie hors de ld1 toutes les
+# 12 heures : en sauvegardant aussi toutes les 12 heures, COVE emporte
+# toujours une copie de moins de 12 heures, quelle que soit son heure.
 #
-#   - une sauvegarde par jour à SAUVEGARDE_HEURE (3 h 30 par défaut : hors de
-#     la plage de 2 h à 3 h que les changements d'heure sautent ou répètent);
-#   - rattrapage au démarrage si la dernière réussite date de plus de 26 h;
+#   - une sauvegarde à chaque heure de SAUVEGARDE_HEURES (« 03:30 15:30 » par
+#     défaut : hors de la plage de 2 h à 3 h que les changements d'heure
+#     sautent ou répètent);
+#   - rattrapage au démarrage si la dernière réussite date de plus de 14 h;
 #   - fichier vérifié (lisible par pg_restore) avant d'être gardé;
-#   - on garde les SAUVEGARDE_GARDER plus récentes (14), et les 10 plus
+#   - on garde les SAUVEGARDE_GARDER plus récentes (28 : 14 jours), et les 10 plus
 #     récentes « avant déploiement ». Nettoyage par nombre, pas par âge : si
 #     les sauvegardes échouaient, on ne perdrait pas les dernières bonnes.
 set -eu
 
-HEURE="${SAUVEGARDE_HEURE:-03:30}"
-GARDER="${SAUVEGARDE_GARDER:-14}"
+HEURES="${SAUVEGARDE_HEURES:-03:30 15:30}"
+GARDER="${SAUVEGARDE_GARDER:-28}"
+RATTRAPAGE_H=14
 RACINE=/sauvegardes
 DOSSIER="$RACINE/nocturnes"
 umask 077
@@ -45,19 +49,29 @@ sauvegarder() {
     garder_les_plus_recents "$RACINE" 'lmapp_avant-deploiement_*.dump' 10
 }
 
-prochaine() {  # secondes jusqu'à la prochaine HEURE
+prochaine() {  # secondes jusqu'à la plus proche des HEURES
     maintenant=$(date +%s)
-    cible=$(date -d "today $HEURE" +%s)
-    [ "$cible" -le "$maintenant" ] && cible=$(date -d "tomorrow $HEURE" +%s)
-    echo $(( cible - maintenant ))
+    meilleure=""
+    for h in $HEURES; do
+        cible=$(date -d "today $h" +%s)
+        [ "$cible" -le "$maintenant" ] && cible=$(date -d "tomorrow $h" +%s)
+        if [ -z "$meilleure" ] || [ "$cible" -lt "$meilleure" ]; then meilleure=$cible; fi
+    done
+    echo $(( meilleure - maintenant ))
 }
+
+if [ "${1:-}" = "--prochaine" ]; then  # vérification : prochain passage, sans rien sauvegarder
+    s=$(prochaine)
+    echo "prochaine sauvegarde dans $s s, le $(date -d "@$(( $(date +%s) + s ))" '+%Y-%m-%d à %H:%M')"
+    exit 0
+fi
 
 trap 'journal "arrêt du service de sauvegarde"; exit 0' TERM INT
 
-journal "service de sauvegarde démarré (chaque jour à $HEURE, on garde les $GARDER plus récentes)"
+journal "service de sauvegarde démarré (chaque jour à $HEURES, on garde les $GARDER plus récentes)"
 derniere=$(cat "$RACINE/derniere_reussite" 2>/dev/null || echo 0)
-if [ $(( $(date +%s) - derniere )) -gt $(( 26 * 3600 )) ]; then
-    journal "aucune sauvegarde depuis plus de 26 h : rattrapage maintenant"
+if [ $(( $(date +%s) - derniere )) -gt $(( RATTRAPAGE_H * 3600 )) ]; then
+    journal "aucune sauvegarde depuis plus de $RATTRAPAGE_H h : rattrapage maintenant"
     sauvegarder || true
 fi
 
