@@ -1,8 +1,8 @@
-# LMAPP : Plan de projet (PRD v1.2)
+# LMAPP : Plan de projet (PRD v1.3)
 
 **Application de gestion pour Louis Méthot Déneigement**
 Porteur du projet : Jean-François Leroux
-Date : 7 novembre 2026 (v1.2 : Caddy dans un projet `edge` séparé, environnement de test en marche, vrais certificats Let's Encrypt par validation DNS, DNS `louis` et `test` en place; v1.1 : dépôt Git et pile Docker en marche sur `ld1` (validée sur le réseau interne), test sur `test.ledeneigeur.com`, ouverture au routeur filtrée par IP source, état du DNS Cloudflare et du disque en 6.1.1; v1.0 : sous-domaine louis.ledeneigeur.com, MAC dynamique, pas de port public au départ, CLAUDE.md déposé sur ld1; v0.9 : Claude Code réellement installé et connecté sur `ld1` (2.1.319); v0.8 : serveur `ld1` installé et sécurisé, IP fixe 172.16.4.100, état du serveur en 6.1.1; v0.7 : domaine ledeneigeur.com et découpage par sous-domaine; v0.6 : iPhone 17 Pro Max confirmé, décision de bâtir, SMTP2GO et boîte IMAP, hébergement sans frais, section O, specs de la VM)
+Date : 7 novembre 2026 (v1.3 : phase 0 et prochaines étapes mises à jour, DNS, jeton Cloudflare, ouverture au routeur et comptes administrateur faits, netplan par MAC; v1.2 : Caddy dans un projet `edge` séparé, environnement de test en marche, vrais certificats Let's Encrypt par validation DNS, DNS `louis` et `test` en place; v1.1 : dépôt Git et pile Docker en marche sur `ld1` (validée sur le réseau interne), test sur `test.ledeneigeur.com`, ouverture au routeur filtrée par IP source, état du DNS Cloudflare et du disque en 6.1.1; v1.0 : sous-domaine louis.ledeneigeur.com, MAC dynamique, pas de port public au départ, CLAUDE.md déposé sur ld1; v0.9 : Claude Code réellement installé et connecté sur `ld1` (2.1.319); v0.8 : serveur `ld1` installé et sécurisé, IP fixe 172.16.4.100, état du serveur en 6.1.1; v0.7 : domaine ledeneigeur.com et découpage par sous-domaine; v0.6 : iPhone 17 Pro Max confirmé, décision de bâtir, SMTP2GO et boîte IMAP, hébergement sans frais, section O, specs de la VM)
 Statut : brouillon à valider avant tout développement
 
 ---
@@ -317,7 +317,7 @@ Pourquoi :
 | Claude Code | Version 2.1.319, installateur natif (`~/.local/bin/claude`, mises à jour automatiques), PATH ajouté dans `~/.bashrc` de `deploy`, connecté au compte claude.ai de JF (`claude auth login`), `claude doctor` sans problème. Installé le 7 novembre 2026. Consignes dans `/srv/lmapp/CLAUDE.md`. |
 
 Points à régler :
-- **MAC dynamique dans Hyper-V** : JF garde la MAC dynamique (décision du 7 novembre 2026). La config netplan ne doit donc pas dépendre de la MAC : elle doit reconnaître la carte par son pilote Hyper-V (`hv_netvsc`) plutôt que par l'adresse `00:15:5d:04:0a:02`, sinon la VM perd son réseau si la MAC change (déplacement ou réimportation de la VM).
+- **Carte réseau et MAC** : décision de JF du 7 novembre 2026, qui remplace l'idée de reconnaître la carte par son pilote (`hv_netvsc`) : netplan reconnaît la carte **par la MAC** (`00:15:5d:04:0a:02`). JF fait la configuration, avec de l'aide. Rappel : si la MAC reste dynamique dans Hyper-V, la VM perd son réseau quand la MAC change (déplacement ou réimportation de la VM).
 - ~~**NAT source**~~ **Réglé pour le web le 7 novembre 2026** : les connexions SSH arrivent avec la source `172.16.4.1` (la passerelle), mais la redirection du 443 sur le Mikrotik conserve l'IP réelle du visiteur (essai de JF depuis la maison : son IP publique apparaît dans les journaux de Caddy). Django la reçoit par `X-Forwarded-For`, en ne faisant confiance qu'à Caddy (`172.20.0.250`).
 - **Docker contourne ufw** : un port publié par un conteneur est ouvert même si ufw le bloque. Seul Caddy publie un port (443); la base, l'app et le worker restent sur les réseaux Docker internes. Une règle dans la chaîne `DOCKER-USER` pourra filtrer les IP sur ld1 même, en plus du routeur.
 - ~~**DNS public** : enregistrements A `louis` et `test` vers `216.46.12.226` en DNS seulement, suppression du générique `*`.~~ **Fait.** Reste, pour l'accès interne ou VPN tant que le routeur ne redirige rien : faire pointer ces noms vers `172.16.4.100` dans le DNS interne (ou le fichier `hosts` des postes).
@@ -424,11 +424,13 @@ Le calendrier est serré : la saison est commencée. Priorité à ce qui rapport
 ### Phase 0 : Préparation (semaine 1)
 - ~~JF : installation de la VM Ubuntu 26.04.1 LTS, IP fixe, SSH par clé, pare-feu.~~ **Fait le 7 novembre 2026** (section 6.1.1).
 - ~~Claude Code installé sur la VM.~~ **Fait le 7 novembre 2026** (2.1.319, connecté au compte de JF). `CLAUDE.md` et `PRD.md` déposés dans `/srv/lmapp`.
-- JF : DNS (`louis.ledeneigeur.com` et `test.ledeneigeur.com`, voir 6.1.1), netplan par pilote plutôt que par MAC, jeton API Cloudflare, redirection au routeur filtrée par IP source.
+- ~~JF : DNS (`louis.ledeneigeur.com` et `test.ledeneigeur.com`, voir 6.1.1), jeton API Cloudflare, redirection au routeur filtrée par IP source.~~ **Fait le 7 novembre 2026.**
+- ~~JF : comptes administrateur Django en prod et en test.~~ **Fait le 7 novembre 2026.**
+- JF : configuration du netplan par MAC (avec de l'aide).
 - JF et Louis : réponses aux questions ouvertes (section 10).
 - Louis : liste de ses clients (même en photo de ses papiers) pour l'import.
 - Création des comptes : Twilio (numéro 450), sous-compte SMTP2GO et boîte de réception, Stripe si retenu.
-- Claude Code : ~~structure du projet, dépôt Git, Docker Compose, base de données~~ **fait le 7 novembre 2026**; déploiement vide en HTTPS validé sur le réseau interne avec le certificat interne de Caddy. Environnement de test en marche sur `test.ledeneigeur.com`. Vrais certificats Let's Encrypt en place. Reste l'ouverture filtrée par IP.
+- Claude Code : ~~structure du projet, dépôt Git, Docker Compose, base de données~~ **fait le 7 novembre 2026**; déploiement vide en HTTPS validé sur le réseau interne avec le certificat interne de Caddy. Environnement de test en marche sur `test.ledeneigeur.com`. Vrais certificats Let's Encrypt en place. Ouverture filtrée par IP (`_SLAPP`) en place et testée de l'extérieur le 7 novembre 2026.
 
 ### Phase 1 : Version de base, volet argent (semaines 2 à 4)
 Fonctionnalités : A1, A2, A5, A6, A7, A8, A9, B1, B2, B3, B4, C1 à C8, C13, D1 à D4, D6 (si retenu), E1 à E11, J1, K1 à K3, K5 à K8, L1, M1 à M3.
@@ -491,10 +493,11 @@ Livrable : automatisation des relances, rapports pour le comptable, demandes de 
 
 **JF**
 1. ~~Installer la VM Ubuntu Server 26.04.1 LTS, créer `deploy` avec clé SSH.~~ Fait.
-2. Faire reconnaître la carte réseau par son pilote dans netplan (la MAC reste dynamique).
-3. DNS chez Cloudflare : enregistrements A `louis.ledeneigeur.com` et `test.ledeneigeur.com` vers `216.46.12.226` en DNS seulement, suppression du générique `*`, noms internes vers `172.16.4.100`. Créer un jeton API Cloudflare (« Zone : DNS : Modifier » sur `ledeneigeur.com`) et le déposer dans `/srv/lmapp/edge/.env` (lu par Caddy seulement). Redirection du 443 au routeur, limitée aux IP choisies, idéalement sans NAT source. Instantané Hyper-V avant.
+2. Configurer le netplan par MAC (décision du 7 novembre 2026, avec de l'aide).
+3. ~~DNS chez Cloudflare, jeton API Cloudflare dans `/srv/lmapp/edge/.env`, redirection du 443 au routeur limitée à `_SLAPP`.~~ Fait le 7 novembre 2026 (IP réelle du visiteur conservée).
+   - ~~Créer les comptes administrateur Django (prod et test).~~ Fait le 7 novembre 2026.
+   - Créer la fiche `Entreprise` de Louis dans l'administration (Sainte-Adèle, rayon 8 km, ville par défaut; JF comme membre administrateur).
    - Identifier le processus du port local 36789 (section 6.1.1). Disque : rien à faire avant l'alerte à 70 %.
-   - Créer le compte administrateur Django (`docker compose exec app python manage.py createsuperuser`, depuis sa propre session SSH).
 4. Créer le sous-compte SMTP2GO de Louis, y ajouter ledeneigeur.com et publier SPF, DKIM et DMARC; créer la boîte IMAP de réception. Déposer la clé API SMTP2GO et les accès IMAP (serveur, port 993 TLS, identifiant, mot de passe) directement dans `/srv/lmapp/.env` sur la VM, jamais dans le clavardage.
 5. Poser les questions de la section 10 à Louis.
 6. Trancher les fonctionnalités V1 dans le catalogue (section 5).
@@ -507,8 +510,8 @@ Livrable : automatisation des relances, rapports pour le comptable, demandes de 
 
 **Claude Code (sur ld1)**
 1. ~~Vérifier Docker, initialiser le dépôt Git.~~ Fait.
-2. ~~Structure du projet, Docker Compose~~, déploiement vide en HTTPS : validé en interne. Environnement de test en marche, vrais certificats en place. Reste l'ouverture filtrée par IP.
-3. Modèle de données et import CSV.
+2. ~~Structure du projet, Docker Compose~~, déploiement vide en HTTPS : validé en interne. Environnement de test en marche, vrais certificats en place, ouverture filtrée par IP en place. Fait.
+3. ~~Modèle des clients, import Excel et CSV, géocodage.~~ Fait le 7 novembre 2026. Reste le volet argent (`Saison`, `Contrat`, `Facture`, `Paiement`), qui attend les réponses de Louis.
 4. Phase 1 dans l'ordre de la section 8.
 
 ---

@@ -14,9 +14,7 @@ Mise à jour : 7 novembre 2026.
 
 ### Ce qui bloque la suite
 
-- [ ] Créer ses comptes administrateur (depuis sa session SSH) :
-  - prod : `cd /srv/lmapp && docker compose exec app python manage.py createsuperuser`
-  - test : `cd /srv/lmapp/test && docker compose exec app python manage.py createsuperuser`
+- [x] Créer ses comptes administrateur (prod et test).
 - [ ] Créer la fiche de Louis dans `https://louis.ledeneigeur.com/admin/`, « Entreprises », « Ajouter » :
   - nom « Louis Méthot Déneigement », identifiant `louis`, domaine `louis.ledeneigeur.com`;
   - section « Villes desservies » : Sainte-Adèle, rayon 8 km, « ville par défaut » cochée (le centre se remplit seul);
@@ -34,7 +32,7 @@ Mise à jour : 7 novembre 2026.
 
 ### Serveur (rien d'urgent)
 
-- [ ] Netplan par pilote (`hv_netvsc`) plutôt que par MAC, puisque la MAC reste dynamique. Depuis la console Hyper-V, `sudo netplan try`, instantané avant. Seul point qui peut faire perdre le réseau à la VM si elle est déplacée ou réimportée.
+- [ ] Netplan par MAC (décision du 7 novembre 2026), configuré par JF avec de l'aide. Instantané avant, `sudo netplan try` depuis la console Hyper-V. Si la MAC reste dynamique dans Hyper-V, la VM peut perdre son réseau quand elle est déplacée ou réimportée.
 - [ ] Redémarrer ld1 à un moment tranquille (services signalés par apt).
 - [ ] `sudo ufw status verbose` et `sudo ss -tlnp 'sport = :36789'` (processus inconnu sur un port local).
 - [ ] Donner les plages d'adresses des autres réseaux (VPN, bureau, centre de données) : conflit possible avec les plages 172.17 à 172.31 de Docker.
@@ -75,4 +73,4 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 
 ## Fait
 
-- 7 novembre 2026 : dépôt Git (copie sur GitHub privé), squelette Django, Docker (projets `edge`, `lmapp`, `lmapp-test`), vrais certificats Let's Encrypt, ouverture filtrée par IP au routeur (IP réelle conservée), modèle des clients, import Excel et CSV avec gabarit, géocodage avec zone de service Sainte-Adèle, données d'essai, déploiements en prod.
+- 7 novembre 2026 : dépôt Git (copie sur GitHub privé), squelette Django, Docker (projets `edge`, `lmapp`, `lmapp-test`), vrais certificats Let's Encrypt, ouverture filtrée par IP au routeur (IP réelle conservée), modèle des clients, import Excel et CSV avec gabarit, géocodage avec zone de service Sainte-Adèle, données d'essai, déploiements en prod, comptes administrateur de JF en prod et en test.
