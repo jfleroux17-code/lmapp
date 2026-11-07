@@ -1,0 +1,6 @@
+# Dépendances Python de LMAPP. Versions fixées : on monte à la main, après test.
+Django==5.2.19
+psycopg[binary,pool]==3.3.8
+procrastinate[django]==3.10.0
+gunicorn==26.2.0
+whitenoise==6.12.0
