@@ -1,0 +1,31 @@
+/* Source du CSS de LMAPP, compilée par Tailwind à la construction de l'image.
+   Pensé pour un iPhone, à une main, avec des gants, souvent la nuit :
+   gros caractères, grosses cibles, contraste élevé, thème sombre par défaut. */
+@import "tailwindcss";
+@source "../../**/templates";
+
+@theme {
+  --color-neige: #f5f7fa;
+  --color-nuit: #0d1117;
+  --color-carte: #161b22;
+  --color-bordure: #30363d;
+  --color-accent: #f5c400;   /* jaune de signalisation */
+  --color-danger: #ff6b6b;
+  --color-ok: #3fb950;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+}
+
+@layer base {
+  html { font-size: 18px; -webkit-text-size-adjust: 100%; }
+  body { @apply bg-nuit text-neige antialiased; }
+  /* Respecter l'encoche et la barre d'accueil de l'iPhone */
+  .zone-sure { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); padding-bottom: env(safe-area-inset-bottom); }
+}
+
+@layer components {
+  /* Bouton tapable avec des gants : au moins 56 px de haut */
+  .gros-bouton { @apply flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl px-5 text-lg font-semibold active:scale-[0.98] transition; }
+  .champ { @apply min-h-14 w-full rounded-2xl border-2 border-bordure bg-carte px-5 text-lg text-neige placeholder:text-gray-500 focus:border-accent focus:outline-none; }
+  .carte { @apply rounded-2xl border border-bordure bg-carte; }
+  .pastille { @apply inline-block rounded-full px-3 py-1 text-sm font-semibold; }
+}

@@ -45,9 +45,11 @@ INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
     "django.contrib.staticfiles",
     "django.contrib.gis",
+    "django.contrib.postgres",
     "procrastinate.contrib.django",
     "core",
     "clients",
+    "terrain",
 ]
 
 # IP des proxies dont on croit l'en-tête X-Forwarded-For : Caddy (projet edge),
@@ -63,6 +65,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.middleware.EntrepriseMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -134,6 +137,11 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 # Session longue sur le cellulaire de Louis (K1) : 90 jours.
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 90
+
+# Connexion des écrans de terrain
+LOGIN_URL = "terrain:connexion"
+LOGIN_REDIRECT_URL = "terrain:accueil"
+LOGOUT_REDIRECT_URL = "terrain:connexion"
 
 LOGGING = {
     "version": 1,

@@ -27,3 +27,21 @@ class IPReelleMiddleware:
             except ValueError:
                 pass  # en-tête absent ou invalide : on garde l'IP de Caddy
         return self.get_response(request)
+
+
+class EntrepriseMiddleware:
+    """Associe chaque requête à l'entreprise de son domaine (request.entreprise).
+
+    louis.ledeneigeur.com -> l'entreprise dont le champ « domaine » vaut ce nom.
+    C'est ce qui isole les déneigeurs les uns des autres (PRD section P).
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from core.models import Entreprise
+
+        hote = request.get_host().split(":")[0].lower()
+        request.entreprise = Entreprise.objects.filter(domaine=hote, active=True).first()
+        return self.get_response(request)

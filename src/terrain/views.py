@@ -1,0 +1,110 @@
+"""Écrans de terrain de Louis : recherche de clients et fiche client (PRD A8, F6).
+
+Mobile d'abord, une main, des gants. Tout est filtré par request.entreprise
+(l'entreprise du domaine) : un client d'une autre entreprise donne une 404.
+"""
+import re
+from urllib.parse import quote
+
+from django.contrib.auth import views as auth_views
+from django.db.models import F, Min, Prefetch, Q
+from django.shortcuts import get_object_or_404, render
+
+from clients.models import Adresse, Client
+from core.acces import membre_requis
+from core import telephone
+
+MAX_RESULTATS = 50
+
+
+class Connexion(auth_views.LoginView):
+    template_name = "terrain/connexion.html"
+    redirect_authenticated_user = True
+
+
+def _recherche(entreprise, q):
+    qs = Client.objects.filter(entreprise=entreprise).prefetch_related(
+        Prefetch("adresses", queryset=Adresse.objects.filter(active=True).select_related("secteur").order_by("secteur__ordre", "ordre_tournee"))
+    )
+    q = (q or "").strip()
+    if not q:
+        # Sans recherche : clients servis (actifs et en recouvrement), dans l'ordre de la tournée.
+        # Inactifs et liste noire : seulement par la recherche.
+        # (trié sur le premier arrêt de chaque client : un client à deux adresses n'apparaît qu'une fois)
+        return (qs.filter(statut__in=[Client.Statut.ACTIF, Client.Statut.RECOUVREMENT])
+                .annotate(o_secteur=Min("adresses__secteur__ordre"), o_rang=Min("adresses__ordre_tournee"))
+                .order_by(F("o_secteur").asc(nulls_last=True), F("o_rang").asc(nulls_last=True), "nom")[:MAX_RESULTATS], False)
+    filtre = Q()
+    for mot in q.split():
+        f = (Q(nom__unaccent__icontains=mot) | Q(prenom__unaccent__icontains=mot)
+             | Q(organisation__unaccent__icontains=mot)
+             | Q(adresses__ligne1__unaccent__icontains=mot) | Q(courriel__icontains=mot))
+        chiffres = re.sub(r"\D", "", mot)
+        if len(chiffres) >= 3:
+            f |= Q(cellulaire__contains=chiffres) | Q(telephone_autre__contains=chiffres)
+        filtre &= f
+    resultats = qs.filter(filtre).order_by("nom", "prenom").distinct()
+    return resultats[:MAX_RESULTATS], True
+
+
+@membre_requis
+def accueil(request):
+    clients, recherche = _recherche(request.entreprise, request.GET.get("q"))
+    contexte = {"clients": clients, "q": request.GET.get("q", ""), "recherche": recherche}
+    # HTMX : seulement la liste, pendant la frappe
+    gabarit = "terrain/_resultats.html" if request.headers.get("HX-Request") else "terrain/accueil.html"
+    return render(request, gabarit, contexte)
+
+
+def _liens_navigation(adresse):
+    """Boutons Apple Plans, Google Maps et Waze (F6). Position précise si on l'a, sinon l'adresse."""
+    texte = f"{adresse.ligne1}, {adresse.ville}, {adresse.province}"
+    if adresse.position is not None and not adresse.position_a_verifier:
+        lat, lon = f"{adresse.latitude:.6f}", f"{adresse.longitude:.6f}"
+        return [
+            ("Apple Plans", f"https://maps.apple.com/?daddr={lat},{lon}&dirflg=d"),
+            ("Google Maps", f"https://www.google.com/maps/dir/?api=1&destination={lat},{lon}&travelmode=driving"),
+            ("Waze", f"https://waze.com/ul?ll={lat},{lon}&navigate=yes"),
+        ]
+    t = quote(texte)
+    return [
+        ("Apple Plans", f"https://maps.apple.com/?daddr={t}&dirflg=d"),
+        ("Google Maps", f"https://www.google.com/maps/dir/?api=1&destination={t}&travelmode=driving"),
+        ("Waze", f"https://waze.com/ul?q={t}&navigate=yes"),
+    ]
+
+
+@membre_requis
+def fiche(request, pk):
+    client = get_object_or_404(Client, pk=pk, entreprise=request.entreprise)
+    adresses = [
+        {"objet": a, "navigation": _liens_navigation(a)}
+        for a in client.adresses.filter(active=True).select_related("secteur").order_by("secteur__ordre", "ordre_tournee")
+    ]
+    contexte = {
+        "client": client,
+        "adresses": adresses,
+        "cellulaire": telephone.afficher(client.cellulaire),
+        "autre_telephone": telephone.afficher(client.telephone_autre),
+    }
+    return render(request, "terrain/fiche.html", contexte)
+
+
+def manifeste(request):
+    """Manifeste de la PWA : l'app s'installe sur l'écran d'accueil (PRD 6.3, 6.5).
+    Le nom vient de l'entreprise du domaine, jamais du code."""
+    from django.http import JsonResponse
+
+    nom = request.entreprise.nom if request.entreprise else "LMAPP"
+    reponse = JsonResponse({
+        "name": nom,
+        "short_name": nom if len(nom) <= 12 else "Déneigement",
+        "lang": "fr-CA",
+        "start_url": "/",
+        "scope": "/",
+        "display": "standalone",
+        "background_color": "#0d1117",
+        "theme_color": "#0d1117",
+    }, json_dumps_params={"ensure_ascii": False})
+    reponse["Content-Type"] = "application/manifest+json"
+    return reponse

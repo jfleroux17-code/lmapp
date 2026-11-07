@@ -1,0 +1,9 @@
+{% extends "terrain/base.html" %}
+{% block contenu %}
+<form action="{% url 'terrain:accueil' %}" method="get" role="search" class="sticky top-[4.25rem] z-10 -mx-4 bg-nuit px-4 pb-3">
+  <input type="search" name="q" value="{{ q }}" class="champ" placeholder="Nom, adresse ou téléphone"
+         autocomplete="off" autocorrect="off" enterkeyhint="search" aria-label="Rechercher un client"
+         hx-get="{% url 'terrain:accueil' %}" hx-trigger="input changed delay:250ms, search" hx-target="#resultats" hx-push-url="true">
+</form>
+<div id="resultats">{% include "terrain/_resultats.html" %}</div>
+{% endblock %}

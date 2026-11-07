@@ -1,5 +1,17 @@
 # Image unique de LMAPP : sert au service « app » (Gunicorn) et au service
 # « worker » (Procrastinate). Seule la commande change, dans compose.yaml.
+
+# Étape 1 : CSS compilé par Tailwind (exécutable autonome, sans Node.js).
+# Empreinte vérifiée : celle publiée par Tailwind pour la v4.3.5.
+FROM debian:trixie-slim AS css
+ADD --checksum=sha256:e47695cee3f0d90623a91f3939b08bdee610eb5ad99340adff9d4145b284d6cc \
+    https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.5/tailwindcss-linux-x64 /usr/local/bin/tailwindcss
+RUN chmod +x /usr/local/bin/tailwindcss
+WORKDIR /src
+COPY src/ /src/
+RUN tailwindcss -i core/static_src/app.css -o /css/app.css --minify
+
+# Étape 2 : l'application
 FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -33,6 +45,7 @@ COPY requirements.txt /tmp/requirements.txt
 RUN pip install --root-user-action=ignore -r /tmp/requirements.txt
 
 COPY --chown=lmapp:lmapp src/ /app/
+COPY --from=css --chown=lmapp:lmapp /css/app.css /app/core/static/css/app.css
 
 # Fichiers statiques rassemblés à la construction. Les valeurs ci-dessous
 # servent seulement à cette commande : les vraies viennent du .env au démarrage.

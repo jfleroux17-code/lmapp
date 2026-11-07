@@ -1,0 +1,6 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Accès refusé{% endblock %}
+{% block contenu %}
+<div class="pt-10"><h1 class="mb-3 text-2xl font-bold">Accès refusé</h1>
+<p class="text-gray-300">Ton compte n'est pas membre de {{ request.entreprise.nom }}. Demande à l'administrateur de t'ajouter.</p></div>
+{% endblock %}

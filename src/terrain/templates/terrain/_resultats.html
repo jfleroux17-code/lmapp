@@ -1,0 +1,22 @@
+{% if recherche %}
+  <p class="mb-3 text-sm text-gray-400">{{ clients|length }} résultat{{ clients|length|pluralize }}{% if clients|length == 50 %} (les 50 premiers){% endif %}</p>
+{% else %}
+  <p class="mb-3 text-sm text-gray-400">Clients de la tournée, dans l'ordre</p>
+{% endif %}
+<ul class="space-y-3">
+  {% for c in clients %}
+    <li>
+      <a href="{% url 'terrain:fiche' c.pk %}" class="carte flex min-h-16 items-center justify-between gap-3 px-4 py-3 active:bg-bordure">
+        <div class="min-w-0">
+          <div class="truncate text-lg font-semibold">{{ c.nom_affiche }}</div>
+          {% with a=c.adresses.all.0 %}{% if a %}
+            <div class="truncate text-gray-400">{{ a.ligne1 }}{% if c.adresses.all|length > 1 %} <span class="text-gray-500">(+{{ c.adresses.all|length|add:"-1" }})</span>{% endif %}</div>
+          {% endif %}{% endwith %}
+        </div>
+        {% include "terrain/_statut.html" with client=c %}
+      </a>
+    </li>
+  {% empty %}
+    <li class="carte p-6 text-center text-gray-400">Aucun client trouvé.</li>
+  {% endfor %}
+</ul>

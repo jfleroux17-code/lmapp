@@ -1,0 +1,24 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Connexion{% endblock %}
+{% block contenu %}
+<div class="pt-10">
+  <h1 class="mb-1 text-3xl font-bold">{{ request.entreprise.nom|default:"LMAPP" }}</h1>
+  <p class="mb-8 text-gray-400">Connexion</p>
+  {% if form.errors %}
+    <p class="mb-4 rounded-2xl border border-danger/50 bg-danger/10 p-4 text-danger">Nom d'utilisateur ou mot de passe incorrect.</p>
+  {% endif %}
+  <form method="post" class="space-y-4">{% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <label class="block">
+      <span class="mb-2 block text-gray-300">Nom d'utilisateur</span>
+      <input name="username" class="champ" autocomplete="username" autocapitalize="none" autocorrect="off" required autofocus value="{{ form.username.value|default:'' }}">
+    </label>
+    <label class="block">
+      <span class="mb-2 block text-gray-300">Mot de passe</span>
+      <input name="password" type="password" class="champ" autocomplete="current-password" required>
+    </label>
+    <button class="gros-bouton mt-6 bg-accent text-nuit">Entrer</button>
+  </form>
+  <p class="mt-6 text-sm text-gray-500">Tu restes connecté 90 jours sur ce téléphone.</p>
+</div>
+{% endblock %}

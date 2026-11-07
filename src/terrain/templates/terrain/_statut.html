@@ -1,0 +1,4 @@
+{% if client.statut == "recouvrement" %}<span class="pastille shrink-0 bg-danger/20 text-danger">Recouvrement</span>
+{% elif client.statut == "liste_noire" %}<span class="pastille shrink-0 bg-danger text-nuit">Liste noire</span>
+{% elif client.statut == "inactif" %}<span class="pastille shrink-0 bg-bordure text-gray-300">Inactif</span>
+{% endif %}

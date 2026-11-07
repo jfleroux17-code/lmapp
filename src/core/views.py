@@ -1,11 +1,5 @@
 from django.db import connection
 from django.http import JsonResponse
-from django.shortcuts import render
-
-
-def accueil(request):
-    """Page temporaire : confirme que l'app répond."""
-    return render(request, "core/accueil.html")
 
 
 def sante(request):
