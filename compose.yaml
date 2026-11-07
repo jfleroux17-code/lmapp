@@ -1,0 +1,116 @@
+# LMAPP : pile de production sur ld1.
+#
+# Règle de sécurité (CLAUDE.md, règle 3) : Docker contourne ufw. Seul le
+# service caddy publie un port (443). db, app et worker n'ont aucun « ports: ».
+#
+# Les volumes sont « external » : ils sont créés une fois à la main
+# (docker volume create) et « docker compose down -v » ne peut pas les effacer.
+#
+# Migrations : jamais automatiques au démarrage. On les lance à la main :
+#   docker compose run --rm app python manage.py migrate
+
+name: lmapp
+
+services:
+  db:
+    image: postgis/postgis:17-3.7
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: America/Toronto
+      PGTZ: America/Toronto
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - interne
+    shm_size: 256mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  app:
+    build: .
+    image: lmapp:latest
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - media:/app/media
+    networks:
+      - interne
+      - web
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/sante/', timeout=4).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  worker:
+    image: lmapp:latest
+    restart: unless-stopped
+    command: ["python", "manage.py", "procrastinate", "worker"]
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - media:/app/media
+    networks:
+      - interne
+      - web
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  caddy:
+    image: caddy:2.11
+    restart: unless-stopped
+    environment:
+      LMAPP_DOMAINE: ${LMAPP_DOMAINE}
+    ports:
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - web
+    depends_on:
+      - app
+    security_opt: ["no-new-privileges:true"]
+
+networks:
+  # Réseau sans accès Internet : la base n'en sort jamais.
+  interne:
+    internal: true
+  # Réseau de Caddy vers l'app; donne aussi la sortie Internet à app et
+  # worker (Twilio, SMTP2GO, IMAP plus tard).
+  web:
+
+volumes:
+  pgdata:
+    external: true
+    name: lmapp_pgdata
+  media:
+    external: true
+    name: lmapp_media
+  caddy_data:
+    external: true
+    name: lmapp_caddy_data
+  caddy_config:
+    name: lmapp_caddy_config

@@ -1,0 +1,27 @@
+# Caddy : frontal HTTPS de LMAPP.
+#
+# Pour l'instant : certificat interne de Caddy (tls internal), le temps de
+# valider la pile sur le réseau interne. Le vrai certificat Let's Encrypt par
+# validation DNS Cloudflare remplacera « tls internal » quand le jeton sera
+# dans .env (image Caddy avec le module caddy-dns/cloudflare).
+{
+	# Le port 80 n'est pas publié : pas de redirection HTTP vers HTTPS.
+	auto_https disable_redirects
+	servers {
+		# HTTP/3 (UDP) désactivé : seul le 443 TCP est publié.
+		protocols h1 h2
+	}
+}
+
+{$LMAPP_DOMAINE} {
+	tls internal
+	encode zstd gzip
+
+	header {
+		-Server
+		X-Content-Type-Options nosniff
+		Referrer-Policy same-origin
+	}
+
+	reverse_proxy app:8000
+}
