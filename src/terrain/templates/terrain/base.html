@@ -10,6 +10,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="{{ request.entreprise.nom|default:'LMAPP' }}">
   <link rel="manifest" href="{% url 'terrain:manifeste' %}">
+  <link rel="icon" type="image/svg+xml" href="{% static 'icones/icone.svg' %}">
+  <link rel="icon" type="image/png" sizes="192x192" href="{% static 'icones/icone-192.png' %}">
+  <link rel="apple-touch-icon" href="{% static 'icones/icone-180.png' %}">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <script src="{% static 'vendor/htmx-2.0.11.min.js' %}" defer></script>
   <script src="{% static 'vendor/alpine-3.17.5.min.js' %}" defer></script>

@@ -94,6 +94,7 @@ def manifeste(request):
     """Manifeste de la PWA : l'app s'installe sur l'écran d'accueil (PRD 6.3, 6.5).
     Le nom vient de l'entreprise du domaine, jamais du code."""
     from django.http import JsonResponse
+    from django.templatetags.static import static
 
     nom = request.entreprise.nom if request.entreprise else "LMAPP"
     reponse = JsonResponse({
@@ -105,6 +106,20 @@ def manifeste(request):
         "display": "standalone",
         "background_color": "#0d1117",
         "theme_color": "#0d1117",
+        "icons": [
+            {"src": static("icones/icone-192.png"), "sizes": "192x192", "type": "image/png"},
+            {"src": static("icones/icone-512.png"), "sizes": "512x512", "type": "image/png"},
+            {"src": static("icones/icone-512-maskable.png"), "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+            {"src": static("icones/icone.svg"), "sizes": "any", "type": "image/svg+xml"},
+        ],
     }, json_dumps_params={"ensure_ascii": False})
     reponse["Content-Type"] = "application/manifest+json"
     return reponse
+
+
+def favicon(request):
+    """Les navigateurs demandent /favicon.ico d'eux-mêmes : renvoyer vers l'icône."""
+    from django.shortcuts import redirect
+    from django.templatetags.static import static
+
+    return redirect(static("icones/icone-192.png"), permanent=True)

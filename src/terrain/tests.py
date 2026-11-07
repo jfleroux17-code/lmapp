@@ -109,3 +109,14 @@ class TerrainTests(TestCase):
         self.assertEqual(r["Content-Type"], "application/manifest+json")
         self.assertEqual(r.json()["name"], "Déneigement Essai")
         self.assertEqual(r.json()["display"], "standalone")
+        icones = {(i["sizes"], i.get("purpose", "any")) for i in r.json()["icons"]}
+        self.assertTrue({("192x192", "any"), ("512x512", "any"), ("512x512", "maskable")} <= icones)
+
+    def test_icones(self):
+        self._connecte()
+        page = self.client.get("/").content.decode()
+        self.assertIn('rel="apple-touch-icon"', page)
+        self.assertIn("icones/icone-180", page)
+        r = self.client.get("/favicon.ico")
+        self.assertEqual(r.status_code, 301)
+        self.assertIn("icones/icone-192", r["Location"])

@@ -62,7 +62,7 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 ### Possible sans attendre
 
 - [x] Premiers écrans de Louis (PWA mobile) : connexion, recherche, fiche client. En prod le 7 novembre 2026.
-- [ ] Icône de l'app pour l'écran d'accueil de l'iPhone.
+- [x] Icône de l'app (flocon jaune, générique) : iPhone, manifeste PWA, onglet. En test le 7 novembre 2026.
 - [ ] Avant l'ouverture à toutes les IP : limiter les essais de connexion (verrouillage après échecs).
 - [ ] Sauvegarde nocturne de la base (K3) : préparable, la copie hors VM attend la destination.
 

@@ -11,4 +11,5 @@ urlpatterns = [
     path("connexion/", views.Connexion.as_view(), name="connexion"),
     path("deconnexion/", auth_views.LogoutView.as_view(), name="deconnexion"),
     path("manifest.webmanifest", views.manifeste, name="manifeste"),
+    path("favicon.ico", views.favicon, name="favicon"),
 ]
