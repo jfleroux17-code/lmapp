@@ -312,7 +312,7 @@ Pourquoi :
 | Docker | Paquets Ubuntu `docker.io`, `docker-compose-v2`, `docker-buildx`; journaux plafonnés à 10 Mo x 3 par conteneur, `deploy` dans le groupe `docker`, testé avec hello-world |
 | Git | 2.53, installé par apt le 7 novembre 2026. Dépôt `/srv/lmapp` sur la branche `main`, sans dépôt distant pour l'instant |
 | Dossier du projet | `/srv/lmapp`, propriétaire `deploy` : code Django dans `src/`, `Dockerfile`, `compose.yaml`, `Caddyfile`, `.env` (600, hors Git) |
-| Pile Docker | En marche depuis le 7 novembre 2026. Projet `edge` : Caddy 2.11, frontal commun à la prod et au test, seul à publier un port (443 TCP). Projet `lmapp` (prod) : `db` (PostgreSQL 17.11, PostGIS 3.7), `app` (Django 5.2 LTS, Python 3.13, Gunicorn), `worker` (Procrastinate), aucun port publié. Réseau partagé `edge` entre Caddy et les apps; base sur un réseau sans accès Internet. Projet `lmapp-test` à venir. Volumes externes `lmapp_pgdata`, `lmapp_media`, `lmapp_caddy_data`. Certificat interne de Caddy en attendant la validation DNS. Validée sur le réseau interne (`/sante/`, admin, fichiers statiques) |
+| Pile Docker | En marche depuis le 7 novembre 2026. Projet `edge` : Caddy 2.11, frontal commun à la prod et au test, seul à publier un port (443 TCP). Projet `lmapp` (prod) : `db` (PostgreSQL 17.11, PostGIS 3.7), `app` (Django 5.2 LTS, Python 3.13, Gunicorn), `worker` (Procrastinate), aucun port publié. Réseau partagé `edge` entre Caddy et les apps; base sur un réseau sans accès Internet. Projet `lmapp-test` (test, `test.ledeneigeur.com`) : sa propre base `lmapp_test`, ses volumes, son image `lmapp:test`, bandeau « ENVIRONNEMENT DE TEST » à l'écran. Volumes externes `lmapp_pgdata`, `lmapp_media`, `lmapp_caddy_data`. Certificat interne de Caddy en attendant la validation DNS. Validée sur le réseau interne (`/sante/`, admin, fichiers statiques) |
 | Claude Code | Version 2.1.319, installateur natif (`~/.local/bin/claude`, mises à jour automatiques), PATH ajouté dans `~/.bashrc` de `deploy`, connecté au compte claude.ai de JF (`claude auth login`), `claude doctor` sans problème. Installé le 7 novembre 2026. Consignes dans `/srv/lmapp/CLAUDE.md`. |
 
 Points à régler :
@@ -427,7 +427,7 @@ Le calendrier est serré : la saison est commencée. Priorité à ce qui rapport
 - JF et Louis : réponses aux questions ouvertes (section 10).
 - Louis : liste de ses clients (même en photo de ses papiers) pour l'import.
 - Création des comptes : Twilio (numéro 450), sous-compte SMTP2GO et boîte de réception, Stripe si retenu.
-- Claude Code : ~~structure du projet, dépôt Git, Docker Compose, base de données~~ **fait le 7 novembre 2026**; déploiement vide en HTTPS validé sur le réseau interne avec le certificat interne de Caddy. Restent le vrai certificat (validation DNS), l'environnement de test et l'ouverture filtrée.
+- Claude Code : ~~structure du projet, dépôt Git, Docker Compose, base de données~~ **fait le 7 novembre 2026**; déploiement vide en HTTPS validé sur le réseau interne avec le certificat interne de Caddy. Environnement de test en marche sur `test.ledeneigeur.com`. Restent le vrai certificat (validation DNS) et l'ouverture filtrée.
 
 ### Phase 1 : Version de base, volet argent (semaines 2 à 4)
 Fonctionnalités : A1, A2, A5, A6, A7, A8, A9, B1, B2, B3, B4, C1 à C8, C13, D1 à D4, D6 (si retenu), E1 à E11, J1, K1 à K3, K5 à K8, L1, M1 à M3.
@@ -506,7 +506,7 @@ Livrable : automatisation des relances, rapports pour le comptable, demandes de 
 
 **Claude Code (sur ld1)**
 1. ~~Vérifier Docker, initialiser le dépôt Git.~~ Fait.
-2. ~~Structure du projet, Docker Compose~~, déploiement vide en HTTPS : validé en interne. Restent le certificat Let's Encrypt par validation DNS, l'environnement de test sur `test.ledeneigeur.com` et l'ouverture filtrée par IP.
+2. ~~Structure du projet, Docker Compose~~, déploiement vide en HTTPS : validé en interne. Environnement de test en marche. Restent le certificat Let's Encrypt par validation DNS et l'ouverture filtrée par IP.
 3. Modèle de données et import CSV.
 4. Phase 1 dans l'ordre de la section 8.
 

@@ -55,24 +55,24 @@ Versions en place : Python 3.13, Django 5.2 LTS (choisi plutôt que 6.x pour dur
 - Trois projets Compose :
   - `edge` (`/srv/lmapp/edge`) : Caddy seul, frontal HTTPS de tous les environnements, **seul projet qui publie un port**. Recharger le Caddyfile : `docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile`.
   - `lmapp` (`/srv/lmapp`) : la prod, `db`, `app` et `worker`, sans aucun port publié.
-  - `lmapp-test` (à venir) : le test sur `test.ledeneigeur.com`, sa propre base.
-- Une seule image (`lmapp:latest`) pour `app` (Gunicorn) et `worker` (`manage.py procrastinate worker`). Utilisateur `lmapp` (UID 1000, comme `deploy`), système de fichiers en lecture seule sauf `/tmp` et les médias.
+  - `lmapp-test` (`/srv/lmapp/test`) : le test sur `test.ledeneigeur.com`. Son propre `compose.yaml` et son propre `.env` (jamais de variables partagées avec la prod), base `lmapp_test`, volumes `lmapp_test_pgdata` et `lmapp_test_media`, image `lmapp:test`. Bandeau « ENVIRONNEMENT DE TEST » à l'écran dès que `LMAPP_ENV` n'est pas `prod`.
+- Une seule image pour `app` (Gunicorn) et `worker` (`manage.py procrastinate worker`) : `lmapp:test` pour le test, `lmapp:latest` pour la prod. Utilisateur `lmapp` (UID 1000, comme `deploy`), système de fichiers en lecture seule sauf `/tmp` et les médias.
 - Réseaux Docker :
   - `edge` (externe, créé une fois avec `docker network create edge`) : partagé entre Caddy et les apps. Chaque app y porte un nom unique (`lmapp-prod-app`, `lmapp-test-app`); Caddy s'adresse à ces noms, jamais à `app`.
-  - `lmapp_interne` (sans accès Internet) : `db`, `app` et `worker` de la prod.
-  - `lmapp_sortie` : sortie Internet du worker, propre à la prod; le worker n'est pas sur le réseau partagé.
-- Volumes **externes** `lmapp_pgdata`, `lmapp_media`, `lmapp_caddy_data` (ce dernier utilisé par `edge`) : `docker compose down -v` ne peut pas les effacer. Ne jamais les supprimer sans le « go » de JF (règle 2).
+  - `lmapp_interne` et `lmapp-test_interne` (sans accès Internet) : la base et les services de chaque environnement, séparés.
+  - `lmapp_sortie` et `lmapp-test_sortie` : sortie Internet du worker de chaque environnement; les workers ne sont pas sur le réseau partagé.
+- Volumes **externes** `lmapp_pgdata`, `lmapp_media`, `lmapp_test_pgdata`, `lmapp_test_media`, `lmapp_caddy_data` (ce dernier utilisé par `edge`) : `docker compose down -v` ne peut pas les effacer. Ne jamais les supprimer sans le « go » de JF (règle 2).
 - **Migrations jamais automatiques au démarrage.** Les lancer à la main : `docker compose run --rm app python manage.py migrate`. Lire le plan (`showmigrations`, `sqlmigrate`) avant toute migration qui touche des données existantes.
 - Réglages lus depuis l'environnement (`.env`, modèle dans `.env.example`). `LMAPP_ENV` vaut `prod` ou `test` et sert aux garde-fous sur les envois réels.
+- **Du test à la prod** : tout changement de code se bâtit et s'essaie d'abord en test (`cd /srv/lmapp/test && docker compose build && docker compose run --rm app python manage.py migrate && docker compose up -d`). On passe à la prod seulement après validation, et avec le « go » de JF : `cd /srv/lmapp && docker compose build && docker compose run --rm app python manage.py migrate && docker compose up -d`.
 - Vérification de santé : `/sante/` répond `{"app": "ok", "base": "ok"}`.
 - Pour tester le HTTPS depuis ld1 sans DNS : `curl -k --resolve louis.ledeneigeur.com:443:127.0.0.1 https://louis.ledeneigeur.com/sante/`.
 
 ## Ordre de travail
 
-Fait (7 novembre 2026) : dépôt Git, squelette Django, Dockerfile, Compose et `.env`, pile démarrée et validée sur le réseau interne avec le certificat interne de Caddy. Caddy déplacé dans le projet `edge` (décision de JF).
+Fait (7 novembre 2026) : dépôt Git, squelette Django, Dockerfile, Compose et `.env`, pile démarrée et validée sur le réseau interne avec le certificat interne de Caddy. Caddy déplacé dans le projet `edge` (décision de JF). Environnement de test `lmapp-test` en marche sur `test.ledeneigeur.com`.
 
 À suivre, dans l'ordre :
 1. Vrai certificat Let's Encrypt par validation DNS Cloudflare (image Caddy avec `caddy-dns/cloudflare`, jeton `CLOUDFLARE_API_TOKEN` déposé par JF dans `edge/.env`, propre au projet `edge`).
-2. Environnement de test sur `test.ledeneigeur.com` : projet Compose `lmapp-test`, sa propre base et ses propres volumes, app sur le réseau `edge` sous le nom `lmapp-test-app`.
-3. Ouverture filtrée par IP (voir « Exposition à Internet » plus haut), avec la liste `IP_PERMISES` dans Caddy et la lecture de l'IP réelle par Django.
-4. Phase 1 du PRD (section 8) : modèle de données (`Entreprise` en premier), import CSV, puis le volet argent.
+2. Ouverture filtrée par IP (voir « Exposition à Internet » plus haut), avec la liste `IP_PERMISES` dans Caddy et la lecture de l'IP réelle par Django. Limiter alors `--forwarded-allow-ips` de Gunicorn (aujourd'hui `*`) à Caddy seulement : sur le réseau partagé `edge`, l'app de test pourrait sinon fausser l'IP vue par la prod.
+3. Phase 1 du PRD (section 8) : modèle de données (`Entreprise` en premier), import CSV, puis le volet argent.

@@ -1,0 +1,100 @@
+# LMAPP : environnement de TEST sur ld1 (projet Compose « lmapp-test »).
+#
+# Sert à essayer chaque changement avant la prod (CLAUDE.md, règle 6).
+# Jamais de vraies données de clients ici. En test, les textos et courriels
+# partent seulement vers les numéros et adresses de JF (LMAPP_ENV=test).
+#
+# Tout est séparé de la prod : base, volumes, mots de passe, image (lmapp:test).
+# Aucun port publié. Caddy (projet edge) joint l'app sous le nom lmapp-test-app.
+#
+# Utilisation, depuis /srv/lmapp/test :
+#   docker compose build                                  (bâtit lmapp:test)
+#   docker compose run --rm app python manage.py migrate  (migrations à la main)
+#   docker compose up -d
+
+name: lmapp-test
+
+services:
+  db:
+    image: postgis/postgis:17-3.7
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: America/Toronto
+      PGTZ: America/Toronto
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - interne
+    shm_size: 128mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  app:
+    build:
+      context: ..
+    image: lmapp:test
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - media:/app/media
+    networks:
+      interne:
+      edge:
+        aliases:
+          - lmapp-test-app
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/sante/', timeout=4).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  worker:
+    image: lmapp:test
+    restart: unless-stopped
+    command: ["python", "manage.py", "procrastinate", "worker"]
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - media:/app/media
+    networks:
+      - interne
+      - sortie
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+networks:
+  interne:
+    internal: true
+  edge:
+    external: true
+    name: edge
+  sortie:
+
+volumes:
+  pgdata:
+    external: true
+    name: lmapp_test_pgdata
+  media:
+    external: true
+    name: lmapp_test_media

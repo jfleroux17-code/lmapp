@@ -3,11 +3,11 @@
 # Chaque environnement de LMAPP est un projet Compose à part; son service app
 # rejoint le réseau Docker « edge » sous un nom unique :
 #   lmapp-prod-app  (projet lmapp, louis.ledeneigeur.com)
-#   lmapp-test-app  (projet lmapp-test, test.ledeneigeur.com, à venir)
+#   lmapp-test-app  (projet lmapp-test, test.ledeneigeur.com)
 #
 # Pour l'instant : certificat interne de Caddy (tls internal). Le vrai
 # certificat Let's Encrypt par validation DNS Cloudflare le remplacera quand le
-# jeton sera dans .env (image Caddy avec le module caddy-dns/cloudflare).
+# jeton sera dans edge/.env (image Caddy avec le module caddy-dns/cloudflare).
 {
 	# Le port 80 n'est pas publié : pas de redirection HTTP vers HTTPS.
 	auto_https disable_redirects
@@ -31,4 +31,9 @@
 louis.ledeneigeur.com {
 	import commun
 	reverse_proxy lmapp-prod-app:8000
+}
+
+test.ledeneigeur.com {
+	import commun
+	reverse_proxy lmapp-test-app:8000
 }
