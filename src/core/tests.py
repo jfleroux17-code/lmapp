@@ -42,3 +42,27 @@ class IPReelleTests(SimpleTestCase):
 
     def test_ipv6(self):
         self.assertEqual(_ip_vue(CADDY, "2001:db8::1"), "2001:db8::1")
+
+
+class TelephoneTests(SimpleTestCase):
+    def test_formes_courantes(self):
+        from core.telephone import normaliser
+        for forme in ("450-555-1234", "(450) 555-1234", "1 450 555 1234", "+1 450.555.1234", "4505551234"):
+            self.assertEqual(normaliser(forme), "+14505551234", forme)
+
+    def test_vide(self):
+        from core.telephone import normaliser
+        self.assertEqual(normaliser(""), "")
+        self.assertEqual(normaliser(None), "")
+
+    def test_invalides(self):
+        from django.core.exceptions import ValidationError
+        from core.telephone import normaliser
+        for forme in ("555-1234", "450-555-12345", "050-555-1234", "450-155-1234", "450-555-1234 poste 12", "abc"):
+            with self.assertRaises(ValidationError, msg=forme):
+                normaliser(forme)
+
+    def test_affichage(self):
+        from core.telephone import afficher
+        self.assertEqual(afficher("+14505551234"), "450 555-1234")
+        self.assertEqual(afficher(""), "")

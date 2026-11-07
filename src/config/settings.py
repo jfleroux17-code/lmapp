@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "django.contrib.gis",
     "procrastinate.contrib.django",
     "core",
+    "clients",
 ]
 
 # IP des proxies dont on croit l'en-tête X-Forwarded-For : Caddy (projet edge),
