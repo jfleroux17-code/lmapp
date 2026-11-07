@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.db.models import Q
 from django.contrib.gis.admin import GISModelAdmin
 
 from clients.models import Adresse, Client, Secteur
@@ -56,11 +57,53 @@ class ClientAdmin(admin.ModelAdmin):
         formset.save_m2m()
 
 
+class AVerifierFiltre(admin.SimpleListFilter):
+    title = "position à vérifier"
+    parameter_name = "a_verifier"
+
+    def lookups(self, request, model_admin):
+        return [("oui", "À vérifier (absente ou trop vague)"), ("non", "Bonne")]
+
+    def queryset(self, request, qs):
+        vague = Q(position__isnull=True) | Q(position_precision__in=[Adresse.Precision.VILLE, Adresse.Precision.INTROUVABLE])
+        manuelle = Q(position_source__in=[Adresse.SourcePosition.MANUELLE, Adresse.SourcePosition.GPS])
+        if self.value() == "oui":
+            return qs.filter(vague & ~manuelle)
+        if self.value() == "non":
+            return qs.filter(~vague | manuelle)
+        return qs
+
+
 @admin.register(Adresse)
 class AdresseAdmin(GISModelAdmin):
-    list_display = ["__str__", "client", "secteur", "ordre_tournee", "position_source", "active"]
-    list_filter = ["entreprise", "secteur", "active", "position_source"]
+    list_display = ["__str__", "client", "secteur", "ordre_tournee", "position_precision", "position_source", "verifier", "active"]
+    list_filter = [AVerifierFiltre, "entreprise", "secteur", "active", "position_precision", "position_source"]
+    readonly_fields = ["position_precision", "geocodage_note"]
+    actions = ["geocoder_de_nouveau"]
     search_fields = ["ligne1", "ville", "code_postal", "client__nom", "client__prenom", "client__organisation"]
     autocomplete_fields = ["client"]
     # Carte centrée sur les Laurentides (Saint-Jérôme) pour corriger une position à la main
     gis_widget_kwargs = {"attrs": {"default_lon": -74.0, "default_lat": 45.78, "default_zoom": 10}}
+
+    @admin.display(description="à vérifier", boolean=True)
+    def verifier(self, obj):
+        return obj.position_a_verifier
+
+    def save_model(self, request, obj, form, change):
+        # Un point déplacé sur la carte devient une position manuelle : le
+        # géocodage ne l'écrasera plus.
+        if "position" in form.changed_data and obj.position is not None:
+            obj.position_source = Adresse.SourcePosition.MANUELLE
+            obj.position_precision = Adresse.Precision.ADRESSE
+            obj.geocodage_note = f"Placée à la main par {request.user} sur la carte."
+        super().save_model(request, obj, form, change)
+
+    @admin.action(description="Géocoder de nouveau (sauf les positions manuelles)")
+    def geocoder_de_nouveau(self, request, queryset):
+        from clients.tasks import geocoder_adresse
+
+        n = 0
+        for a in queryset.exclude(position_source__in=[Adresse.SourcePosition.MANUELLE, Adresse.SourcePosition.GPS]):
+            geocoder_adresse.defer(adresse_id=a.pk)
+            n += 1
+        self.message_user(request, f"{n} adresse(s) mise(s) en file pour le géocodage (environ une par seconde).")

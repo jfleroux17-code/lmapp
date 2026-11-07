@@ -156,6 +156,12 @@ class Adresse(Horodate):
         MANUELLE = "manuelle", "Corrigée à la main sur la carte"
         GPS = "gps", "Position GPS prise sur place"
 
+    class Precision(models.TextChoices):
+        ADRESSE = "adresse", "Adresse exacte"
+        RUE = "rue", "Rue seulement"
+        VILLE = "ville", "Ville seulement"
+        INTROUVABLE = "introuvable", "Introuvable"
+
     entreprise = models.ForeignKey(Entreprise, on_delete=models.PROTECT, related_name="adresses")
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="adresses")
     secteur = models.ForeignKey(Secteur, on_delete=models.SET_NULL, null=True, blank=True, related_name="adresses")
@@ -170,6 +176,11 @@ class Adresse(Horodate):
     # Position (A2). SRID 4326 : latitude et longitude du GPS.
     position = gis.PointField("position", srid=4326, null=True, blank=True, geography=True)
     position_source = models.CharField("source de la position", max_length=10, choices=SourcePosition.choices, blank=True)
+    position_precision = models.CharField(
+        "précision de la position", max_length=12, choices=Precision.choices, blank=True,
+        help_text="« Ville seulement » : trop vague pour les avis de proximité, à corriger sur la carte.",
+    )
+    geocodage_note = models.CharField("résultat du géocodage", max_length=300, blank=True)
 
     # Tournée (F1) : rang de l'arrêt dans l'ordre habituel de Louis
     ordre_tournee = models.PositiveIntegerField("rang dans la tournée", null=True, blank=True)
@@ -191,6 +202,13 @@ class Adresse(Horodate):
 
     def __str__(self):
         return f"{self.ligne1}, {self.ville}"
+
+    @property
+    def position_a_verifier(self):
+        """Position absente ou trop vague pour les avis de proximité (G2)."""
+        if self.position_source in (self.SourcePosition.MANUELLE, self.SourcePosition.GPS):
+            return False
+        return self.position is None or self.position_precision in (self.Precision.VILLE, self.Precision.INTROUVABLE)
 
     @property
     def latitude(self):
