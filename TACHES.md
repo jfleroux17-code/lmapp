@@ -16,12 +16,9 @@ Mise à jour : 7 novembre 2026.
 
 - [x] Créer ses comptes administrateur (prod et test).
 - [ ] Essayer les premiers écrans sur son iPhone, en test : `https://test.ledeneigeur.com/` (avec son compte administrateur de test; réseau de la maison ou du bureau, à cause du filtre `_SLAPP`). Dans Safari : Partager, « Sur l'écran d'accueil ».
-- [ ] Créer la fiche de Louis dans `https://louis.ledeneigeur.com/admin/`, « Entreprises », « Ajouter » :
-  - nom « Louis Méthot Déneigement », identifiant `louis`, domaine `louis.ledeneigeur.com`;
-  - section « Villes desservies » : Sainte-Adèle, rayon 8 km, « ville par défaut » cochée (le centre se remplit seul);
-  - section « Membres » : s'ajouter comme administrateur;
-  - créer l'utilisateur de Louis (Utilisateurs, Ajouter), puis l'ajouter aux membres avec le rôle « Opérateur »;
-  - taxes décochées tant que Louis n'a pas répondu.
+- [x] Fiche de Louis créée en prod (Louis Méthot Déneigement, `louis`, `louis.ledeneigeur.com`, Sainte-Adèle 8 km, centre rempli).
+- [ ] Dans la fiche de Louis, ville Sainte-Adèle : cocher « ville par défaut » (sinon l'import exige une ville sur chaque ligne).
+- [ ] Créer l'utilisateur de Louis (Utilisateurs, Ajouter), puis l'ajouter aux membres de l'entreprise avec le rôle « Opérateur ». S'ajouter aussi comme membre « Administrateur » (facultatif : le superutilisateur entre déjà partout).
 - [ ] Envoyer le gabarit d'import à Louis, ou transcrire ses papiers : `scp deploy@172.16.4.100:/srv/lmapp/gabarits/gabarit_import_clients.xlsx .`
 - [ ] Poser à Louis les questions de la section « Louis » ci-dessous.
 
@@ -64,7 +61,7 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 
 ### Possible sans attendre
 
-- [x] Premiers écrans de Louis (PWA mobile) : connexion, recherche, fiche client. En test le 7 novembre 2026.
+- [x] Premiers écrans de Louis (PWA mobile) : connexion, recherche, fiche client. En prod le 7 novembre 2026.
 - [ ] Icône de l'app pour l'écran d'accueil de l'iPhone.
 - [ ] Avant l'ouverture à toutes les IP : limiter les essais de connexion (verrouillage après échecs).
 - [ ] Sauvegarde nocturne de la base (K3) : préparable, la copie hors VM attend la destination.
