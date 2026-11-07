@@ -1,8 +1,8 @@
-# LMAPP : Plan de projet (PRD v1.0)
+# LMAPP : Plan de projet (PRD v1.1)
 
 **Application de gestion pour Louis Méthot Déneigement**
 Porteur du projet : Jean-François Leroux
-Date : 7 novembre 2026 (v1.0 : sous-domaine louis.ledeneigeur.com, MAC dynamique, pas de port public au départ, CLAUDE.md déposé sur ld1; v0.9 : Claude Code réellement installé et connecté sur `ld1` (2.1.319); v0.8 : serveur `ld1` installé et sécurisé, IP fixe 172.16.4.100, état du serveur en 6.1.1; v0.7 : domaine ledeneigeur.com et découpage par sous-domaine; v0.6 : iPhone 17 Pro Max confirmé, décision de bâtir, SMTP2GO et boîte IMAP, hébergement sans frais, section O, specs de la VM)
+Date : 7 novembre 2026 (v1.1 : dépôt Git et pile Docker en marche sur `ld1` (validée sur le réseau interne), test sur `test.ledeneigeur.com`, ouverture au routeur filtrée par IP source, état du DNS Cloudflare et du disque en 6.1.1; v1.0 : sous-domaine louis.ledeneigeur.com, MAC dynamique, pas de port public au départ, CLAUDE.md déposé sur ld1; v0.9 : Claude Code réellement installé et connecté sur `ld1` (2.1.319); v0.8 : serveur `ld1` installé et sécurisé, IP fixe 172.16.4.100, état du serveur en 6.1.1; v0.7 : domaine ledeneigeur.com et découpage par sous-domaine; v0.6 : iPhone 17 Pro Max confirmé, décision de bâtir, SMTP2GO et boîte IMAP, hébergement sans frais, section O, specs de la VM)
 Statut : brouillon à valider avant tout développement
 
 ---
@@ -287,9 +287,10 @@ Pourquoi :
 - **Domaine : `ledeneigeur.com`** (principal) et `ledeneigeur.ca` (redirigé vers le .com), enregistrés par JF le 7 novembre 2026. Découpage :
   - `ld1.ledeneigeur.com` : le serveur (SSH, administration). Enregistrement A vers l'IP publique.
   - Un sous-domaine par déneigeur pour l'app, `louis.ledeneigeur.com` pour Louis (décidé le 7 novembre 2026). Même IP; Caddy sert chaque sous-domaine et obtient son certificat HTTPS.
+  - `test.ledeneigeur.com` : l'environnement de test (décidé le 7 novembre 2026).
   - Le même domaine sert d'envoi SMTP2GO et de boîte IMAP de réception, à moins que Louis ait déjà un domaine à lui.
   - Ce découpage colle à l'offre éventuelle à d'autres déneigeurs (section P).
-- Ports 80 et 443 : aucune redirection publique pendant le développement (voir « Exposition à Internet » en 6.1.1). Le SSH n'est pas exposé à tout Internet : accès par le réseau interne de JF (règle ufw) ou par VPN.
+- Ports : redirection au routeur limitée à quelques IP sources choisies par JF, 443 seulement proposé (voir « Exposition à Internet » en 6.1.1). Le SSH n'est pas exposé à tout Internet : accès par le réseau interne de JF (règle ufw) ou par VPN.
 - Instantanés (snapshots) de la VM avant chaque mise à jour majeure.
 
 ### 6.1.1 État du serveur `ld1` (installé le 7 novembre 2026)
@@ -303,20 +304,27 @@ Pourquoi :
 | Fuseau horaire | `America/Toronto` |
 | Compte | `deploy`, sudo avec mot de passe, groupe `docker` |
 | SSH | Clé ED25519 de JF seulement, mot de passe désactivé, `root` interdit, `AllowUsers deploy` (`/etc/ssh/sshd_config.d/00-ld1.conf`) |
-| Pare-feu | `ufw` : SSH seulement depuis `172.16.4.0/24`, 80 et 443 ouverts, tout le reste refusé en entrée |
+| Disque | Disque virtuel de 250 Go, mais le volume logique `ubuntu-vg/ubuntu-lv` ne fait que 98 Go (allocation partielle de l'installateur). À agrandir |
+| Pare-feu | `ufw` : SSH seulement depuis `172.16.4.0/24`, 80 et 443 limités au réseau interne (selon CLAUDE.md; à confirmer avec `sudo ufw status verbose`), tout le reste refusé en entrée. ufw ne protège pas les ports publiés par Docker |
+| DNS | Zone `ledeneigeur.com` chez Cloudflare. Au 7 novembre 2026 : enregistrement générique `*` en mode proxy, tous les sous-domaines résolvent vers Cloudflare (`172.64.80.1`) |
+| IP publique | `216.46.12.226` (IP de sortie de ld1, mesurée le 7 novembre 2026; l'IP d'entrée peut différer si le routeur en a plusieurs) |
 | fail2ban | Actif sur sshd (backend systemd), bannissement 1 h après 5 échecs en 10 minutes, `172.16.4.1` exclu |
 | Docker | Paquets Ubuntu `docker.io`, `docker-compose-v2`, `docker-buildx`; journaux plafonnés à 10 Mo x 3 par conteneur, `deploy` dans le groupe `docker`, testé avec hello-world |
-| Git | 2.53, installé par apt le 7 novembre 2026 |
-| Dossier du projet | `/srv/lmapp`, propriétaire `deploy`, contient `PRD.md` et `CLAUDE.md` |
+| Git | 2.53, installé par apt le 7 novembre 2026. Dépôt `/srv/lmapp` sur la branche `main`, sans dépôt distant pour l'instant |
+| Dossier du projet | `/srv/lmapp`, propriétaire `deploy` : code Django dans `src/`, `Dockerfile`, `compose.yaml`, `Caddyfile`, `.env` (600, hors Git) |
+| Pile Docker | Projet Compose `lmapp` en marche depuis le 7 novembre 2026 : `db` (PostgreSQL 17.11, PostGIS 3.7), `app` (Django 5.2 LTS, Python 3.13, Gunicorn), `worker` (Procrastinate), `caddy` (2.11, seul à publier un port : 443 TCP). Base sur un réseau Docker sans accès Internet. Volumes externes `lmapp_pgdata`, `lmapp_media`, `lmapp_caddy_data`. Certificat interne de Caddy en attendant la validation DNS. Validée sur le réseau interne (`/sante/`, admin, fichiers statiques) |
 | Claude Code | Version 2.1.319, installateur natif (`~/.local/bin/claude`, mises à jour automatiques), PATH ajouté dans `~/.bashrc` de `deploy`, connecté au compte claude.ai de JF (`claude auth login`), `claude doctor` sans problème. Installé le 7 novembre 2026. Consignes dans `/srv/lmapp/CLAUDE.md`. |
 
 Points à régler :
 - **MAC dynamique dans Hyper-V** : JF garde la MAC dynamique (décision du 7 novembre 2026). La config netplan ne doit donc pas dépendre de la MAC : elle doit reconnaître la carte par son pilote Hyper-V (`hv_netvsc`) plutôt que par l'adresse `00:15:5d:04:0a:02`, sinon la VM perd son réseau si la MAC change (déplacement ou réimportation de la VM).
 - **NAT source** : les connexions SSH arrivent avec la source `172.16.4.1` (la passerelle). Si le trafic web public arrive aussi ainsi après le NAT des ports 80 et 443, l'app ne verra pas l'IP réelle des visiteurs (journaux, limitation des abus). À vérifier et, si possible, corriger au routeur (redirection de port sans NAT source).
-- **Docker contourne ufw** : un port publié par un conteneur est ouvert même si ufw le bloque. Seul Caddy publie des ports (80 et 443); la base, l'app et le worker restent sur le réseau Docker interne.
-- **DNS public** : enregistrements A `ld1.ledeneigeur.com` et `louis.ledeneigeur.com` vers l'IP publique.
+- **Docker contourne ufw** : un port publié par un conteneur est ouvert même si ufw le bloque. Seul Caddy publie un port (443); la base, l'app et le worker restent sur les réseaux Docker internes. Une règle dans la chaîne `DOCKER-USER` pourra filtrer les IP sur ld1 même, en plus du routeur.
+- **DNS public** : enregistrements A `louis.ledeneigeur.com` et `test.ledeneigeur.com` vers `216.46.12.226`, en DNS seulement (nuage gris), au moment de l'ouverture filtrée. Supprimer l'enregistrement générique `*`. Pour l'accès interne ou VPN, faire pointer ces noms vers `172.16.4.100` dans le DNS interne.
+- **Certificat** : validation DNS par Cloudflare (Let's Encrypt ne peut pas valider par HTTP si l'accès est filtré par IP). Il faut un jeton API Cloudflare limité à « Zone : DNS : Modifier » sur `ledeneigeur.com`, déposé par JF dans `.env`, et une image Caddy avec le module `caddy-dns/cloudflare`.
+- **Disque** : agrandir le volume logique à la taille du disque (`sudo lvextend -r -l +100%FREE /dev/ubuntu-vg/ubuntu-lv`, après vérification avec `sudo vgs`).
+- **Port local `127.0.0.1:36789`** : un processus d'un autre utilisateur que `deploy` écoute sur ce port, en local seulement. À identifier avec `sudo ss -tlnp 'sport = :36789'`.
 - **Services à redémarrer** : apt a signalé des services à redémarrer (dbus, logind, networkd-dispatcher, unattended-upgrades) après l'installation de git. Un redémarrage de la VM au prochain moment tranquille règle ça.
-- **Exposition à Internet** : JF ne veut pas ouvrir 80 et 443 à tout le monde au départ. Pendant le développement, aucun port public : accès par le réseau interne ou le VPN, certificat HTTPS par validation DNS (pas besoin du port 80). L'ouverture publique (webhooks Twilio et SMTP2GO, liens de factures des clients) sera décidée avant la mise en service : 443 ouvert avec protections dans l'app, ou tunnel Cloudflare avec contrôle d'accès.
+- **Exposition à Internet** : décision de JF du 7 novembre 2026 : ouvrir au routeur, de `216.46.12.226` vers `172.16.4.100`, **seulement pour quelques IP sources** choisies par JF. Pas encore en place. Le 443 seulement est proposé, puisque le certificat passe par la validation DNS. Le filtrage principal se fait au routeur, avec une liste `IP_PERMISES` dans Caddy en deuxième couche, à condition que l'IP réelle des visiteurs arrive jusqu'à ld1 (voir « NAT source »). L'ouverture plus large (webhooks Twilio et SMTP2GO, liens de factures des clients) sera décidée avant la mise en service : leurs IP changent, donc il faudra des routes de webhook vérifiées par signature, ou un tunnel Cloudflare avec contrôle d'accès.
 
 ### 6.2 Base de données : PostgreSQL 17 avec l'extension PostGIS
 
@@ -397,7 +405,7 @@ Décision : **V1 en app web installée sur l'écran d'accueil, mode « télépho
 - Sauvegarde `pg_dump` chaque nuit, chiffrée, copiée hors de la VM (stockage Peripheriq ou un compartiment S3 compatible). Test de restauration mensuel.
 - Mises à jour de sécurité automatiques (`unattended-upgrades`), pare-feu `ufw`, `fail2ban` sur SSH : en place sur `ld1`.
 - Surveillance : vérification de disponibilité HTTPS et alerte si la file de tâches bloque (un SMS non parti pendant une tempête, c'est le pire scénario).
-- Environnement de test séparé (deuxième `docker compose` sur la même VM avec une autre base) pour ne jamais tester sur les vrais clients.
+- Environnement de test séparé (deuxième `docker compose` sur la même VM avec une autre base, sur `test.ledeneigeur.com`) pour ne jamais tester sur les vrais clients.
 
 ## 7. Contraintes et conformité
 
@@ -415,11 +423,11 @@ Le calendrier est serré : la saison est commencée. Priorité à ce qui rapport
 ### Phase 0 : Préparation (semaine 1)
 - ~~JF : installation de la VM Ubuntu 26.04.1 LTS, IP fixe, SSH par clé, pare-feu.~~ **Fait le 7 novembre 2026** (section 6.1.1).
 - ~~Claude Code installé sur la VM.~~ **Fait le 7 novembre 2026** (2.1.319, connecté au compte de JF). `CLAUDE.md` et `PRD.md` déposés dans `/srv/lmapp`.
-- JF : DNS (`ld1.ledeneigeur.com` et `louis.ledeneigeur.com`), netplan par pilote plutôt que par MAC, choix du mode d'exposition à Internet (section 6.1.1).
+- JF : DNS (`louis.ledeneigeur.com` et `test.ledeneigeur.com`, voir 6.1.1), netplan par pilote plutôt que par MAC, agrandissement du disque, jeton API Cloudflare, redirection au routeur filtrée par IP source.
 - JF et Louis : réponses aux questions ouvertes (section 10).
 - Louis : liste de ses clients (même en photo de ses papiers) pour l'import.
 - Création des comptes : Twilio (numéro 450), sous-compte SMTP2GO et boîte de réception, Stripe si retenu.
-- Claude Code : structure du projet, dépôt Git, Docker Compose, base de données, déploiement vide en HTTPS.
+- Claude Code : ~~structure du projet, dépôt Git, Docker Compose, base de données~~ **fait le 7 novembre 2026**; déploiement vide en HTTPS validé sur le réseau interne avec le certificat interne de Caddy. Restent le vrai certificat (validation DNS), l'environnement de test et l'ouverture filtrée.
 
 ### Phase 1 : Version de base, volet argent (semaines 2 à 4)
 Fonctionnalités : A1, A2, A5, A6, A7, A8, A9, B1, B2, B3, B4, C1 à C8, C13, D1 à D4, D6 (si retenu), E1 à E11, J1, K1 à K3, K5 à K8, L1, M1 à M3.
@@ -483,7 +491,9 @@ Livrable : automatisation des relances, rapports pour le comptable, demandes de 
 **JF**
 1. ~~Installer la VM Ubuntu Server 26.04.1 LTS, créer `deploy` avec clé SSH.~~ Fait.
 2. Faire reconnaître la carte réseau par son pilote dans netplan (la MAC reste dynamique).
-3. Créer les enregistrements A `ld1.ledeneigeur.com` et `louis.ledeneigeur.com`. Choisir le mode d'exposition à Internet avant la mise en service; aucun port public pendant le développement.
+3. DNS chez Cloudflare : enregistrements A `louis.ledeneigeur.com` et `test.ledeneigeur.com` vers `216.46.12.226` en DNS seulement, suppression du générique `*`, noms internes vers `172.16.4.100`. Créer un jeton API Cloudflare (« Zone : DNS : Modifier » sur `ledeneigeur.com`) et le déposer dans `/srv/lmapp/.env`. Redirection du 443 au routeur, limitée aux IP choisies, idéalement sans NAT source. Instantané Hyper-V avant.
+   - Agrandir le volume logique à 250 Go et identifier le processus du port local 36789 (section 6.1.1).
+   - Créer le compte administrateur Django (`docker compose exec app python manage.py createsuperuser`, depuis sa propre session SSH).
 4. Créer le sous-compte SMTP2GO de Louis, y ajouter ledeneigeur.com et publier SPF, DKIM et DMARC; créer la boîte IMAP de réception. Déposer la clé API SMTP2GO et les accès IMAP (serveur, port 993 TLS, identifiant, mot de passe) directement dans `/srv/lmapp/.env` sur la VM, jamais dans le clavardage.
 5. Poser les questions de la section 10 à Louis.
 6. Trancher les fonctionnalités V1 dans le catalogue (section 5).
@@ -495,8 +505,8 @@ Livrable : automatisation des relances, rapports pour le comptable, demandes de 
 3. Se procurer un support de téléphone pour le tracteur ou le camion et un chargeur, puisque l'app restera à l'écran pendant les opérations.
 
 **Claude Code (sur ld1)**
-1. Vérifier Docker, initialiser le dépôt Git.
-2. Structure du projet, Docker Compose, déploiement vide en HTTPS.
+1. ~~Vérifier Docker, initialiser le dépôt Git.~~ Fait.
+2. ~~Structure du projet, Docker Compose~~, déploiement vide en HTTPS : validé en interne. Restent le certificat Let's Encrypt par validation DNS, l'environnement de test sur `test.ledeneigeur.com` et l'ouverture filtrée par IP.
 3. Modèle de données et import CSV.
 4. Phase 1 dans l'ordre de la section 8.
 
