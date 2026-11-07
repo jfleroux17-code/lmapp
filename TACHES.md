@@ -38,7 +38,8 @@ Mise à jour : 7 novembre 2026.
 - [ ] Redémarrer ld1 à un moment tranquille (services signalés par apt).
 - [ ] `sudo ufw status verbose` et `sudo ss -tlnp 'sport = :36789'` (processus inconnu sur un port local).
 - [ ] Donner les plages d'adresses des autres réseaux (VPN, bureau, centre de données) : conflit possible avec les plages 172.17 à 172.31 de Docker.
-- [ ] Copie du dépôt hors de ld1 (GitHub privé ou dépôt nu sur un autre serveur).
+- [x] Copie du dépôt hors de ld1 : GitHub privé `jfleroux17-code/lmapp`, poussé après chaque étape.
+- [ ] Brancher le dépôt GitHub dans le Projet Claude (claude.ai, connaissances du projet) : `PRD.md`, `CLAUDE.md`, `TACHES.md`.
 - [ ] Où envoyer les sauvegardes nocturnes hors de la VM (stockage Peripheriq ou compartiment S3).
 - [ ] Trancher les fonctionnalités V1 dans le catalogue du PRD (section 5), au besoin.
 
@@ -74,4 +75,4 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 
 ## Fait
 
-- 7 novembre 2026 : dépôt Git, squelette Django, Docker (projets `edge`, `lmapp`, `lmapp-test`), vrais certificats Let's Encrypt, ouverture filtrée par IP au routeur (IP réelle conservée), modèle des clients, import Excel et CSV avec gabarit, géocodage avec zone de service Sainte-Adèle, données d'essai, déploiements en prod.
+- 7 novembre 2026 : dépôt Git (copie sur GitHub privé), squelette Django, Docker (projets `edge`, `lmapp`, `lmapp-test`), vrais certificats Let's Encrypt, ouverture filtrée par IP au routeur (IP réelle conservée), modèle des clients, import Excel et CSV avec gabarit, géocodage avec zone de service Sainte-Adèle, données d'essai, déploiements en prod.
