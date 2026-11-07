@@ -10,9 +10,13 @@
            display: grid; place-items: center; min-height: 100vh; margin: 0; }
     main { text-align: center; padding: 2rem; }
     h1 { font-size: 2.5rem; margin: 0 0 .5rem; }
+    .bandeau-test { position: fixed; top: 0; left: 0; right: 0; padding: .75rem;
+                    background: #f5c400; color: #111; font-weight: 700;
+                    text-align: center; letter-spacing: .05em; }
   </style>
 </head>
 <body>
+  {% if est_test %}<div class="bandeau-test">ENVIRONNEMENT DE TEST : aucune vraie donnée</div>{% endif %}
   <main>
     <h1>LMAPP</h1>
     <p>L'application fonctionne. Rien à voir ici pour l'instant.</p>
