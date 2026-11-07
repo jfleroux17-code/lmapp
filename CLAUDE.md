@@ -22,7 +22,7 @@ Plan complet : `PRD.md` dans ce dossier. Le lire au complet avant toute décisio
 - Caddy a l'IP fixe `172.20.0.250` sur le réseau `edge`. L'app ne croit l'en-tête `X-Forwarded-For` que s'il vient de cette adresse (`core.middleware.IPReelleMiddleware`, variable `LMAPP_PROXIES_DE_CONFIANCE`), et Gunicorn non plus (`FORWARDED_ALLOW_IPS`). Si le réseau `edge` est recréé avec un autre sous-réseau, changer ces trois endroits ensemble.
 - Docker pige ses sous-réseaux dans `172.17.0.0/16` à `172.31.0.0/16` : conflit possible avec d'autres réseaux de JF (VPN, bureau). À fixer au besoin par `default-address-pools` dans `/etc/docker/daemon.json` (sudo).
 - Journaux d'accès de Caddy : `cd /srv/lmapp/edge && docker compose logs caddy` (JSON, `request.remote_ip`).
-- Les connexions SSH arrivent avec la source `172.16.4.1` (NAT source du routeur). À vérifier pour le trafic web au premier essai de l'extérieur (journaux de Caddy) : si c'est aussi le cas, ni l'app ni Caddy ne voient l'IP réelle, et le filtre `IP_PERMISES` ne peut pas fonctionner.
+- NAT source : les connexions **SSH** arrivent avec la source `172.16.4.1`. La redirection du **443**, elle, conserve l'IP réelle du visiteur (vérifié le 7 novembre 2026 : essai de JF depuis la maison, IP publique vue par Caddy). Le filtre `IP_PERMISES` et la limitation des abus peuvent donc s'appuyer sur l'IP réelle. Ne jamais inscrire les IP de JF dans un fichier suivi par Git : elles vont dans `edge/.env`.
 - Docker : paquets Ubuntu (`docker.io`, `docker-compose-v2`, `docker-buildx`), journaux plafonnés à 10 Mo x 3 par conteneur.
 - Dossier du projet : `/srv/lmapp` (propriétaire `deploy`).
 
@@ -77,5 +77,5 @@ Versions en place : Python 3.13, Django 5.2 LTS (choisi plutôt que 6.x pour dur
 Fait (7 novembre 2026) : dépôt Git, squelette Django, Dockerfile, Compose et `.env`, pile démarrée et validée sur le réseau interne avec le certificat interne de Caddy. Caddy déplacé dans le projet `edge` (décision de JF). Environnement de test `lmapp-test` en marche sur `test.ledeneigeur.com`. Vrais certificats Let's Encrypt pour `louis` et `test` par validation DNS Cloudflare (image `lmapp-caddy:2.11-cloudflare`, bâtie depuis `edge/Dockerfile`).
 
 À suivre, dans l'ordre :
-1. Ouverture filtrée par IP (voir « Exposition à Internet » plus haut), avec la liste `IP_PERMISES` dans Caddy et la lecture de l'IP réelle par Django. Fait en test : Gunicorn et Django ne croient que Caddy (`172.20.0.250`). Reste : déployer en prod, confirmer l'IP source réelle au premier accès de l'extérieur, activer `IP_PERMISES` dans Caddy.
+1. Ouverture filtrée par IP (voir « Exposition à Internet » plus haut), avec la liste `IP_PERMISES` dans Caddy et la lecture de l'IP réelle par Django. Fait en test : Gunicorn et Django ne croient que Caddy (`172.20.0.250`). Déployé en prod le 7 novembre 2026; IP source réelle confirmée de l'extérieur. Reste : activer `IP_PERMISES` dans Caddy quand JF aura rempli la liste dans `edge/.env`.
 2. Phase 1 du PRD (section 8) : modèle de données (`Entreprise` en premier), import CSV, puis le volet argent.
