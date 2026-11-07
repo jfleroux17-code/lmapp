@@ -3,6 +3,7 @@
 Projet : LMAPP, application de gestion pour Louis Méthot Déneigement.
 Porteur : Jean-François Leroux (JF), administrateur du serveur.
 Plan complet : `PRD.md` dans ce dossier. Le lire au complet avant toute décision d'architecture.
+Tâches à faire (JF, Louis, Claude Code) : `TACHES.md`. **Le tenir à jour à chaque étape** (cocher, ajouter, retirer) : c'est la liste que JF consulte.
 
 ## Le serveur
 
