@@ -304,7 +304,7 @@ Pourquoi :
 | Fuseau horaire | `America/Toronto` |
 | Compte | `deploy`, sudo avec mot de passe, groupe `docker` |
 | SSH | Clé ED25519 de JF seulement, mot de passe désactivé, `root` interdit, `AllowUsers deploy` (`/etc/ssh/sshd_config.d/00-ld1.conf`) |
-| Disque | Disque virtuel de 250 Go, mais le volume logique `ubuntu-vg/ubuntu-lv` ne fait que 98 Go (allocation partielle de l'installateur). À agrandir |
+| Disque | Disque virtuel de 250 Go, mais le volume logique `ubuntu-vg/ubuntu-lv` ne fait que 98 Go (allocation partielle de l'installateur). 14 Go utilisés (15 %) le 7 novembre 2026. Agrandissement reporté : alerte à 70 % |
 | Pare-feu | `ufw` : SSH seulement depuis `172.16.4.0/24`, 80 et 443 limités au réseau interne (selon CLAUDE.md; à confirmer avec `sudo ufw status verbose`), tout le reste refusé en entrée. ufw ne protège pas les ports publiés par Docker |
 | DNS | Zone `ledeneigeur.com` chez Cloudflare. `louis` et `test` : A vers `216.46.12.226`, DNS seulement. Racine et `www` en proxy vers `69.16.231.58`. Plus de générique `*` en A |
 | Certificats | Let's Encrypt pour `louis.ledeneigeur.com` et `test.ledeneigeur.com`, obtenus le 7 novembre 2026 par validation DNS Cloudflare (jeton dans `edge/.env`), renouvelés automatiquement par Caddy |
@@ -322,7 +322,7 @@ Points à régler :
 - **Docker contourne ufw** : un port publié par un conteneur est ouvert même si ufw le bloque. Seul Caddy publie un port (443); la base, l'app et le worker restent sur les réseaux Docker internes. Une règle dans la chaîne `DOCKER-USER` pourra filtrer les IP sur ld1 même, en plus du routeur.
 - ~~**DNS public** : enregistrements A `louis` et `test` vers `216.46.12.226` en DNS seulement, suppression du générique `*`.~~ **Fait.** Reste, pour l'accès interne ou VPN tant que le routeur ne redirige rien : faire pointer ces noms vers `172.16.4.100` dans le DNS interne (ou le fichier `hosts` des postes).
 - ~~**Certificat**~~ **Fait le 7 novembre 2026.** Validation DNS par Cloudflare (Let's Encrypt ne peut pas valider par HTTP si l'accès est filtré par IP). Il faut un jeton API Cloudflare limité à « Zone : DNS : Modifier » sur `ledeneigeur.com`, déposé par JF dans `/srv/lmapp/edge/.env` (Caddy seul le reçoit), et une image Caddy avec le module `caddy-dns/cloudflare`.
-- **Disque** : agrandir le volume logique à la taille du disque (`sudo lvextend -r -l +100%FREE /dev/ubuntu-vg/ubuntu-lv`, après vérification avec `sudo vgs`).
+- **Disque** : agrandissement reporté (décision de JF du 7 novembre 2026), l'espace suffit largement. Une alerte à **70 %** d'utilisation fera partie de la surveillance (6.7). À ce moment-là, agrandir à chaud, sans arrêt de l'app : `sudo lvextend -r -l +100%FREE /dev/ubuntu-vg/ubuntu-lv`, après vérification avec `sudo vgs`.
 - **Port local `127.0.0.1:36789`** : un processus d'un autre utilisateur que `deploy` écoute sur ce port, en local seulement. À identifier avec `sudo ss -tlnp 'sport = :36789'`.
 - **Services à redémarrer** : apt a signalé des services à redémarrer (dbus, logind, networkd-dispatcher, unattended-upgrades) après l'installation de git. Un redémarrage de la VM au prochain moment tranquille règle ça.
 - **Exposition à Internet** : décision de JF du 7 novembre 2026 : ouvrir au routeur, de `216.46.12.226` vers `172.16.4.100`, **seulement pour quelques IP sources** choisies par JF. **En place** sur le Mikrotik (443, liste d'adresses `_SLAPP` : bureau et maison), essai de l'extérieur réussi le 7 novembre 2026. JF prévoit l'ouverture à toutes les IP publiques avant la mise en service : Louis ne doit jamais être bloqué en pleine tempête (réseau cellulaire, IP changeantes), et l'offre à d'autres déneigeurs l'exigera. Il faudra alors, dans l'app et Caddy : limitation du débit sur la connexion, verrouillage après échecs, `/admin/` réservé aux IP de JF (au routeur ou dans Caddy), webhooks vérifiés par signature, en-tête HSTS, et le balayage externe prévu en section 9. Seul le 443 est redirigé, puisque le certificat passe par la validation DNS. Le filtrage se fait au routeur seulement (décision de JF : pas de deuxième couche dans Caddy ni dans l'app). Comme Docker contourne ufw, la règle du Mikrotik est la seule barrière devant le 443 tant que l'accès reste restreint. L'ouverture plus large (webhooks Twilio et SMTP2GO, liens de factures des clients) sera décidée avant la mise en service : leurs IP changent, donc il faudra des routes de webhook vérifiées par signature, ou un tunnel Cloudflare avec contrôle d'accès.
@@ -405,7 +405,7 @@ Décision : **V1 en app web installée sur l'écran d'accueil, mode « télépho
 
 - Sauvegarde `pg_dump` chaque nuit, chiffrée, copiée hors de la VM (stockage Peripheriq ou un compartiment S3 compatible). Test de restauration mensuel.
 - Mises à jour de sécurité automatiques (`unattended-upgrades`), pare-feu `ufw`, `fail2ban` sur SSH : en place sur `ld1`.
-- Surveillance : vérification de disponibilité HTTPS et alerte si la file de tâches bloque (un SMS non parti pendant une tempête, c'est le pire scénario).
+- Surveillance : vérification de disponibilité HTTPS, alerte si la file de tâches bloque (un SMS non parti pendant une tempête, c'est le pire scénario), et alerte quand le disque dépasse 70 %.
 - Environnement de test séparé (projet Compose `lmapp-test` sur la même VM avec une autre base, sur `test.ledeneigeur.com`) pour ne jamais tester sur les vrais clients. Caddy est dans un projet `edge` à part (décision du 7 novembre 2026) : on peut arrêter, reconstruire ou casser le test sans toucher à la prod, et inversement.
 
 ## 7. Contraintes et conformité
@@ -424,7 +424,7 @@ Le calendrier est serré : la saison est commencée. Priorité à ce qui rapport
 ### Phase 0 : Préparation (semaine 1)
 - ~~JF : installation de la VM Ubuntu 26.04.1 LTS, IP fixe, SSH par clé, pare-feu.~~ **Fait le 7 novembre 2026** (section 6.1.1).
 - ~~Claude Code installé sur la VM.~~ **Fait le 7 novembre 2026** (2.1.319, connecté au compte de JF). `CLAUDE.md` et `PRD.md` déposés dans `/srv/lmapp`.
-- JF : DNS (`louis.ledeneigeur.com` et `test.ledeneigeur.com`, voir 6.1.1), netplan par pilote plutôt que par MAC, agrandissement du disque, jeton API Cloudflare, redirection au routeur filtrée par IP source.
+- JF : DNS (`louis.ledeneigeur.com` et `test.ledeneigeur.com`, voir 6.1.1), netplan par pilote plutôt que par MAC, jeton API Cloudflare, redirection au routeur filtrée par IP source.
 - JF et Louis : réponses aux questions ouvertes (section 10).
 - Louis : liste de ses clients (même en photo de ses papiers) pour l'import.
 - Création des comptes : Twilio (numéro 450), sous-compte SMTP2GO et boîte de réception, Stripe si retenu.
@@ -493,7 +493,7 @@ Livrable : automatisation des relances, rapports pour le comptable, demandes de 
 1. ~~Installer la VM Ubuntu Server 26.04.1 LTS, créer `deploy` avec clé SSH.~~ Fait.
 2. Faire reconnaître la carte réseau par son pilote dans netplan (la MAC reste dynamique).
 3. DNS chez Cloudflare : enregistrements A `louis.ledeneigeur.com` et `test.ledeneigeur.com` vers `216.46.12.226` en DNS seulement, suppression du générique `*`, noms internes vers `172.16.4.100`. Créer un jeton API Cloudflare (« Zone : DNS : Modifier » sur `ledeneigeur.com`) et le déposer dans `/srv/lmapp/edge/.env` (lu par Caddy seulement). Redirection du 443 au routeur, limitée aux IP choisies, idéalement sans NAT source. Instantané Hyper-V avant.
-   - Agrandir le volume logique à 250 Go et identifier le processus du port local 36789 (section 6.1.1).
+   - Identifier le processus du port local 36789 (section 6.1.1). Disque : rien à faire avant l'alerte à 70 %.
    - Créer le compte administrateur Django (`docker compose exec app python manage.py createsuperuser`, depuis sa propre session SSH).
 4. Créer le sous-compte SMTP2GO de Louis, y ajouter ledeneigeur.com et publier SPF, DKIM et DMARC; créer la boîte IMAP de réception. Déposer la clé API SMTP2GO et les accès IMAP (serveur, port 993 TLS, identifiant, mot de passe) directement dans `/srv/lmapp/.env` sur la VM, jamais dans le clavardage.
 5. Poser les questions de la section 10 à Louis.
