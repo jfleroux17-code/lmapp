@@ -24,7 +24,10 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     networks:
-      - edge
+      edge:
+        # IP fixe : l'app ne fait confiance à l'en-tête X-Forwarded-For que
+        # s'il vient de cette adresse (LMAPP_PROXY_DE_CONFIANCE dans les .env).
+        ipv4_address: 172.20.0.250
     security_opt: ["no-new-privileges:true"]
 
 networks:

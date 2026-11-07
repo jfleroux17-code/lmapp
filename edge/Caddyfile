@@ -21,6 +21,13 @@
 }
 
 (commun) {
+	# Journal d'accès (JSON, sortie standard, plafonné par Docker à 10 Mo x 3).
+	# Caddy masque les témoins et les en-têtes d'authentification par défaut.
+	log {
+		output stdout
+		format json
+	}
+
 	tls {
 		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
 		# Vérifier la propagation du TXT auprès d'un résolveur public
