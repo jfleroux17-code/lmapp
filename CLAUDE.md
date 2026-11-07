@@ -12,7 +12,8 @@ Plan complet : `PRD.md` dans ce dossier. Le lire au complet avant toute décisio
 - Fuseau horaire : `America/Toronto`.
 - Disque : le volume logique `ubuntu-vg/ubuntu-lv` ne fait que 98 Go sur les 250 Go de la VM (à agrandir par JF avec `lvextend -r`).
 - Domaine : `ledeneigeur.com` (et `ledeneigeur.ca` redirigé). Serveur : `ld1.ledeneigeur.com`. App : un sous-domaine par déneigeur; celui de Louis est `louis.ledeneigeur.com`. Environnement de test : `test.ledeneigeur.com`. Caddy sert chaque sous-domaine avec son propre certificat.
-- DNS chez Cloudflare. Au 7 novembre 2026, un enregistrement générique `*` en mode proxy fait résoudre tous les sous-domaines vers Cloudflare (`172.64.80.1`), pas vers ld1. IP publique sortante de ld1 : `216.46.12.226`.
+- DNS chez Cloudflare. `louis.ledeneigeur.com` et `test.ledeneigeur.com` : enregistrements A vers `216.46.12.226` (IP publique de ld1), en DNS seulement (nuage gris). Plus d'enregistrement générique `*` en A. La racine et `www` restent en proxy vers `69.16.231.58`.
+- Jeton API Cloudflare dans `edge/.env` (jeton de compte, préfixe `cfat_`, limité à la zone `ledeneigeur.com`, sans expiration). Un jeton de compte se vérifie par `/accounts/{id}/tokens/verify`, pas par `/user/tokens/verify` (qui répond « Invalid API Token »). **Pour inspecter un `.env`, n'afficher que des noms de variables valides (`[A-Z][A-Z0-9_]*`) et masquer toute autre ligne** : une ligne sans `=` est peut-être un secret nu.
 - Utilisateur : `deploy` (sudo avec mot de passe, membre du groupe `docker`). Pas de sudo sans mot de passe.
 - SSH : clé seulement, `root` interdit, `AllowUsers deploy` (`/etc/ssh/sshd_config.d/00-ld1.conf`).
 - Pare-feu `ufw` : SSH seulement depuis `172.16.4.0/24`; 80 et 443 limités au réseau interne. `fail2ban` actif sur sshd (backend systemd, `172.16.4.1` exclu). Rappel : ufw ne protège pas les ports publiés par Docker (règle 3).
@@ -53,7 +54,7 @@ Versions en place : Python 3.13, Django 5.2 LTS (choisi plutôt que 6.x pour dur
 
 - `src/` : le code Django (`config/` pour les réglages, `core/` pour l'app de base). `Dockerfile`, `compose.yaml` (prod) et la documentation à la racine. `edge/` : le frontal Caddy (`edge/compose.yaml`, `edge/Caddyfile`).
 - Trois projets Compose :
-  - `edge` (`/srv/lmapp/edge`) : Caddy seul, frontal HTTPS de tous les environnements, **seul projet qui publie un port**. Recharger le Caddyfile : `docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile`.
+  - `edge` (`/srv/lmapp/edge`) : Caddy seul (image maison avec le module `caddy-dns/cloudflare`), frontal HTTPS de tous les environnements, **seul projet qui publie un port**. Certificats Let's Encrypt par validation DNS. Après un changement d'autorité (`acme_ca`), un `reload` ne suffit pas : Caddy garde les certificats en mémoire, il faut `docker compose restart caddy`. Recharger le Caddyfile : `docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile`.
   - `lmapp` (`/srv/lmapp`) : la prod, `db`, `app` et `worker`, sans aucun port publié.
   - `lmapp-test` (`/srv/lmapp/test`) : le test sur `test.ledeneigeur.com`. Son propre `compose.yaml` et son propre `.env` (jamais de variables partagées avec la prod), base `lmapp_test`, volumes `lmapp_test_pgdata` et `lmapp_test_media`, image `lmapp:test`. Bandeau « ENVIRONNEMENT DE TEST » à l'écran dès que `LMAPP_ENV` n'est pas `prod`.
 - Une seule image pour `app` (Gunicorn) et `worker` (`manage.py procrastinate worker`) : `lmapp:test` pour le test, `lmapp:latest` pour la prod. Utilisateur `lmapp` (UID 1000, comme `deploy`), système de fichiers en lecture seule sauf `/tmp` et les médias.
@@ -70,9 +71,8 @@ Versions en place : Python 3.13, Django 5.2 LTS (choisi plutôt que 6.x pour dur
 
 ## Ordre de travail
 
-Fait (7 novembre 2026) : dépôt Git, squelette Django, Dockerfile, Compose et `.env`, pile démarrée et validée sur le réseau interne avec le certificat interne de Caddy. Caddy déplacé dans le projet `edge` (décision de JF). Environnement de test `lmapp-test` en marche sur `test.ledeneigeur.com`.
+Fait (7 novembre 2026) : dépôt Git, squelette Django, Dockerfile, Compose et `.env`, pile démarrée et validée sur le réseau interne avec le certificat interne de Caddy. Caddy déplacé dans le projet `edge` (décision de JF). Environnement de test `lmapp-test` en marche sur `test.ledeneigeur.com`. Vrais certificats Let's Encrypt pour `louis` et `test` par validation DNS Cloudflare (image `lmapp-caddy:2.11-cloudflare`, bâtie depuis `edge/Dockerfile`).
 
 À suivre, dans l'ordre :
-1. Vrai certificat Let's Encrypt par validation DNS Cloudflare (image Caddy avec `caddy-dns/cloudflare`, jeton `CLOUDFLARE_API_TOKEN` déposé par JF dans `edge/.env`, propre au projet `edge`).
-2. Ouverture filtrée par IP (voir « Exposition à Internet » plus haut), avec la liste `IP_PERMISES` dans Caddy et la lecture de l'IP réelle par Django. Limiter alors `--forwarded-allow-ips` de Gunicorn (aujourd'hui `*`) à Caddy seulement : sur le réseau partagé `edge`, l'app de test pourrait sinon fausser l'IP vue par la prod.
-3. Phase 1 du PRD (section 8) : modèle de données (`Entreprise` en premier), import CSV, puis le volet argent.
+1. Ouverture filtrée par IP (voir « Exposition à Internet » plus haut), avec la liste `IP_PERMISES` dans Caddy et la lecture de l'IP réelle par Django. Limiter alors `--forwarded-allow-ips` de Gunicorn (aujourd'hui `*`) à Caddy seulement : sur le réseau partagé `edge`, l'app de test pourrait sinon fausser l'IP vue par la prod.
+2. Phase 1 du PRD (section 8) : modèle de données (`Entreprise` en premier), import CSV, puis le volet argent.

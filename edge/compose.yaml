@@ -11,8 +11,12 @@ name: edge
 
 services:
   caddy:
-    image: caddy:2.11
+    # Caddy 2.11 + module caddy-dns/cloudflare (voir Dockerfile)
+    build: .
+    image: lmapp-caddy:2.11-cloudflare
     restart: unless-stopped
+    # Jeton Cloudflare (validation DNS). Caddy seul le reçoit.
+    env_file: .env
     ports:
       - "443:443"
     volumes:

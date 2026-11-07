@@ -1,8 +1,8 @@
-# LMAPP : Plan de projet (PRD v1.1)
+# LMAPP : Plan de projet (PRD v1.2)
 
 **Application de gestion pour Louis Méthot Déneigement**
 Porteur du projet : Jean-François Leroux
-Date : 7 novembre 2026 (v1.1 : dépôt Git et pile Docker en marche sur `ld1` (validée sur le réseau interne), test sur `test.ledeneigeur.com`, ouverture au routeur filtrée par IP source, état du DNS Cloudflare et du disque en 6.1.1; v1.0 : sous-domaine louis.ledeneigeur.com, MAC dynamique, pas de port public au départ, CLAUDE.md déposé sur ld1; v0.9 : Claude Code réellement installé et connecté sur `ld1` (2.1.319); v0.8 : serveur `ld1` installé et sécurisé, IP fixe 172.16.4.100, état du serveur en 6.1.1; v0.7 : domaine ledeneigeur.com et découpage par sous-domaine; v0.6 : iPhone 17 Pro Max confirmé, décision de bâtir, SMTP2GO et boîte IMAP, hébergement sans frais, section O, specs de la VM)
+Date : 7 novembre 2026 (v1.2 : Caddy dans un projet `edge` séparé, environnement de test en marche, vrais certificats Let's Encrypt par validation DNS, DNS `louis` et `test` en place; v1.1 : dépôt Git et pile Docker en marche sur `ld1` (validée sur le réseau interne), test sur `test.ledeneigeur.com`, ouverture au routeur filtrée par IP source, état du DNS Cloudflare et du disque en 6.1.1; v1.0 : sous-domaine louis.ledeneigeur.com, MAC dynamique, pas de port public au départ, CLAUDE.md déposé sur ld1; v0.9 : Claude Code réellement installé et connecté sur `ld1` (2.1.319); v0.8 : serveur `ld1` installé et sécurisé, IP fixe 172.16.4.100, état du serveur en 6.1.1; v0.7 : domaine ledeneigeur.com et découpage par sous-domaine; v0.6 : iPhone 17 Pro Max confirmé, décision de bâtir, SMTP2GO et boîte IMAP, hébergement sans frais, section O, specs de la VM)
 Statut : brouillon à valider avant tout développement
 
 ---
@@ -306,7 +306,8 @@ Pourquoi :
 | SSH | Clé ED25519 de JF seulement, mot de passe désactivé, `root` interdit, `AllowUsers deploy` (`/etc/ssh/sshd_config.d/00-ld1.conf`) |
 | Disque | Disque virtuel de 250 Go, mais le volume logique `ubuntu-vg/ubuntu-lv` ne fait que 98 Go (allocation partielle de l'installateur). À agrandir |
 | Pare-feu | `ufw` : SSH seulement depuis `172.16.4.0/24`, 80 et 443 limités au réseau interne (selon CLAUDE.md; à confirmer avec `sudo ufw status verbose`), tout le reste refusé en entrée. ufw ne protège pas les ports publiés par Docker |
-| DNS | Zone `ledeneigeur.com` chez Cloudflare. Au 7 novembre 2026 : enregistrement générique `*` en mode proxy, tous les sous-domaines résolvent vers Cloudflare (`172.64.80.1`) |
+| DNS | Zone `ledeneigeur.com` chez Cloudflare. `louis` et `test` : A vers `216.46.12.226`, DNS seulement. Racine et `www` en proxy vers `69.16.231.58`. Plus de générique `*` en A |
+| Certificats | Let's Encrypt pour `louis.ledeneigeur.com` et `test.ledeneigeur.com`, obtenus le 7 novembre 2026 par validation DNS Cloudflare (jeton dans `edge/.env`), renouvelés automatiquement par Caddy |
 | IP publique | `216.46.12.226` (IP de sortie de ld1, mesurée le 7 novembre 2026; l'IP d'entrée peut différer si le routeur en a plusieurs) |
 | fail2ban | Actif sur sshd (backend systemd), bannissement 1 h après 5 échecs en 10 minutes, `172.16.4.1` exclu |
 | Docker | Paquets Ubuntu `docker.io`, `docker-compose-v2`, `docker-buildx`; journaux plafonnés à 10 Mo x 3 par conteneur, `deploy` dans le groupe `docker`, testé avec hello-world |
@@ -319,8 +320,8 @@ Points à régler :
 - **MAC dynamique dans Hyper-V** : JF garde la MAC dynamique (décision du 7 novembre 2026). La config netplan ne doit donc pas dépendre de la MAC : elle doit reconnaître la carte par son pilote Hyper-V (`hv_netvsc`) plutôt que par l'adresse `00:15:5d:04:0a:02`, sinon la VM perd son réseau si la MAC change (déplacement ou réimportation de la VM).
 - **NAT source** : les connexions SSH arrivent avec la source `172.16.4.1` (la passerelle). Si le trafic web public arrive aussi ainsi après le NAT des ports 80 et 443, l'app ne verra pas l'IP réelle des visiteurs (journaux, limitation des abus). À vérifier et, si possible, corriger au routeur (redirection de port sans NAT source).
 - **Docker contourne ufw** : un port publié par un conteneur est ouvert même si ufw le bloque. Seul Caddy publie un port (443); la base, l'app et le worker restent sur les réseaux Docker internes. Une règle dans la chaîne `DOCKER-USER` pourra filtrer les IP sur ld1 même, en plus du routeur.
-- **DNS public** : enregistrements A `louis.ledeneigeur.com` et `test.ledeneigeur.com` vers `216.46.12.226`, en DNS seulement (nuage gris), au moment de l'ouverture filtrée. Supprimer l'enregistrement générique `*`. Pour l'accès interne ou VPN, faire pointer ces noms vers `172.16.4.100` dans le DNS interne.
-- **Certificat** : validation DNS par Cloudflare (Let's Encrypt ne peut pas valider par HTTP si l'accès est filtré par IP). Il faut un jeton API Cloudflare limité à « Zone : DNS : Modifier » sur `ledeneigeur.com`, déposé par JF dans `/srv/lmapp/edge/.env` (Caddy seul le reçoit), et une image Caddy avec le module `caddy-dns/cloudflare`.
+- ~~**DNS public** : enregistrements A `louis` et `test` vers `216.46.12.226` en DNS seulement, suppression du générique `*`.~~ **Fait.** Reste, pour l'accès interne ou VPN tant que le routeur ne redirige rien : faire pointer ces noms vers `172.16.4.100` dans le DNS interne (ou le fichier `hosts` des postes).
+- ~~**Certificat**~~ **Fait le 7 novembre 2026.** Validation DNS par Cloudflare (Let's Encrypt ne peut pas valider par HTTP si l'accès est filtré par IP). Il faut un jeton API Cloudflare limité à « Zone : DNS : Modifier » sur `ledeneigeur.com`, déposé par JF dans `/srv/lmapp/edge/.env` (Caddy seul le reçoit), et une image Caddy avec le module `caddy-dns/cloudflare`.
 - **Disque** : agrandir le volume logique à la taille du disque (`sudo lvextend -r -l +100%FREE /dev/ubuntu-vg/ubuntu-lv`, après vérification avec `sudo vgs`).
 - **Port local `127.0.0.1:36789`** : un processus d'un autre utilisateur que `deploy` écoute sur ce port, en local seulement. À identifier avec `sudo ss -tlnp 'sport = :36789'`.
 - **Services à redémarrer** : apt a signalé des services à redémarrer (dbus, logind, networkd-dispatcher, unattended-upgrades) après l'installation de git. Un redémarrage de la VM au prochain moment tranquille règle ça.
@@ -427,7 +428,7 @@ Le calendrier est serré : la saison est commencée. Priorité à ce qui rapport
 - JF et Louis : réponses aux questions ouvertes (section 10).
 - Louis : liste de ses clients (même en photo de ses papiers) pour l'import.
 - Création des comptes : Twilio (numéro 450), sous-compte SMTP2GO et boîte de réception, Stripe si retenu.
-- Claude Code : ~~structure du projet, dépôt Git, Docker Compose, base de données~~ **fait le 7 novembre 2026**; déploiement vide en HTTPS validé sur le réseau interne avec le certificat interne de Caddy. Environnement de test en marche sur `test.ledeneigeur.com`. Restent le vrai certificat (validation DNS) et l'ouverture filtrée.
+- Claude Code : ~~structure du projet, dépôt Git, Docker Compose, base de données~~ **fait le 7 novembre 2026**; déploiement vide en HTTPS validé sur le réseau interne avec le certificat interne de Caddy. Environnement de test en marche sur `test.ledeneigeur.com`. Vrais certificats Let's Encrypt en place. Reste l'ouverture filtrée par IP.
 
 ### Phase 1 : Version de base, volet argent (semaines 2 à 4)
 Fonctionnalités : A1, A2, A5, A6, A7, A8, A9, B1, B2, B3, B4, C1 à C8, C13, D1 à D4, D6 (si retenu), E1 à E11, J1, K1 à K3, K5 à K8, L1, M1 à M3.
@@ -506,7 +507,7 @@ Livrable : automatisation des relances, rapports pour le comptable, demandes de 
 
 **Claude Code (sur ld1)**
 1. ~~Vérifier Docker, initialiser le dépôt Git.~~ Fait.
-2. ~~Structure du projet, Docker Compose~~, déploiement vide en HTTPS : validé en interne. Environnement de test en marche. Restent le certificat Let's Encrypt par validation DNS et l'ouverture filtrée par IP.
+2. ~~Structure du projet, Docker Compose~~, déploiement vide en HTTPS : validé en interne. Environnement de test en marche, vrais certificats en place. Reste l'ouverture filtrée par IP.
 3. Modèle de données et import CSV.
 4. Phase 1 dans l'ordre de la section 8.
 

@@ -1,0 +1,3 @@
+# Le contexte de construction de Caddy ne contient rien de secret
+.env
+.env.*
