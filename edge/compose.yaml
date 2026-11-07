@@ -1,0 +1,38 @@
+# Projet « edge » : Caddy seul, frontal HTTPS de tous les environnements.
+#
+# C'est le SEUL projet sur ld1 qui publie un port (CLAUDE.md, règle 3).
+# Les apps (prod, test) rejoignent le réseau externe « edge », créé une fois :
+#   docker network create edge
+#
+# Démarrage : cd /srv/lmapp/edge && docker compose up -d
+# Recharger le Caddyfile sans couper : docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
+
+name: edge
+
+services:
+  caddy:
+    image: caddy:2.11
+    restart: unless-stopped
+    ports:
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - edge
+    security_opt: ["no-new-privileges:true"]
+
+networks:
+  edge:
+    external: true
+    name: edge
+
+volumes:
+  # Certificats et autorité interne de Caddy. Volume repris de l'ancien
+  # service caddy du projet lmapp : les certificats déjà émis sont conservés.
+  caddy_data:
+    external: true
+    name: lmapp_caddy_data
+  caddy_config:
+    name: edge_caddy_config

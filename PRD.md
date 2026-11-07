@@ -312,7 +312,7 @@ Pourquoi :
 | Docker | Paquets Ubuntu `docker.io`, `docker-compose-v2`, `docker-buildx`; journaux plafonnés à 10 Mo x 3 par conteneur, `deploy` dans le groupe `docker`, testé avec hello-world |
 | Git | 2.53, installé par apt le 7 novembre 2026. Dépôt `/srv/lmapp` sur la branche `main`, sans dépôt distant pour l'instant |
 | Dossier du projet | `/srv/lmapp`, propriétaire `deploy` : code Django dans `src/`, `Dockerfile`, `compose.yaml`, `Caddyfile`, `.env` (600, hors Git) |
-| Pile Docker | Projet Compose `lmapp` en marche depuis le 7 novembre 2026 : `db` (PostgreSQL 17.11, PostGIS 3.7), `app` (Django 5.2 LTS, Python 3.13, Gunicorn), `worker` (Procrastinate), `caddy` (2.11, seul à publier un port : 443 TCP). Base sur un réseau Docker sans accès Internet. Volumes externes `lmapp_pgdata`, `lmapp_media`, `lmapp_caddy_data`. Certificat interne de Caddy en attendant la validation DNS. Validée sur le réseau interne (`/sante/`, admin, fichiers statiques) |
+| Pile Docker | En marche depuis le 7 novembre 2026. Projet `edge` : Caddy 2.11, frontal commun à la prod et au test, seul à publier un port (443 TCP). Projet `lmapp` (prod) : `db` (PostgreSQL 17.11, PostGIS 3.7), `app` (Django 5.2 LTS, Python 3.13, Gunicorn), `worker` (Procrastinate), aucun port publié. Réseau partagé `edge` entre Caddy et les apps; base sur un réseau sans accès Internet. Projet `lmapp-test` à venir. Volumes externes `lmapp_pgdata`, `lmapp_media`, `lmapp_caddy_data`. Certificat interne de Caddy en attendant la validation DNS. Validée sur le réseau interne (`/sante/`, admin, fichiers statiques) |
 | Claude Code | Version 2.1.319, installateur natif (`~/.local/bin/claude`, mises à jour automatiques), PATH ajouté dans `~/.bashrc` de `deploy`, connecté au compte claude.ai de JF (`claude auth login`), `claude doctor` sans problème. Installé le 7 novembre 2026. Consignes dans `/srv/lmapp/CLAUDE.md`. |
 
 Points à régler :
@@ -320,7 +320,7 @@ Points à régler :
 - **NAT source** : les connexions SSH arrivent avec la source `172.16.4.1` (la passerelle). Si le trafic web public arrive aussi ainsi après le NAT des ports 80 et 443, l'app ne verra pas l'IP réelle des visiteurs (journaux, limitation des abus). À vérifier et, si possible, corriger au routeur (redirection de port sans NAT source).
 - **Docker contourne ufw** : un port publié par un conteneur est ouvert même si ufw le bloque. Seul Caddy publie un port (443); la base, l'app et le worker restent sur les réseaux Docker internes. Une règle dans la chaîne `DOCKER-USER` pourra filtrer les IP sur ld1 même, en plus du routeur.
 - **DNS public** : enregistrements A `louis.ledeneigeur.com` et `test.ledeneigeur.com` vers `216.46.12.226`, en DNS seulement (nuage gris), au moment de l'ouverture filtrée. Supprimer l'enregistrement générique `*`. Pour l'accès interne ou VPN, faire pointer ces noms vers `172.16.4.100` dans le DNS interne.
-- **Certificat** : validation DNS par Cloudflare (Let's Encrypt ne peut pas valider par HTTP si l'accès est filtré par IP). Il faut un jeton API Cloudflare limité à « Zone : DNS : Modifier » sur `ledeneigeur.com`, déposé par JF dans `.env`, et une image Caddy avec le module `caddy-dns/cloudflare`.
+- **Certificat** : validation DNS par Cloudflare (Let's Encrypt ne peut pas valider par HTTP si l'accès est filtré par IP). Il faut un jeton API Cloudflare limité à « Zone : DNS : Modifier » sur `ledeneigeur.com`, déposé par JF dans `/srv/lmapp/edge/.env` (Caddy seul le reçoit), et une image Caddy avec le module `caddy-dns/cloudflare`.
 - **Disque** : agrandir le volume logique à la taille du disque (`sudo lvextend -r -l +100%FREE /dev/ubuntu-vg/ubuntu-lv`, après vérification avec `sudo vgs`).
 - **Port local `127.0.0.1:36789`** : un processus d'un autre utilisateur que `deploy` écoute sur ce port, en local seulement. À identifier avec `sudo ss -tlnp 'sport = :36789'`.
 - **Services à redémarrer** : apt a signalé des services à redémarrer (dbus, logind, networkd-dispatcher, unattended-upgrades) après l'installation de git. Un redémarrage de la VM au prochain moment tranquille règle ça.
@@ -405,7 +405,7 @@ Décision : **V1 en app web installée sur l'écran d'accueil, mode « télépho
 - Sauvegarde `pg_dump` chaque nuit, chiffrée, copiée hors de la VM (stockage Peripheriq ou un compartiment S3 compatible). Test de restauration mensuel.
 - Mises à jour de sécurité automatiques (`unattended-upgrades`), pare-feu `ufw`, `fail2ban` sur SSH : en place sur `ld1`.
 - Surveillance : vérification de disponibilité HTTPS et alerte si la file de tâches bloque (un SMS non parti pendant une tempête, c'est le pire scénario).
-- Environnement de test séparé (deuxième `docker compose` sur la même VM avec une autre base, sur `test.ledeneigeur.com`) pour ne jamais tester sur les vrais clients.
+- Environnement de test séparé (projet Compose `lmapp-test` sur la même VM avec une autre base, sur `test.ledeneigeur.com`) pour ne jamais tester sur les vrais clients. Caddy est dans un projet `edge` à part (décision du 7 novembre 2026) : on peut arrêter, reconstruire ou casser le test sans toucher à la prod, et inversement.
 
 ## 7. Contraintes et conformité
 
@@ -491,7 +491,7 @@ Livrable : automatisation des relances, rapports pour le comptable, demandes de 
 **JF**
 1. ~~Installer la VM Ubuntu Server 26.04.1 LTS, créer `deploy` avec clé SSH.~~ Fait.
 2. Faire reconnaître la carte réseau par son pilote dans netplan (la MAC reste dynamique).
-3. DNS chez Cloudflare : enregistrements A `louis.ledeneigeur.com` et `test.ledeneigeur.com` vers `216.46.12.226` en DNS seulement, suppression du générique `*`, noms internes vers `172.16.4.100`. Créer un jeton API Cloudflare (« Zone : DNS : Modifier » sur `ledeneigeur.com`) et le déposer dans `/srv/lmapp/.env`. Redirection du 443 au routeur, limitée aux IP choisies, idéalement sans NAT source. Instantané Hyper-V avant.
+3. DNS chez Cloudflare : enregistrements A `louis.ledeneigeur.com` et `test.ledeneigeur.com` vers `216.46.12.226` en DNS seulement, suppression du générique `*`, noms internes vers `172.16.4.100`. Créer un jeton API Cloudflare (« Zone : DNS : Modifier » sur `ledeneigeur.com`) et le déposer dans `/srv/lmapp/edge/.env` (lu par Caddy seulement). Redirection du 443 au routeur, limitée aux IP choisies, idéalement sans NAT source. Instantané Hyper-V avant.
    - Agrandir le volume logique à 250 Go et identifier le processus du port local 36789 (section 6.1.1).
    - Créer le compte administrateur Django (`docker compose exec app python manage.py createsuperuser`, depuis sa propre session SSH).
 4. Créer le sous-compte SMTP2GO de Louis, y ajouter ledeneigeur.com et publier SPF, DKIM et DMARC; créer la boîte IMAP de réception. Déposer la clé API SMTP2GO et les accès IMAP (serveur, port 993 TLS, identifiant, mot de passe) directement dans `/srv/lmapp/.env` sur la VM, jamais dans le clavardage.

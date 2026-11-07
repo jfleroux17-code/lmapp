@@ -1,7 +1,9 @@
-# LMAPP : pile de production sur ld1.
+# LMAPP : pile de production sur ld1 (projet Compose « lmapp »).
 #
-# Règle de sécurité (CLAUDE.md, règle 3) : Docker contourne ufw. Seul le
-# service caddy publie un port (443). db, app et worker n'ont aucun « ports: ».
+# Règle de sécurité (CLAUDE.md, règle 3) : Docker contourne ufw. Aucun service
+# de ce projet ne publie de port. Le HTTPS est servi par Caddy, dans le projet
+# « edge » (/srv/lmapp/edge), qui joint l'app par le réseau externe « edge »
+# sous le nom lmapp-prod-app.
 #
 # Les volumes sont « external » : ils sont créés une fois à la main
 # (docker volume create) et « docker compose down -v » ne peut pas les effacer.
@@ -44,8 +46,10 @@ services:
     volumes:
       - media:/app/media
     networks:
-      - interne
-      - web
+      interne:
+      edge:
+        aliases:
+          - lmapp-prod-app
     read_only: true
     tmpfs:
       - /tmp
@@ -70,37 +74,25 @@ services:
       - media:/app/media
     networks:
       - interne
-      - web
+      - sortie
     read_only: true
     tmpfs:
       - /tmp
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
 
-  caddy:
-    image: caddy:2.11
-    restart: unless-stopped
-    environment:
-      LMAPP_DOMAINE: ${LMAPP_DOMAINE}
-    ports:
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    networks:
-      - web
-    depends_on:
-      - app
-    security_opt: ["no-new-privileges:true"]
-
 networks:
   # Réseau sans accès Internet : la base n'en sort jamais.
   interne:
     internal: true
-  # Réseau de Caddy vers l'app; donne aussi la sortie Internet à app et
-  # worker (Twilio, SMTP2GO, IMAP plus tard).
-  web:
+  # Réseau partagé avec Caddy (projet edge). Donne aussi à l'app sa sortie
+  # vers Internet.
+  edge:
+    external: true
+    name: edge
+  # Sortie Internet du worker (Twilio, SMTP2GO, IMAP plus tard), propre à ce
+  # projet : le worker n'est pas sur le réseau partagé.
+  sortie:
 
 volumes:
   pgdata:
@@ -109,8 +101,3 @@ volumes:
   media:
     external: true
     name: lmapp_media
-  caddy_data:
-    external: true
-    name: lmapp_caddy_data
-  caddy_config:
-    name: lmapp_caddy_config
