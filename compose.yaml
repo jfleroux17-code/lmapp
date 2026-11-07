@@ -81,6 +81,34 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
 
+  # Sauvegarde nocturne de la base (PRD K3) : voir outils/sauvegarde_nocturne.sh.
+  # Écrit dans /srv/lmapp/sauvegardes, que COVE copie hors de ld1.
+  sauvegarde:
+    image: postgis/postgis:17-3.7
+    restart: unless-stopped
+    user: "1000:1000"
+    entrypoint: ["/bin/sh", "/outils/sauvegarde_nocturne.sh"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      TZ: America/Toronto
+      SAUVEGARDE_HEURE: ${SAUVEGARDE_HEURE:-03:30}
+      SAUVEGARDE_GARDER: ${SAUVEGARDE_GARDER:-14}
+    volumes:
+      - ./sauvegardes:/sauvegardes
+      - ./outils/sauvegarde_nocturne.sh:/outils/sauvegarde_nocturne.sh:ro
+    networks:
+      - interne
+    depends_on:
+      db:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
 networks:
   # Réseau sans accès Internet : la base n'en sort jamais.
   interne:

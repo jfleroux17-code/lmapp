@@ -37,7 +37,9 @@ Mise à jour : 7 novembre 2026.
 - [ ] Donner les plages d'adresses des autres réseaux (VPN, bureau, centre de données) : conflit possible avec les plages 172.17 à 172.31 de Docker.
 - [x] Copie du dépôt hors de ld1 : GitHub privé `jfleroux17-code/lmapp`, poussé après chaque étape.
 - [x] Dépôt GitHub branché dans le Projet Claude de JF (`PRD.md`, `CLAUDE.md`, `TACHES.md`). Après un envoi, synchroniser la source GitHub dans le projet pour voir la dernière version.
-- [ ] Où envoyer les sauvegardes nocturnes hors de la VM (stockage Peripheriq ou compartiment S3).
+- [x] Sauvegardes hors de la VM : COVE, toutes les 12 heures (décision du 7 novembre 2026).
+- [ ] Donner les heures de passage de COVE, pour régler la sauvegarde nocturne une trentaine de minutes avant (aujourd'hui : 3 h 30).
+- [ ] Vérifier dans COVE que `/srv/lmapp/sauvegardes/` est bien inclus (si COVE sauvegarde des fichiers plutôt que la VM entière).
 - [ ] Trancher les fonctionnalités V1 dans le catalogue du PRD (section 5), au besoin.
 
 ## Louis
@@ -64,7 +66,8 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - [x] Premiers écrans de Louis (PWA mobile) : connexion, recherche, fiche client. En prod le 7 novembre 2026.
 - [x] Icône de l'app (flocon jaune, générique) : iPhone, manifeste PWA, onglet. En prod le 7 novembre 2026.
 - [ ] Avant l'ouverture à toutes les IP : limiter les essais de connexion (verrouillage après échecs).
-- [ ] Sauvegarde nocturne de la base (K3) : préparable, la copie hors VM attend la destination.
+- [x] Sauvegarde nocturne de la base (K3) : en prod le 7 novembre 2026, test de restauration réussi.
+- [ ] Test de restauration chaque mois (`sh outils/tester_restauration.sh`), prochain vers le 7 décembre 2026.
 
 ### En attente
 
