@@ -29,6 +29,8 @@ Tâches à faire (JF, Louis, Claude Code) : `TACHES.md`. **Le tenir à jour à c
 
 Première chose à faire dans une nouvelle session : vérifier que Docker est installé et fonctionnel (`docker --version`, `docker compose version`, `docker ps`). Si ce n'est pas le cas, le dire à JF avant de continuer.
 
+Ensuite, et **avant toute modification de la documentation** (`PRD.md`, `CLAUDE.md`, `TACHES.md`) : `cd /srv/lmapp && git pull`. JF modifie aussi ces fichiers depuis son Projet Claude (pull requests fusionnées sur GitHub); tirer d'abord évite les conflits. Lire ce qui est arrivé (`git log`, `git diff`) et en tenir compte : une décision de JF peut en remplacer une ancienne.
+
 ## Règles de travail
 
 1. **Rien sans sudo dans le dos de JF.** Toute commande `sudo` est annoncée avec ce qu'elle fait, et JF tape le mot de passe. Le travail de l'app (code, Docker, base) se fait sans sudo.
