@@ -481,7 +481,7 @@ Livrable : automatisation des relances, rapports pour le comptable, demandes de 
 6. **Numéro de texto** : Louis accepte-t-il que les clients textent un nouveau numéro d'affaires plutôt que son cellulaire personnel? (C'est nécessaire pour la réception automatique.)
 7. **Courriel d'affaires et Interac** : réception par une boîte IMAP fournie par JF sur ledeneigeur.com (réglé le 7 novembre 2026, adresse proposée `info@ledeneigeur.com`). Reste à confirmer l'adresse exacte et l'endroit où la boîte est hébergée (MX), et à savoir si Louis a déjà une adresse d'affaires que les clients connaissent. A-t-il le dépôt automatique Interac, et sur quelle adresse? Si c'est une adresse différente, on peut rediriger les notifications Interac vers la boîte IMAP pour D5.
 8. **Carte de crédit** : y a-t-il réellement des clients qui veulent payer par carte? Sinon, on reporte Stripe.
-9. **Secteurs desservis** : quelles municipalités? Un seul tracteur ou plusieurs véhicules? Louis travaille-t-il seul?
+9. ~~**Secteurs desservis**~~ **Réglé en partie le 7 novembre 2026 : Sainte-Adèle seulement, Louis travaille seul pour l'instant.** D'autres villes pourront s'ajouter si l'opération grossit (modèle `VilleDesservie`, sans changement de code). Reste : un seul véhicule ou plusieurs?
 10. **Comptabilité** : qui fait sa comptabilité, et dans quel logiciel? Pour savoir quel export préparer.
 11. ~~Nom de domaine~~ **Réglé le 7 novembre 2026 : `ledeneigeur.com` (principal) et `ledeneigeur.ca`, app de Louis sur `louis.ledeneigeur.com`.** Voir 6.1. Reste : l'adresse courriel exacte (question 7).
 12. **Clients commerciaux** (stationnements, immeubles à logements)? Ils ont souvent des exigences de facturation différentes.

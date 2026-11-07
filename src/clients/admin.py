@@ -4,6 +4,7 @@ from django.contrib.gis.admin import GISModelAdmin
 
 from clients.models import Adresse, Client, Secteur
 from core import telephone
+from core.models import Entreprise, VilleDesservie
 
 
 @admin.register(Secteur)
@@ -82,8 +83,23 @@ class AdresseAdmin(GISModelAdmin):
     actions = ["geocoder_de_nouveau"]
     search_fields = ["ligne1", "ville", "code_postal", "client__nom", "client__prenom", "client__organisation"]
     autocomplete_fields = ["client"]
-    # Carte centrée sur les Laurentides (Saint-Jérôme) pour corriger une position à la main
+    # Sans ville par défaut connue : carte centrée sur les Laurentides
     gis_widget_kwargs = {"attrs": {"default_lon": -74.0, "default_lat": 45.78, "default_zoom": 10}}
+
+    def get_form(self, request, obj=None, **kwargs):
+        request._adresse_en_cours = obj
+        return super().get_form(request, obj, **kwargs)
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        champ = super().formfield_for_dbfield(db_field, request, **kwargs)
+        if db_field.name == "position" and champ is not None:
+            # Carte ouverte sur la ville par défaut de l'entreprise de l'adresse
+            obj = getattr(request, "_adresse_en_cours", None)
+            entreprise_id = obj.entreprise_id if obj else Entreprise.objects.filter(active=True).values_list("pk", flat=True).first()
+            ville = VilleDesservie.par_defaut_de(entreprise_id) if entreprise_id else None
+            if ville and ville.centre:
+                champ.widget.attrs.update({"default_lon": ville.centre.x, "default_lat": ville.centre.y, "default_zoom": 13})
+        return champ
 
     @admin.display(description="à vérifier", boolean=True)
     def verifier(self, obj):

@@ -7,10 +7,12 @@ instructions de paiement, tout est ici, modifiable dans l'administration.
 from decimal import Decimal
 
 from django.conf import settings
+from django.contrib.gis.db import models as gis
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from core import telephone
+from core.texte import cle_ville
 
 
 class Horodate(models.Model):
@@ -113,3 +115,58 @@ class Membre(Horodate):
 
     def __str__(self):
         return f"{self.utilisateur} : {self.get_role_display()} chez {self.entreprise}"
+
+
+class VilleDesservie(Horodate):
+    """Ville où l'entreprise travaille, avec sa zone de service.
+
+    Le géocodage cherche chaque adresse dans la zone de sa ville et rejette un
+    résultat hors du rayon. La ville « par défaut » remplit la ville d'une
+    adresse importée sans ville. On en ajoute une si l'opération grossit.
+    """
+
+    entreprise = models.ForeignKey(Entreprise, on_delete=models.CASCADE, related_name="villes")
+    nom = models.CharField(max_length=100, help_text="Tel qu'écrit dans les adresses, ex. « Sainte-Adèle ».")
+    province = models.CharField(max_length=2, default="QC")
+    centre = gis.PointField(
+        srid=4326, geography=True, null=True, blank=True,
+        help_text="Laisser vide : rempli automatiquement avec le centre de la ville à l'enregistrement.",
+    )
+    rayon_km = models.DecimalField(
+        "rayon de la zone (km)", max_digits=5, decimal_places=1, default=Decimal("8.0"),
+        validators=[MinValueValidator(Decimal("0.5")), MaxValueValidator(Decimal("100"))],
+        help_text="Assez grand pour couvrir tout le territoire de la ville.",
+    )
+    par_defaut = models.BooleanField("ville par défaut", default=False)
+
+    class Meta:
+        verbose_name = "ville desservie"
+        verbose_name_plural = "villes desservies"
+        ordering = ["entreprise", "-par_defaut", "nom"]
+        constraints = [
+            models.UniqueConstraint(fields=["entreprise", "nom"], name="ville_unique_par_entreprise"),
+            models.UniqueConstraint(fields=["entreprise"], condition=models.Q(par_defaut=True), name="une_seule_ville_par_defaut"),
+        ]
+
+    def __str__(self):
+        return self.nom
+
+    def zone(self):
+        from clients.geocodage import Zone
+
+        if self.centre is None:
+            return None
+        return Zone(self.centre.y, self.centre.x, float(self.rayon_km))
+
+    @classmethod
+    def pour(cls, entreprise_id, ville):
+        """La ville desservie qui correspond au nom d'une adresse (accents et majuscules ignorés)."""
+        cible = cle_ville(ville)
+        for v in cls.objects.filter(entreprise_id=entreprise_id):
+            if cle_ville(v.nom) == cible:
+                return v
+        return None
+
+    @classmethod
+    def par_defaut_de(cls, entreprise_id):
+        return cls.objects.filter(entreprise_id=entreprise_id, par_defaut=True).first()

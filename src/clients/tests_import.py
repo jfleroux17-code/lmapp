@@ -130,3 +130,24 @@ class ImportationTests(TestCase):
             self.assertEqual(a.inconnues, [], nom)
             self.assertEqual(len(a.erreurs), 0, [(l.numero, l.erreurs) for l in a.erreurs])
             self.assertEqual(len(a.a_creer), 2, nom)
+
+
+class ImportVillesTests(TestCase):
+    def setUp(self):
+        from django.contrib.gis.geos import Point
+        from core.models import VilleDesservie
+        self.ent = Entreprise.objects.create(nom="Essai", slug="essai", domaine="essai.exemple.test")
+        VilleDesservie.objects.create(entreprise=self.ent, nom="Sainte-Adèle", centre=Point(-74.13, 45.95, srid=4326), par_defaut=True)
+
+    def test_ville_vide_ville_abregee_ville_non_desservie(self):
+        a = importation.analyser(importation.lire(_csv(
+            "nom;adresse;ville\nA;1 rue A;\nB;2 rue A;Ste-Adèle\nC;3 rue A;Val-David\n")), self.ent)
+        self.assertEqual([l.adresse.ville for l in a.lignes], ["Sainte-Adèle", "Sainte-Adèle", "Val-David"])
+        self.assertEqual([l.statut for l in a.lignes], ["a_creer"] * 3)
+        self.assertTrue(any("non desservie" in av for av in a.lignes[2].avertissements))
+        self.assertFalse(any("non desservie" in av for av in a.lignes[1].avertissements))
+
+    def test_colonne_ville_absente(self):
+        a = importation.analyser(importation.lire(_csv("nom;adresse\nA;1 rue A\n")), self.ent)
+        self.assertEqual(a.manquantes, [])
+        self.assertEqual(a.lignes[0].adresse.ville, "Sainte-Adèle")

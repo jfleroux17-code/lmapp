@@ -102,3 +102,17 @@ class DonneesEssaiTests(TestCase):
         self.assertEqual(Adresse.objects.count(), 11)
         # Tous les cellulaires dans la plage fictive 555-01XX
         self.assertTrue(all(c.cellulaire.startswith("+1450555") and c.cellulaire[-4:-2] == "01" for c in Client.objects.all()))
+
+
+class ReinitialiserTests(TestCase):
+    def test_reinitialiser_n_efface_que_l_essai(self):
+        from django.core.management import call_command
+        from django.test import override_settings
+        autre = _entreprise("autre")
+        Client.objects.create(entreprise=autre, nom="Garder")
+        with override_settings(LMAPP_ENV="test"):
+            call_command("donnees_essai", stdout=open("/dev/null", "w"))
+            call_command("donnees_essai", "--reinitialiser", stdout=open("/dev/null", "w"))
+        self.assertEqual(Client.objects.filter(entreprise__slug="essai").count(), 10)
+        self.assertTrue(Client.objects.filter(nom="Garder").exists())
+        self.assertFalse(Adresse.objects.filter(entreprise__slug="essai").exclude(ville="Sainte-Adèle").exists())

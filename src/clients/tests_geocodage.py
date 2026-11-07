@@ -117,3 +117,64 @@ class MiseEnFileTests(TestCase):
         a = Adresse.objects.create(entreprise=self.ent, client=self.c, ligne1="1 rue A", ville="X")
         with mock.patch.object(geocodage, "_requete", return_value=MAISON):
             self.assertEqual(self._en_file(lambda: geocoder_maintenant(a)), 0)
+
+
+SAINTE_ADELE = geocodage.Zone(45.9502, -74.1313, 8.0)
+# Une « rue des Essais » qui existerait aussi à Montréal, à environ 70 km
+MONTREAL = [{"lat": "45.5017", "lon": "-73.5673", "addresstype": "place", "type": "house",
+             "address": {"house_number": "120"}, "display_name": "120, Rue des Essais, Montréal"}]
+
+
+class ZoneTests(SimpleTestCase):
+    def test_boite_et_distance(self):
+        g, h, d, b = (float(x) for x in SAINTE_ADELE.boite().split(","))
+        self.assertTrue(g < -74.1313 < d and b < 45.9502 < h)
+        self.assertTrue(SAINTE_ADELE.contient(45.9655, -74.1100))       # Mont-Rolland
+        self.assertFalse(SAINTE_ADELE.contient(45.5017, -73.5673))      # Montréal
+        self.assertAlmostEqual(SAINTE_ADELE.distance_km(45.9502, -74.1313), 0)
+
+    def test_recherche_limitee_a_la_zone(self):
+        with mock.patch.object(geocodage, "_requete", return_value=MAISON) as req:
+            r = geocodage.geocoder("120, rue des Essais", "Sainte-Adèle", zone=SAINTE_ADELE)
+        self.assertEqual(r.precision, "adresse")
+        params = req.call_args.args[0]
+        self.assertEqual(params["bounded"], 1)
+        self.assertIn("viewbox", params)
+
+    def test_resultat_hors_zone_rejete(self):
+        with mock.patch.object(geocodage, "_requete", return_value=MONTREAL) as req:
+            r = geocodage.geocoder("120, rue des Essais", "Sainte-Adèle", zone=SAINTE_ADELE)
+        self.assertEqual(r.precision, "ville")                 # repli sur le centre de la zone
+        self.assertAlmostEqual(r.latitude, 45.9502)
+        self.assertEqual(req.call_count, 1)                    # pas de deuxième requête pour la ville
+
+
+class VilleDesservieTests(TestCase):
+    def setUp(self):
+        self.ent = Entreprise.objects.create(nom="E", slug="e", domaine="e.exemple.test")
+        from core.models import VilleDesservie
+        self.ville = VilleDesservie.objects.create(entreprise=self.ent, nom="Sainte-Adèle", centre=Point(-74.1313, 45.9502, srid=4326), par_defaut=True)
+
+    def test_abreviation_ste(self):
+        from core.models import VilleDesservie
+        from core.texte import cle_ville
+        self.assertEqual(cle_ville("Ste-Adèle"), cle_ville("SAINTE ADELE"))
+        self.assertEqual(cle_ville("St-Sauveur"), "saint_sauveur")
+        self.assertEqual(cle_ville("Stoneham"), "stoneham")    # « st » au début d'un mot n'est pas « saint »
+        self.assertEqual(VilleDesservie.pour(self.ent.pk, "ste-adele"), self.ville)
+
+    def test_une_seule_ville_par_defaut(self):
+        from django.db import IntegrityError
+        from core.models import VilleDesservie
+        with self.assertRaises(IntegrityError):
+            VilleDesservie.objects.create(entreprise=self.ent, nom="Piedmont", par_defaut=True)
+
+    def test_tache_utilise_la_zone(self):
+        c = Client.objects.create(entreprise=self.ent, nom="Tremblay")
+        a = Adresse.objects.create(entreprise=self.ent, client=c, ligne1="120, rue des Essais", ville="Ste-Adèle")
+        with mock.patch.object(geocodage, "_requete", return_value=MONTREAL):
+            geocoder_maintenant(a)
+        a.refresh_from_db()
+        self.assertEqual(a.position_precision, "ville")
+        self.assertTrue(a.position_a_verifier)
+        self.assertAlmostEqual(a.latitude, 45.9502)            # pas à Montréal

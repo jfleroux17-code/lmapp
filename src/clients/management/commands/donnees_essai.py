@@ -9,6 +9,7 @@ Refuse de s'exécuter en prod (LMAPP_ENV=prod). Aucune donnée réelle :
 Utilisation : docker compose run --rm app python manage.py donnees_essai
 """
 from datetime import date, datetime
+from decimal import Decimal
 
 from django.conf import settings
 from django.contrib.gis.geos import Point
@@ -17,7 +18,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from clients.models import Adresse, Client, Secteur
-from core.models import Entreprise
+from core.models import Entreprise, VilleDesservie
 
 ENTREPRISE = {
     "slug": "essai",
@@ -31,19 +32,22 @@ ENTREPRISE = {
     "interac_instructions": "Virement Interac à paiement@example.com (dépôt automatique, aucune question). Indiquez votre numéro de facture.",
 }
 
-SECTEURS = [("Sainte-Adèle, village", 1), ("Mont-Rolland", 2), ("Val-David", 3)]
+SECTEURS = [("Village", 1), ("Mont-Rolland", 2), ("Chantecler", 3)]
+
+# Ville desservie et sa zone (centre approximatif de Sainte-Adèle, rayon 8 km)
+VILLE = ("Sainte-Adèle", -74.1313, 45.9502, "8.0")
 
 # (prénom, nom, organisation, cellulaire, courriel, statut, paiement, canal, consentement, désabonné, secteur, adresses)
 # adresses : liste de (ligne1, ville, code postal, longitude, latitude, rang)
 CLIENTS = [
     ("Ginette", "Tremblay", "", "450 555-0101", "ginette.tremblay@example.com", "actif", "comptant", "texto", True, False,
-     "Sainte-Adèle, village", [("120, rue des Essais", "Sainte-Adèle", "J8B 1A1", -74.1338, 45.9502, 1)]),
+     "Village", [("120, rue des Essais", "Sainte-Adèle", "J8B 1A1", -74.1338, 45.9502, 1)]),
     ("Réjean", "Gagnon", "", "450 555-0102", "", "actif", "comptant", "texto", False, False,
-     "Sainte-Adèle, village", [("134, rue des Essais", "Sainte-Adèle", "J8B 1A1", -74.1329, 45.9508, 2)]),
+     "Village", [("134, rue des Essais", "Sainte-Adèle", "J8B 1A1", -74.1329, 45.9508, 2)]),
     ("Sylvie", "Roy", "", "450 555-0103", "sylvie.roy@example.com", "actif", "interac", "les_deux", True, False,
-     "Sainte-Adèle, village", [("8, montée Fictive", "Sainte-Adèle", "J8B 1A2", -74.1302, 45.9531, 3)]),
+     "Village", [("8, montée Fictive", "Sainte-Adèle", "J8B 1A2", -74.1302, 45.9531, 3)]),
     ("Marcel", "Côté", "", "450 555-0104", "marcel.cote@example.com", "recouvrement", "comptant", "texto", False, False,
-     "Sainte-Adèle, village", [("45, chemin de l'Exemple", "Sainte-Adèle", "J8B 1A3", -74.1275, 45.9550, 4)]),
+     "Village", [("45, chemin de l'Exemple", "Sainte-Adèle", "J8B 1A3", -74.1275, 45.9550, 4)]),
     ("Nathalie", "Bouchard", "", "450 555-0105", "nathalie.bouchard@example.com", "actif", "interac", "courriel", True, True,
      "Mont-Rolland", [("210, rue du Modèle", "Sainte-Adèle", "J8B 1B1", -74.1100, 45.9655, 1)]),
     ("Pierre", "Lavoie", "", "450 555-0106", "pierre.lavoie@example.com", "actif", "cheque", "texto", False, False,
@@ -51,23 +55,38 @@ CLIENTS = [
     ("", "Fortin", "Syndicat de copropriété Les Sapins fictifs", "450 555-0107", "gestion.sapins@example.com", "actif", "interac", "courriel", False, False,
      "Mont-Rolland", [("300, boulevard Imaginaire", "Sainte-Adèle", "J8B 1B2", -74.1050, 45.9680, 3)]),
     ("Luc", "Pelletier", "", "450 555-0108", "luc.pelletier@example.com", "actif", "comptant", "texto", True, False,
-     "Val-David", [("2, rue de la Démo", "Val-David", "J0T 2N0", -74.2070, 46.0300, 1),
-                   ("4, rue de la Démo", "Val-David", "J0T 2N0", -74.2066, 46.0303, 2)]),
+     "Chantecler", [("2, rue de la Démo", "Sainte-Adèle", "J8B 1C1", -74.1620, 45.9405, 1),
+                    ("4, rue de la Démo", "Sainte-Adèle", "J8B 1C1", -74.1616, 45.9408, 2)]),
     ("Francine", "Morin", "", "450 555-0109", "", "inactif", "comptant", "texto", False, False,
-     "Val-David", [("55, chemin du Test", "Val-David", "J0T 2N0", -74.2120, 46.0350, 3)]),
+     "Chantecler", [("55, chemin du Test", "Sainte-Adèle", "J8B 1C2", -74.1680, 45.9370, 3)]),
     ("Gaston", "Bélanger", "", "450 555-0110", "", "liste_noire", "comptant", "texto", False, False,
-     "Val-David", [("9, rang Fictif", "Val-David", "J0T 2N0", None, None, None)]),
+     "Chantecler", [("9, rang Fictif", "Sainte-Adèle", "J8B 1C3", None, None, None)]),
 ]
 
 
 class Command(BaseCommand):
     help = "Crée l'entreprise fictive « Déneigement Essai » et ses clients (environnement de test seulement)."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--reinitialiser", action="store_true",
+            help="Effacer d'abord l'entreprise d'essai et toutes ses données (test seulement).",
+        )
+
     def handle(self, *args, **options):
         if settings.LMAPP_ENV == "prod":
             raise CommandError("Refusé : LMAPP_ENV=prod. Les données d'essai ne vont jamais en prod.")
 
         with transaction.atomic():
+            if options["reinitialiser"]:
+                ancienne = Entreprise.objects.filter(slug=ENTREPRISE["slug"]).first()
+                if ancienne is not None:
+                    # Ordre imposé par les clés protégées : adresses, clients, secteurs, puis l'entreprise
+                    Adresse.objects.filter(entreprise=ancienne).delete()
+                    Client.objects.filter(entreprise=ancienne).delete()
+                    Secteur.objects.filter(entreprise=ancienne).delete()
+                    ancienne.delete()
+                    self.stdout.write(f"Entreprise d'essai « {ancienne} » effacée.")
             ent, creee = Entreprise.objects.get_or_create(slug=ENTREPRISE["slug"], defaults=ENTREPRISE)
             if not creee:
                 self.stdout.write(f"L'entreprise « {ent} » existe déjà : rien n'est ajouté.")
@@ -75,6 +94,8 @@ class Command(BaseCommand):
             ent.full_clean()
             ent.save()
 
+            nom_ville, lon, lat, rayon = VILLE
+            VilleDesservie.objects.create(entreprise=ent, nom=nom_ville, centre=Point(lon, lat, srid=4326), rayon_km=Decimal(rayon), par_defaut=True)
             secteurs = {nom: Secteur.objects.create(entreprise=ent, nom=nom, ordre=o) for nom, o in SECTEURS}
 
             for (prenom, nom, org, cell, courriel, statut, paiement, canal, consent, desabonne, secteur, adresses) in CLIENTS:
@@ -115,6 +136,6 @@ class Command(BaseCommand):
             )
 
         self.stdout.write(self.style.SUCCESS(
-            f"« {ent} » créée : {len(secteurs)} secteurs, {Client.objects.filter(entreprise=ent).count()} clients, "
+            f"« {ent} » créée : ville desservie {nom_ville}, {len(secteurs)} secteurs, {Client.objects.filter(entreprise=ent).count()} clients, "
             f"{Adresse.objects.filter(entreprise=ent).count()} adresses."
         ))

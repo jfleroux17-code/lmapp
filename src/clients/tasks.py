@@ -7,6 +7,7 @@ from procrastinate.contrib.django import app
 
 from clients import geocodage
 from clients.models import Adresse
+from core.models import VilleDesservie
 
 log = logging.getLogger(__name__)
 
@@ -15,7 +16,9 @@ def geocoder_maintenant(adresse):
     """Géocode une adresse et l'enregistre. Ne touche jamais une position manuelle ou GPS."""
     if adresse.position_source in (Adresse.SourcePosition.MANUELLE, Adresse.SourcePosition.GPS):
         return "ignorée (position manuelle)"
-    r = geocodage.geocoder(adresse.ligne1, adresse.ville, adresse.province, adresse.code_postal)
+    ville = VilleDesservie.pour(adresse.entreprise_id, adresse.ville)
+    zone = ville.zone() if ville else None
+    r = geocodage.geocoder(adresse.ligne1, adresse.ville, adresse.province, adresse.code_postal, zone=zone)
     if r is None:
         adresse.position = None
         adresse.position_source = ""
@@ -25,7 +28,8 @@ def geocoder_maintenant(adresse):
         adresse.position = Point(r.longitude, r.latitude, srid=4326)
         adresse.position_source = Adresse.SourcePosition.GEOCODAGE
         adresse.position_precision = r.precision
-        adresse.geocodage_note = r.libelle[:300]
+        note = r.libelle if ville else f"Ville non desservie par l'entreprise. {r.libelle}"
+        adresse.geocodage_note = note[:300]
     # update_fields : ne pas relancer le géocodage (voir signals.py) ni écraser d'autres champs
     adresse.save(update_fields=["position", "position_source", "position_precision", "geocodage_note", "modifie_le"])
     return adresse.get_position_precision_display()

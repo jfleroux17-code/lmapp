@@ -11,6 +11,7 @@ NOMINATIM_URL permet de passer plus tard à un Nominatim installé sur ld1.
 """
 import json
 import logging
+import math
 import os
 import threading
 import time
@@ -88,24 +89,70 @@ def _rue_sans_unite(ligne1):
     return " ".join(ligne1.replace(",", " ").split())
 
 
-def geocoder(ligne1, ville, province="QC", code_postal=""):
-    """Retourne un Resultat, ou None si l'adresse est introuvable même à la ville.
+@dataclass(frozen=True)
+class Zone:
+    """Zone de service d'une ville desservie : centre et rayon en kilomètres."""
+
+    latitude: float
+    longitude: float
+    rayon_km: float
+
+    def boite(self):
+        """Boîte englobante pour le paramètre viewbox de Nominatim (gauche, haut, droite, bas)."""
+        dlat = self.rayon_km / 111.0
+        dlon = self.rayon_km / (111.0 * math.cos(math.radians(self.latitude)))
+        return f"{self.longitude - dlon:.5f},{self.latitude + dlat:.5f},{self.longitude + dlon:.5f},{self.latitude - dlat:.5f}"
+
+    def distance_km(self, latitude, longitude):
+        """Distance à vol d'oiseau (formule de haversine)."""
+        r = 6371.0
+        p1, p2 = math.radians(self.latitude), math.radians(latitude)
+        dp, dl = p2 - p1, math.radians(longitude - self.longitude)
+        a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+        return 2 * r * math.asin(math.sqrt(a))
+
+    def contient(self, latitude, longitude):
+        return self.distance_km(latitude, longitude) <= self.rayon_km
+
+
+def geocoder(ligne1, ville, province="QC", code_postal="", zone=None):
+    """Retourne un Resultat, ou None si l'adresse est introuvable.
+
+    Avec une zone (ville desservie) : la recherche est limitée à la zone, et un
+    résultat qui tombe hors du rayon est rejeté (une rue du même nom dans une
+    autre ville). Sans zone : recherche dans tout le Canada.
 
     Essais, du plus précis au moins précis :
       1. rue et ville (recherche structurée);
-      2. la ville seulement (précision « ville » : à corriger à la main).
+      2. la ville seulement : le centre de la zone si on le connaît (aucune
+         requête), sinon demandé à Nominatim. Précision « ville » : à corriger.
     """
     etat = PROVINCES.get((province or "QC").upper(), province)
-    essais = [
-        {"street": _rue_sans_unite(ligne1), "city": ville, "state": etat, "country": "Canada"},
-        {"city": ville, "state": etat, "country": "Canada"},
-    ]
-    for i, params in enumerate(essais):
-        if not all(params.values()):
-            continue
+    params = {"street": _rue_sans_unite(ligne1), "city": ville, "state": etat, "country": "Canada"}
+    if zone is not None:
+        params.update({"viewbox": zone.boite(), "bounded": 1})
+    if ligne1 and ville:
         reponse = _requete(params)
+        for r in reponse or []:
+            lat, lon = float(r["lat"]), float(r["lon"])
+            if zone is not None and not zone.contient(lat, lon):
+                log.warning("Géocodage : résultat hors zone rejeté (%.1f km du centre) : %s", zone.distance_km(lat, lon), r.get("display_name", ""))
+                continue
+            return Resultat(lat, lon, _precision(r), r.get("display_name", ""))
+    if zone is not None:
+        return Resultat(zone.latitude, zone.longitude, "ville", f"Centre de la zone de {ville} (adresse non trouvée)")
+    if ville:
+        reponse = _requete({"city": ville, "state": etat, "country": "Canada"})
         if reponse:
             r = reponse[0]
-            precision = "ville" if i == 1 else _precision(r)
-            return Resultat(float(r["lat"]), float(r["lon"]), precision, r.get("display_name", ""))
+            return Resultat(float(r["lat"]), float(r["lon"]), "ville", r.get("display_name", ""))
     return None
+
+
+def centre_ville(ville, province="QC"):
+    """Centre d'une ville, pour remplir la zone d'une ville desservie."""
+    etat = PROVINCES.get((province or "QC").upper(), province)
+    reponse = _requete({"city": ville, "state": etat, "country": "Canada"})
+    if not reponse:
+        return None
+    return float(reponse[0]["lat"]), float(reponse[0]["lon"])

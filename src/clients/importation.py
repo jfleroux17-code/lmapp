@@ -14,7 +14,6 @@ Principes :
 import csv
 import io
 import re
-import unicodedata
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
@@ -25,7 +24,9 @@ from django.db import transaction
 from django.utils import timezone
 
 from clients.models import Adresse, Client, Secteur
+from core.models import VilleDesservie
 from core import telephone
+from core.texte import cle, cle_ville
 
 # ---------------------------------------------------------------------------
 # Colonnes du gabarit
@@ -53,7 +54,7 @@ COLONNES = [
     Colonne("courriel", "courriel", "Adresse courriel.", "ginette.tremblay@example.com", "gestion.sapins@example.com"),
     Colonne("adresse", "adresse", "Adresse de service : numéro civique et rue.", "120, rue des Essais", "300, boulevard Imaginaire", obligatoire=True),
     Colonne("adresse_suite", "adresse_suite", "Appartement, unité, etc.", "", ""),
-    Colonne("ville", "ville", "Ville de l'adresse de service.", "Sainte-Adèle", "Sainte-Adèle", obligatoire=True),
+    Colonne("ville", "ville", "Ville de l'adresse de service. Vide : la ville par défaut de l'entreprise (ex. Sainte-Adèle).", "Sainte-Adèle", "Sainte-Adèle"),
     Colonne("code_postal", "code_postal", "Code postal (J8B 1A1 ou j8b1a1).", "J8B 1A1", "J8B 1B2"),
     Colonne("secteur", "secteur", "Secteur ou route. Créé automatiquement s'il n'existe pas.", "Village", "Mont-Rolland"),
     Colonne("rang_tournee", "rang_tournee", "Rang de l'arrêt dans l'ordre habituel de la tournée (1, 2, 3...).", "1", "3"),
@@ -100,11 +101,7 @@ ALIAS = {
 # ---------------------------------------------------------------------------
 
 
-def _cle(texte):
-    """« Prénom » -> prenom, « Rang tournée » -> rang_tournee."""
-    t = unicodedata.normalize("NFKD", str(texte or "")).encode("ascii", "ignore").decode()
-    t = re.sub(r"[^a-z0-9]+", "_", t.lower()).strip("_")
-    return t
+_cle = cle  # « Prénom » -> prenom, « Rang tournée » -> rang_tournee
 
 
 _OUI = {"oui", "o", "x", "1", "vrai", "yes", "y", "true"}
@@ -343,6 +340,8 @@ def analyser(fichier, entreprise):
 
     secteurs_existants = {_cle(s.nom): s.nom for s in Secteur.objects.filter(entreprise=entreprise)}
     secteurs_nouveaux = {}
+    ville_defaut = VilleDesservie.par_defaut_de(entreprise.pk)
+    villes_servies = {cle_ville(v.nom): v.nom for v in VilleDesservie.objects.filter(entreprise=entreprise)}
     cellulaires_base = set(Client.objects.filter(entreprise=entreprise).exclude(cellulaire="").values_list("cellulaire", flat=True))
     adresses_base = {_cle_adresse(a, v) for a, v in Adresse.objects.filter(entreprise=entreprise).values_list("ligne1", "ville")}
 
@@ -392,8 +391,16 @@ def analyser(fichier, entreprise):
             l.erreurs.extend(_messages(e))
 
         # Adresse de service
+        ville = g("ville")
+        if not ville and ville_defaut:
+            ville = ville_defaut.nom
+        elif ville and villes_servies:
+            if cle_ville(ville) in villes_servies:
+                ville = villes_servies[cle_ville(ville)]  # même graphie que la fiche (accents, majuscules)
+            else:
+                l.avertissements.append(f"ville « {ville} » non desservie (villes : {', '.join(villes_servies.values())})")
         adresse = Adresse(
-            entreprise=entreprise, ligne1=g("adresse"), ligne2=g("adresse_suite"), ville=g("ville"), code_postal=g("code_postal"),
+            entreprise=entreprise, ligne1=g("adresse"), ligne2=g("adresse_suite"), ville=ville, code_postal=g("code_postal"),
             ordre_tournee=conv.get("rang_tournee"), ou_mettre_neige=g("ou_mettre_neige"), obstacles=g("obstacles"),
             borne_fontaine=bool(conv.get("borne_fontaine")), entree_en_pente=bool(conv.get("entree_en_pente")), consignes=g("consignes"),
         )
