@@ -39,7 +39,7 @@ Mise à jour : 7 novembre 2026.
 - [x] Dépôt GitHub branché dans le Projet Claude de JF (`PRD.md`, `CLAUDE.md`, `TACHES.md`). Après un envoi, synchroniser la source GitHub dans le projet pour voir la dernière version.
 - [x] Sauvegardes hors de la VM : COVE, toutes les 12 heures (décision du 7 novembre 2026).
 - [x] Heures de COVE inconnues : la base est sauvegardée toutes les 12 heures (3 h 30 et 15 h 30), COVE emporte toujours une copie de moins de 12 heures.
-- [ ] Vérifier que COVE inclut `/srv/lmapp/sauvegardes/` : l'agent COVE tourne sur ld1 (`/opt/MXB`), il sauvegarde donc des dossiers choisis. Lecture seule : `sudo /opt/MXB/bin/ClientTool control.selection.list` (et `control.schedule.list` pour ses heures).
+- [x] COVE inclut `/srv/lmapp/sauvegardes/` : sélection `/` au complet (vérifié le 7 novembre 2026, `sudo /opt/MXB/bin/ClientTool control.selection.list`). La copie brute de `/var/lib/docker` (base en marche) n'est pas fiable pour restaurer : toujours repartir des fichiers `.dump`.
 - [ ] Trancher les fonctionnalités V1 dans le catalogue du PRD (section 5), au besoin.
 
 ## Louis
