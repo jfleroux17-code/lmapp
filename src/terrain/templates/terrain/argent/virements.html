@@ -1,0 +1,61 @@
+{% extends "terrain/base.html" %}
+{% load argent %}
+{% block titre %}Virements Interac{% endblock %}
+{% block contenu %}
+<a href="{% url 'terrain:comptes' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Comptes</a>
+<h1 class="mb-1 text-2xl font-bold">Virements Interac</h1>
+<p class="mb-4 text-gray-400">Lus dans les avis d'Interac. Rien n'est enregistré sans votre confirmation.</p>
+
+{% for v in a_confirmer %}
+  <div class="carte mb-4 p-4">
+    <div class="mb-1 flex items-start justify-between gap-3">
+      <span class="text-2xl font-bold text-ok">{{ v.montant|argent }}</span>
+      <span class="text-sm text-gray-400">{{ v.recu_le|date:"j F, H \h i" }}</span>
+    </div>
+    <div class="font-semibold">{{ v.envoyeur|default:"Envoyeur inconnu" }}</div>
+    {% if v.message_envoyeur %}<div class="text-gray-300">« {{ v.message_envoyeur }} »</div>{% endif %}
+    {% if v.reference %}<div class="text-sm text-gray-400">Référence {{ v.reference }}</div>{% endif %}
+    {% if ecriture %}
+      {% if v.facture %}
+        <form method="post" action="{% url 'terrain:virement' v.pk %}" class="mt-4" x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+          <input type="hidden" name="facture" value="{{ v.facture.pk }}">
+          <button class="gros-bouton bg-accent text-nuit" :class="{ 'opacity-60': envoi }">Enregistrer : {{ v.facture.client.nom_affiche }}</button>
+          <p class="mt-1 text-center text-sm text-gray-400">{{ v.facture }} · {{ v.raison }}</p>
+        </form>
+      {% else %}
+        <p class="mt-3 text-sm text-gray-400">Aucune facture ne correspond : choisissez-la.</p>
+      {% endif %}
+      <details class="mt-3">
+        <summary class="flex min-h-12 cursor-pointer items-center text-accent">{% if v.facture %}Une autre facture{% else %}Choisir la facture{% endif %}</summary>
+        <form method="post" action="{% url 'terrain:virement' v.pk %}" class="mt-2 space-y-3" x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+          <select name="facture" required class="min-h-14 w-full rounded-xl border-2 border-bordure bg-nuit px-3 text-lg">
+            <option value="">Facture…</option>
+            {% for f in dues %}<option value="{{ f.pk }}">{{ f.client.nom_affiche }} : {{ f }} ({{ f.solde_du|argent }})</option>{% endfor %}
+          </select>
+          <button class="gros-bouton border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">Enregistrer sur cette facture</button>
+        </form>
+        <form method="post" action="{% url 'terrain:virement' v.pk %}" class="mt-3" @submit="if (!confirm('Ignorer ce virement? (déjà enregistré à la main, ou pas pour un client)')) $event.preventDefault()">{% csrf_token %}
+          <button name="action" value="ignorer" class="gros-bouton border-2 border-bordure text-gray-300">Ignorer</button>
+        </form>
+      </details>
+    {% endif %}
+  </div>
+{% empty %}
+  <p class="carte mb-4 p-4 text-gray-400">Aucun virement à confirmer.</p>
+{% endfor %}
+
+{% if traites %}
+  <h2 class="mb-2 text-lg font-bold">Déjà traités</h2>
+  <div class="carte divide-y divide-bordure">
+    {% for v in traites %}
+      <div class="flex items-start justify-between gap-3 p-4">
+        <div class="min-w-0">
+          <div class="truncate font-semibold">{{ v.envoyeur|default:"Envoyeur inconnu" }}</div>
+          <div class="text-sm text-gray-400">{{ v.recu_le|date:"j F" }}{% if v.client %} · {{ v.client.nom_affiche }}{% endif %}{% for p in v.paiements.all %} · {{ p.facture }}{% endfor %}</div>
+        </div>
+        <div class="text-right"><div class="font-bold">{{ v.montant|argent }}</div><div class="text-sm {% if v.statut == 'enregistre' %}text-ok{% else %}text-gray-400{% endif %}">{{ v.get_statut_display }}</div></div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

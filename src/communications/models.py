@@ -20,6 +20,7 @@ class Genre(models.TextChoices):
     RELANCE_2 = "relance_2", "Deuxième avis"
     RELANCE_3 = "relance_3", "Dernier avis"
     RECU = "recu", "Message reçu"
+    INTERAC = "interac", "Avis de virement Interac"
 
 
 RELANCES = [Genre.RELANCE_1, Genre.RELANCE_2, Genre.RELANCE_3]
@@ -118,10 +119,12 @@ class Message(Horodate):
 
 
 class EtatBoite(models.Model):
-    """Où en est la lecture de la boîte IMAP d'une entreprise (E5) : dernier UID traité.
-    On ne marque ni ne déplace rien dans la boîte : Louis peut la lire ailleurs."""
-    entreprise = models.OneToOneField(Entreprise, on_delete=models.CASCADE, related_name="etat_boite")
+    """Où en est la lecture d'un dossier IMAP d'une entreprise (E5) : dernier UID archivé et traité.
+    Les courriels jusqu'à `uid_depart` (déjà là à la première lecture) sont archivés sans être traités."""
+    entreprise = models.ForeignKey(Entreprise, on_delete=models.CASCADE, related_name="etats_boite")
+    dossier = models.CharField(max_length=100, default="INBOX")
     uidvalidite = models.BigIntegerField(default=0)
+    uid_depart = models.BigIntegerField(default=0)
     dernier_uid = models.BigIntegerField(default=0)
     lue_le = models.DateTimeField(null=True, blank=True)
     erreur = models.CharField(max_length=300, blank=True)
@@ -129,6 +132,50 @@ class EtatBoite(models.Model):
     class Meta:
         verbose_name = "état de la boîte courriel"
         verbose_name_plural = "états de la boîte courriel"
+        constraints = [models.UniqueConstraint(fields=["entreprise", "dossier"], name="un_etat_par_dossier")]
 
     def __str__(self):
-        return f"Boîte de {self.entreprise}"
+        return f"{self.dossier} de {self.entreprise}"
+
+
+class ArchiveCourriel(models.Model):
+    """Copie intégrale (compressée) d'un courriel de la boîte, gardée avant de l'effacer du serveur.
+
+    Les boîtes de ledeneigeur.com sont limitées à 2 Go : l'app archive chaque courriel reçu ou envoyé,
+    puis l'efface de la boîte après COURRIEL_GARDER_JOURS jours. L'archive est la seule copie ensuite :
+    elle est dans la base, donc dans les sauvegardes."""
+    entreprise = models.ForeignKey(Entreprise, on_delete=models.PROTECT, related_name="archives_courriel")
+    dossier = models.CharField(max_length=100)
+    uidvalidite = models.BigIntegerField()
+    uid = models.BigIntegerField()
+    entete_message_id = models.CharField("Message-ID", max_length=300, blank=True)
+    expediteur = models.CharField("expéditeur", max_length=254, blank=True)
+    destinataires = models.CharField(max_length=500, blank=True)
+    sujet = models.CharField(max_length=200, blank=True)
+    date = models.DateTimeField(null=True, blank=True)
+    taille = models.PositiveIntegerField(help_text="Octets, avant compression.")
+    empreinte = models.CharField("SHA-256", max_length=64)
+    brut = models.BinaryField(help_text="Courriel complet (RFC 822), compressé (zlib).")
+    message = models.ForeignKey(Message, on_delete=models.SET_NULL, null=True, blank=True, related_name="archives")
+    archive_le = models.DateTimeField(auto_now_add=True)
+    efface_le = models.DateTimeField("effacé de la boîte le", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "courriel archivé"
+        verbose_name_plural = "courriels archivés"
+        ordering = ["-archive_le"]
+        constraints = [models.UniqueConstraint(fields=["entreprise", "dossier", "uidvalidite", "uid"], name="un_courriel_archive_une_fois")]
+        indexes = [models.Index(fields=["entreprise", "dossier", "efface_le", "archive_le"], name="archive_a_effacer")]
+
+    def __str__(self):
+        return self.sujet or self.entete_message_id
+
+    def octets(self):
+        """Le courriel d'origine, vérifié par son empreinte."""
+        import hashlib
+        import zlib
+
+        o = zlib.decompress(bytes(self.brut))
+        if hashlib.sha256(o).hexdigest() != self.empreinte:
+            raise ValueError(f"Archive {self.pk} abîmée (empreinte différente).")
+        return o

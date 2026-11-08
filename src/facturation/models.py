@@ -410,3 +410,38 @@ class Paiement(Horodate):
         deja = f.paiements.exclude(pk=self.pk).aggregate(s=Sum("montant"))["s"] or ZERO
         if self.montant is not None and self.montant > f.total - deja:
             raise ValidationError({"montant": f"Plus que le solde de la facture ({f.total - deja} $)."})
+
+
+class VirementInterac(Horodate):
+    """Avis de virement Interac reçu par courriel (PRD D5) : l'app propose la facture, Louis confirme
+    d'une tape. Jamais enregistré tout seul (appariement semi-automatique, PRD section 6)."""
+
+    class Statut(models.TextChoices):
+        A_TRAITER = "a_traiter", "À confirmer"
+        ENREGISTRE = "enregistre", "Enregistré"
+        IGNORE = "ignore", "Ignoré"
+
+    entreprise = models.ForeignKey(Entreprise, on_delete=models.PROTECT, related_name="virements")
+    recu_le = models.DateTimeField("reçu le")
+    montant = _argent("montant")
+    envoyeur = models.CharField("envoyé par", max_length=150, blank=True)
+    message_envoyeur = models.CharField("message de l'envoyeur", max_length=400, blank=True)
+    reference = models.CharField("référence Interac", max_length=60, blank=True)
+    courriel = models.ForeignKey("communications.Message", on_delete=models.SET_NULL, null=True, blank=True, related_name="virements")
+    client = models.ForeignKey(Client, on_delete=models.SET_NULL, null=True, blank=True, related_name="virements",
+                               help_text="Client proposé (ou choisi).")
+    facture = models.ForeignKey(Facture, on_delete=models.SET_NULL, null=True, blank=True, related_name="virements",
+                                help_text="Facture proposée (ou choisie).")
+    raison = models.CharField("pourquoi cette facture", max_length=200, blank=True)
+    statut = models.CharField(max_length=10, choices=Statut.choices, default=Statut.A_TRAITER)
+    paiements = models.ManyToManyField(Paiement, blank=True, related_name="virements")
+
+    class Meta:
+        verbose_name = "virement Interac"
+        verbose_name_plural = "virements Interac"
+        ordering = ["-recu_le"]
+        constraints = [models.UniqueConstraint(fields=["entreprise", "reference"], condition=~models.Q(reference=""),
+                                               name="un_virement_par_reference")]
+
+    def __str__(self):
+        return f"{self.montant} $ de {self.envoyeur or '?'}"

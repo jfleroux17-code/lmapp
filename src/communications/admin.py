@@ -1,6 +1,8 @@
 from django.contrib import admin
 
-from communications.models import GABARITS_PAR_DEFAUT, EtatBoite, Gabarit, Message
+from django.http import HttpResponse
+
+from communications.models import GABARITS_PAR_DEFAUT, ArchiveCourriel, EtatBoite, Gabarit, Message
 
 
 @admin.register(Gabarit)
@@ -26,5 +28,35 @@ class MessageAdmin(admin.ModelAdmin):
 
 @admin.register(EtatBoite)
 class EtatBoiteAdmin(admin.ModelAdmin):
-    list_display = ["entreprise", "dernier_uid", "lue_le", "erreur"]
+    list_display = ["entreprise", "dossier", "dernier_uid", "uid_depart", "lue_le", "erreur"]
     readonly_fields = ["uidvalidite", "lue_le", "erreur"]
+
+
+@admin.register(ArchiveCourriel)
+class ArchiveCourrielAdmin(admin.ModelAdmin):
+    """Seule copie d'un courriel effacé de la boîte : consultation et téléchargement, jamais de modification."""
+    list_display = ["archive_le", "dossier", "expediteur", "destinataires", "sujet", "taille", "efface_le"]
+    list_filter = ["entreprise", "dossier", ("efface_le", admin.EmptyFieldListFilter)]
+    search_fields = ["expediteur", "destinataires", "sujet", "entete_message_id"]
+    exclude = ["brut"]
+    readonly_fields = [f.name for f in ArchiveCourriel._meta.fields if f.name != "brut"]
+    actions = ["telecharger"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    @admin.action(description="Télécharger le courriel (.eml, un seul à la fois)")
+    def telecharger(self, request, queryset):
+        if queryset.count() != 1:
+            self.message_user(request, "Choisir un seul courriel.", level="error")
+            return None
+        a = queryset.get()
+        r = HttpResponse(a.octets(), content_type="message/rfc822")
+        r["Content-Disposition"] = f'attachment; filename="courriel-{a.pk}.eml"'
+        return r

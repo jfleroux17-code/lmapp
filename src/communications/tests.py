@@ -1,4 +1,5 @@
 import base64
+import hashlib
 from datetime import date, timedelta
 from decimal import Decimal as D
 import io
@@ -469,6 +470,53 @@ class RelanceTests(TestCase):
         self.assertIn("Les 2 factures sont jointes", e.get_body(("html",)).get_content())
 
 
+class FauxImap:
+    """Serveur IMAP simulé : dossiers {nom: {uid: octets}}, garde la trace de ce qui est effacé."""
+    capabilities = ("IMAP4REV1", "UIDPLUS")
+
+    def __init__(self, dossiers):
+        self.dossiers, self.effaces, self.courant, self.marques = dossiers, [], None, set()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def login(self, u, p):
+        assert (u, p) == ("louis@exemple.test", "secret")
+
+    def select(self, dossier, readonly=False):
+        self.courant = dossier.strip('"')
+        return ("OK", [b"1"]) if self.courant in self.dossiers else ("NO", [b"inconnu"])
+
+    def response(self, code):
+        return code, [b"777"]
+
+    def uid(self, commande, *args):
+        boite = self.dossiers[self.courant]
+        if commande == "search":
+            if args[1] == "ALL":
+                return "OK", [b" ".join(str(u).encode() for u in sorted(boite))]
+            debut = int(args[1].split()[1].split(":")[0])
+            trouves = [u for u in sorted(boite) if u >= debut] or ([max(boite)] if boite else [])
+            return "OK", [b" ".join(str(u).encode() for u in trouves)]
+        if commande == "fetch":
+            assert args[1] == "(BODY.PEEK[])"  # jamais marqué lu
+            return "OK", [(b"1 (UID x BODY[] {n}", boite[int(args[0])]), b")"]
+        if commande == "store":
+            assert args[1:] == ("+FLAGS.SILENT", r"(\Deleted)")
+            self.marques |= {(self.courant, int(u)) for u in args[0].split(",")}
+            return "OK", []
+        if commande == "expunge":
+            for u in args[0].split(","):
+                assert (self.courant, int(u)) in self.marques
+                boite.pop(int(u))
+                self.effaces.append((self.courant, int(u)))
+            return "OK", []
+        raise AssertionError(commande)
+
+
 def _courriel(de="client@example.com", sujet="Re: Facture", corps="Allo", **entetes):
     from email.message import EmailMessage
     e = EmailMessage()
@@ -476,12 +524,14 @@ def _courriel(de="client@example.com", sujet="Re: Facture", corps="Allo", **ente
     e["Message-ID"] = entetes.pop("mid", f"<{abs(hash((de, sujet, corps)))}@exemple.com>")
     e["Date"] = "Sun, 08 Nov 2026 15:42:12 -0500"
     for k, v in entetes.items():
+        del e[k.replace("_", "-")]
         e[k.replace("_", "-")] = v
     e.set_content(corps)
     return e
 
 
-@override_settings(ALLOWED_HOSTS=["*"], IMAP_HOTE="imap.exemple.test", IMAP_UTILISATEUR="louis@exemple.test", IMAP_MOT_DE_PASSE="secret")
+@override_settings(ALLOWED_HOSTS=["*"], IMAP_HOTE="imap.exemple.test", IMAP_UTILISATEUR="louis@exemple.test", IMAP_MOT_DE_PASSE="secret",
+                   IMAP_DOSSIER_ENVOYES="INBOX.Sent", COURRIEL_GARDER_JOURS=30)
 class ReceptionTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -537,39 +587,53 @@ class ReceptionTests(TestCase):
         self.assertEqual(parti.erreur, "Courriel revenu : 550 5.1.1 User unknown")
         self.assertFalse(Message.objects.filter(sens="entrant").exists())
 
-    def test_lecture_imap_sans_historique_puis_nouveaux(self):
+    def test_lecture_archive_traite_puis_efface(self):
+        from django.utils import timezone
         from communications import lecture
-        from communications.models import EtatBoite
-        boite = {1: _courriel(corps="vieux").as_bytes(), 2: _courriel(corps="vieux 2").as_bytes()}
-
-        class FauxImap:
-            def __init__(s, *a, **k): pass
-            def __enter__(s): return s
-            def __exit__(s, *a): return False
-            def login(s, u, p): assert (u, p) == ("louis@exemple.test", "secret")
-            def select(s, dossier, readonly=False): assert readonly; return "OK", [b"2"]
-            def response(s, code): return code, [b"777"]
-            def uid(s, commande, *args):
-                if commande == "search":
-                    if args[1] == "ALL":
-                        return "OK", [b" ".join(str(u).encode() for u in boite)]
-                    debut = int(args[1].split()[1].split(":")[0])
-                    return "OK", [b" ".join(str(u).encode() for u in boite if u >= debut) or str(max(boite)).encode()]
-                assert commande == "fetch" and args[1] == "(BODY.PEEK[])"  # jamais marqué lu
-                return "OK", [(b"1 (UID x BODY[] {n}", boite[int(args[0])]), b")"]
-
-        with mock.patch("communications.lecture.imaplib.IMAP4_SSL", FauxImap):
-            self.assertEqual(lecture.lire(self.ent), 0)  # première lecture : on part de maintenant
-            self.assertEqual(EtatBoite.objects.get(entreprise=self.ent).dernier_uid, 2)
-            self.assertEqual(lecture.lire(self.ent), 0)  # rien de neuf (le serveur renvoie le dernier)
-            boite[3] = _courriel(corps="plante").as_bytes()
-            boite[4] = _courriel(corps="Je paie demain").as_bytes()
+        from communications.models import ArchiveCourriel, EtatBoite
+        imap = FauxImap({"INBOX": {1: _courriel(corps="vieux").as_bytes(), 2: _courriel(corps="vieux 2").as_bytes()},
+                         "INBOX.Sent": {7: _courriel(de="louis@exemple.test", corps="envoi de Louis", To="client@example.com").as_bytes()}})
+        with mock.patch("communications.lecture.imaplib.IMAP4_SSL", lambda *a, **k: imap):
+            self.assertEqual(lecture.lire(self.ent), 0)  # première lecture : tout est archivé, rien n'est traité
+            self.assertEqual(ArchiveCourriel.objects.count(), 3)
+            self.assertFalse(Message.objects.exists())
+            self.assertEqual(EtatBoite.objects.get(entreprise=self.ent, dossier="INBOX").uid_depart, 2)
+            imap.dossiers["INBOX"][3] = _courriel(corps="plante").as_bytes()
+            imap.dossiers["INBOX"][4] = _courriel(corps="Je paie demain").as_bytes()
+            imap.dossiers["INBOX.Sent"][8] = _courriel(de="louis@exemple.test", sujet="Prix", corps="C'est 400 $", To="Client@Example.com").as_bytes()
             vrai = lecture.reception.traiter
             with mock.patch("communications.lecture.reception.traiter",
                             side_effect=lambda e, o: (_ for _ in ()).throw(ValueError("illisible")) if b"plante" in o else vrai(e, o)):
-                self.assertEqual(lecture.lire(self.ent), 1)
-        self.assertEqual(EtatBoite.objects.get(entreprise=self.ent).dernier_uid, 4)  # le courriel qui plante ne bloque pas
-        self.assertEqual(Message.objects.get(sens="entrant").contenu, "Je paie demain")
+                self.assertEqual(lecture.lire(self.ent), 2)
+        self.assertEqual(ArchiveCourriel.objects.count(), 6)  # le courriel qui plante est archivé quand même
+        recu = Message.objects.get(sens="entrant")
+        self.assertEqual(recu.contenu, "Je paie demain")
+        self.assertEqual(ArchiveCourriel.objects.get(message=recu).octets(), imap.dossiers["INBOX"][4])
+        envoi_louis = Message.objects.get(sens="sortant")
+        self.assertEqual((envoi_louis.client, envoi_louis.statut, envoi_louis.contenu), (self.c, "envoye", "C'est 400 $"))
+        self.assertEqual(imap.effaces, [])  # trop récents : rien d'effacé
+        # 31 jours plus tard : effacés de la boîte, sauf une archive abîmée
+        ArchiveCourriel.objects.update(archive_le=timezone.now() - timedelta(days=31))
+        abimee = ArchiveCourriel.objects.get(dossier="INBOX", uid=1)
+        ArchiveCourriel.objects.filter(pk=abimee.pk).update(empreinte="0" * 64)
+        with mock.patch("communications.lecture.imaplib.IMAP4_SSL", lambda *a, **k: imap):
+            lecture.lire(self.ent)
+        self.assertEqual(sorted(imap.effaces), [("INBOX", 2), ("INBOX", 3), ("INBOX", 4), ("INBOX.Sent", 7), ("INBOX.Sent", 8)])
+        self.assertIsNone(ArchiveCourriel.objects.get(pk=abimee.pk).efface_le)
+        self.assertEqual(ArchiveCourriel.objects.exclude(efface_le=None).count(), 5)
+        # Archive réparée, mais effacement désactivé (-1) : le courriel 1 reste dans la boîte
+        ArchiveCourriel.objects.filter(pk=abimee.pk).update(empreinte=hashlib.sha256(imap.dossiers["INBOX"][1]).hexdigest())
+        with override_settings(COURRIEL_GARDER_JOURS=-1), mock.patch("communications.lecture.imaplib.IMAP4_SSL", lambda *a, **k: imap):
+            lecture.lire(self.ent)
+        self.assertIn(1, imap.dossiers["INBOX"])
+
+    def test_copie_de_nos_envois_rattachee(self):
+        from communications import reception
+        parti = Message.objects.create(entreprise=self.ent, client=self.c, genre="facture", canal="courriel",
+                                       destinataire="client@example.com", contenu="x", statut="envoye")
+        copie = _courriel(de="louis@exemple.test", mid=f"<1794.1.5.lmapp{parti.pk}@exemple.test>")
+        self.assertEqual(reception.traiter_envoye(self.ent, copie.as_bytes()), parti)
+        self.assertEqual(Message.objects.count(), 1)
 
     def test_tache_en_prod_seulement(self):
         from communications.tasks import lire_boite_aux_2_minutes

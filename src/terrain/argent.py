@@ -285,3 +285,43 @@ def relancer(request, client_pk):
         if m not in partis:
             messages.error(request, f"{m.get_canal_display()} pas envoyé : {m.erreur}")
     return redirect("terrain:fiche", pk=client.pk)
+
+
+@membre_requis
+def virements(request):
+    """Virements Interac reçus (D5) : à confirmer d'une tape, facture proposée par l'app."""
+    from facturation.models import VirementInterac
+
+    qs = VirementInterac.objects.filter(entreprise=request.entreprise).select_related("client", "facture", "courriel")
+    a_confirmer = list(qs.filter(statut=VirementInterac.Statut.A_TRAITER).order_by("recu_le"))
+    dues = list(Facture.objects.filter(entreprise=request.entreprise).a_recevoir().select_related("client")
+                .order_by("client__nom", "date_facture"))
+    return render(request, "terrain/argent/virements.html", {
+        "a_confirmer": a_confirmer, "dues": dues, "ecriture": peut_ecrire(request),
+        "traites": qs.exclude(statut=VirementInterac.Statut.A_TRAITER).prefetch_related("paiements__facture")[:20],
+    })
+
+
+@require_POST
+@ecriture_requise
+def virement(request, pk):
+    from facturation import interac
+    from facturation.models import VirementInterac
+    from facturation.templatetags.argent import argent
+
+    v = get_object_or_404(VirementInterac, pk=pk, entreprise=request.entreprise)
+    if request.POST.get("action") == "ignorer":
+        if v.statut == VirementInterac.Statut.A_TRAITER:
+            v.statut = VirementInterac.Statut.IGNORE
+            v.save(update_fields=["statut", "modifie_le"])
+            messages.info(request, f"Virement de {argent(v.montant)} ignoré.")
+        return redirect("terrain:virements")
+    f = get_object_or_404(Facture, pk=request.POST.get("facture") or 0, entreprise=request.entreprise)
+    try:
+        faits = interac.enregistrer(v, f)
+    except ValidationError as e:
+        messages.error(request, " ".join(e.messages))
+        return redirect("terrain:virements")
+    detail = ", ".join(f"{argent(p.montant)} sur {p.facture}" for p in faits)
+    messages.success(request, f"Virement de {argent(v.montant)} enregistré pour {f.client.nom_affiche} : {detail}.")
+    return redirect("terrain:virements")

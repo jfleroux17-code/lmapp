@@ -51,6 +51,9 @@ COURRIEL_HELO = env("COURRIEL_HELO", "ld1.ledeneigeur.com")  # nom donné au ser
 # Lecture de la boîte (E5) : en prod seulement par défaut, pour que les vrais courriels des clients
 # n'aillent jamais dans la base de test.
 COURRIEL_LECTURE_ACTIVE = env_bool("COURRIEL_LECTURE_ACTIVE", LMAPP_ENV == "prod")
+# Boîtes limitées à 2 Go : chaque courriel est archivé dans la base, puis effacé de la boîte (réception et
+# envoyés) après ce nombre de jours. Négatif : on n'efface jamais.
+COURRIEL_GARDER_JOURS = int(env("COURRIEL_GARDER_JOURS", "30"))
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env_bool("DJANGO_DEBUG", False)

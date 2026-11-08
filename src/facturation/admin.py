@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.urls import reverse
 from django.utils.html import format_html
 
-from facturation.models import Contrat, Facture, LigneFacture, Paiement, Saison, Service, Versement
+from facturation.models import Contrat, Facture, LigneFacture, Paiement, Saison, Service, Versement, VirementInterac
 
 
 @admin.register(Saison)
@@ -158,3 +158,11 @@ class PaiementAdmin(admin.ModelAdmin):
     list_filter = ["entreprise", "mode"]
     search_fields = ["facture__numero", "facture__client__nom", "reference"]
     autocomplete_fields = ["facture"]
+
+
+@admin.register(VirementInterac)
+class VirementInteracAdmin(admin.ModelAdmin):
+    list_display = ["recu_le", "montant", "envoyeur", "client", "facture", "statut"]
+    list_filter = ["entreprise", "statut"]
+    search_fields = ["envoyeur", "message_envoyeur", "reference"]
+    readonly_fields = ["courriel", "paiements"]

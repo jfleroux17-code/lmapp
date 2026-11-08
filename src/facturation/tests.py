@@ -265,3 +265,117 @@ class VersementsDusTests(TestCase):
         self.assertEqual((v1.facture.statut, v1.facture.total), ("brouillon", D("229.95")))
         self.assertEqual(facturer_versements_dus(date(2026, 12, 2)), 0)  # relançable
         self.assertEqual(facturer_versements_dus(date(2027, 1, 15)), 1)
+
+
+AVIS_FR = """Bonjour LOUIS METHOT,
+
+GINETTE TREMBLAY vous a envoyé 158,69 $ (CAD) et l'argent a été déposé automatiquement dans votre compte bancaire.
+
+Message : Facture 1001 merci!
+
+Numéro de référence : CA1AbCdEfGh2
+"""
+AVIS_EN = """Hi LOUIS METHOT,
+JEAN-PIERRE COTE sent you $1,200.00 (CAD) and the money has been automatically deposited into your bank account.
+Reference Number: C1aBcDeFgHiJ
+"""
+
+
+class InteracTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        from clients.models import Client
+        from core.models import Entreprise
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai", domaine="essai.exemple.test", prochain_numero_facture=1001,
+                                            courriel_reponse="louis@exemple.test")
+        cls.ginette = Client.objects.create(entreprise=cls.ent, prenom="Ginette", nom="Tremblay")
+        cls.cote = Client.objects.create(entreprise=cls.ent, prenom="Jean-Pierre", nom="Côté")
+        cls.roy = Client.objects.create(entreprise=cls.ent, nom="Roy")
+
+        def facture(client, montant, jour):
+            f = Facture.objects.create(entreprise=cls.ent, client=client, date_facture=date(2026, 11, jour))
+            f.lignes.create(description="Déneigement", quantite=1, prix_unitaire=D(montant), taxable=False)
+            f.recalculer()
+            f.emettre()
+            return f
+        cls.f_ginette = facture(cls.ginette, "158.69", 2)    # n° 1001
+        cls.f_cote1 = facture(cls.cote, "700.00", 1)          # n° 1002
+        cls.f_cote2 = facture(cls.cote, "600.00", 3)          # n° 1003
+        cls.f_roy = facture(cls.roy, "158.69", 4)             # n° 1004 : même montant que Ginette
+
+    def test_lecture_des_avis(self):
+        from facturation import interac
+        self.assertEqual(interac.extraire("Virement INTERAC : dépôt", AVIS_FR),
+                         (D("158.69"), "GINETTE TREMBLAY", "Facture 1001 merci!", "CA1AbCdEfGh2"))
+        self.assertEqual(interac.extraire("INTERAC e-Transfer", AVIS_EN), (D("1200.00"), "JEAN-PIERRE COTE", "", "C1aBcDeFgHiJ"))
+        self.assertIsNone(interac.extraire("Virement INTERAC", "Votre virement a été annulé."))
+        self.assertTrue(interac.est_un_avis("notify@payments.interac.ca", "n'importe quoi"))
+        self.assertTrue(interac.est_un_avis("entretiens.louismethot@gmail.com", "Fwd: Virement INTERAC : dépôt automatique"))
+        self.assertFalse(interac.est_un_avis("client@example.com", "Re: Facture 1001"))
+
+    def test_facture_proposee(self):
+        from facturation import interac
+        from facturation.models import VirementInterac
+
+        def v(montant, envoyeur="", message=""):
+            return interac.apparier(VirementInterac(entreprise=self.ent, montant=D(montant), envoyeur=envoyeur, message_envoyeur=message))
+        self.assertEqual(v("158.69", "Quelqu'un", "facture 1004"), (self.f_roy, "numéro de facture 1004 dans le message"))
+        self.assertEqual(v("158.69", "GINETTE TREMBLAY"), (self.f_ginette, "même montant et même nom"))
+        self.assertEqual(v("158.69", "Inconnu"), (None, ""))  # deux factures de ce montant, nom inconnu : Louis choisit
+        self.assertEqual(v("600.00", "Quelqu'un"), (self.f_cote2, "seule facture due de ce montant"))
+        self.assertEqual(v("1300.00", "JEAN-PIERRE COTE"), (self.f_cote1, "même nom que l'envoyeur (plus vieille facture due)"))
+
+    def test_recu_par_courriel_puis_enregistre_sur_plusieurs_factures(self):
+        from email.message import EmailMessage
+        from communications import reception
+        from facturation import interac
+        from facturation.models import VirementInterac
+        e = EmailMessage()
+        e["From"], e["Subject"], e["Message-ID"] = "notify@payments.interac.ca", "INTERAC e-Transfer: deposit", "<i1@interac.ca>"
+        e["Date"] = "Sun, 08 Nov 2026 15:42:12 -0500"
+        e.set_content(AVIS_EN)
+        m = reception.traiter(self.ent, e.as_bytes())
+        self.assertEqual((m.genre, m.lu, m.client), ("interac", True, self.cote))  # pas un message à lire : un virement à confirmer
+        v = VirementInterac.objects.get()
+        self.assertEqual((v.montant, v.facture, v.statut), (D("1200.00"), self.f_cote1, "a_traiter"))
+        self.assertIsNone(reception.traiter(self.ent, e.as_bytes()))  # le même avis deux fois
+        paiements = interac.enregistrer(v, self.f_cote2)  # Louis choisit la 1003 : elle d'abord, puis la plus vieille
+        self.assertEqual([(p.facture, p.montant, p.mode, p.reference) for p in paiements],
+                         [(self.f_cote2, D("600.00"), "interac", "C1aBcDeFgHiJ"), (self.f_cote1, D("600.00"), "interac", "C1aBcDeFgHiJ")])
+        v.refresh_from_db()
+        self.assertEqual(v.statut, "enregistre")
+        with self.assertRaisesMessage(ValidationError, "déjà traité"):
+            interac.enregistrer(v, self.f_cote1)
+
+    def test_jamais_plus_que_ce_que_le_client_doit(self):
+        from facturation import interac
+        from facturation.models import VirementInterac
+        v = VirementInterac.objects.create(entreprise=self.ent, recu_le="2026-11-08T12:00:00Z", montant=D("200.00"), envoyeur="Ginette")
+        with self.assertRaisesMessage(ValidationError, "doit moins que le virement"):
+            interac.enregistrer(v, self.f_ginette)
+        self.assertFalse(Paiement.objects.exists())  # tout ou rien
+        v.refresh_from_db()
+        self.assertEqual(v.statut, "a_traiter")
+
+    @override_settings(ALLOWED_HOSTS=["*"])
+    def test_ecran_des_virements(self):
+        from django.contrib.auth import get_user_model
+        from core.models import Membre
+        from facturation.models import VirementInterac
+        u = get_user_model().objects.create_user("louis", password="x" * 12)
+        Membre.objects.create(utilisateur=u, entreprise=self.ent, role="operateur")
+        self.client.defaults["HTTP_HOST"] = "essai.exemple.test"
+        self.client.force_login(u)
+        v = VirementInterac.objects.create(entreprise=self.ent, recu_le="2026-11-08T12:00:00Z", montant=D("158.69"), envoyeur="GINETTE TREMBLAY",
+                                           facture=self.f_ginette, client=self.ginette, raison="même montant et même nom")
+        autre = VirementInterac.objects.create(entreprise=self.ent, recu_le="2026-11-08T12:00:00Z", montant=D("5.00"), envoyeur="?")
+        self.assertContains(self.client.get("/comptes/"), "2 virements Interac à confirmer")
+        page = self.client.get("/virements/")
+        self.assertContains(page, "Enregistrer : Ginette Tremblay")
+        r = self.client.post(f"/virements/{v.pk}/", {"facture": self.f_ginette.pk}, follow=True)
+        self.assertContains(r, "Virement de 158,69")
+        self.assertEqual(self.f_ginette.solde, D("0.00"))
+        self.client.post(f"/virements/{autre.pk}/", {"action": "ignorer"})
+        autre.refresh_from_db()
+        self.assertEqual(autre.statut, "ignore")
+        self.assertNotContains(self.client.get("/comptes/"), "à confirmer")

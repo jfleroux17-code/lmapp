@@ -93,14 +93,58 @@ def traiter(entreprise, octets):
             date = timezone.make_aware(date)
     except (TypeError, ValueError):
         date = timezone.now()
-    contenu = nettoyer(_corps(msg))
+    corps = _corps(msg)
+    from facturation import interac
+
+    avis_interac = interac.est_un_avis(expediteur, sujet)
+    contenu = corps.strip()[:LONGUEUR_MAX] if avis_interac else nettoyer(corps)
     pieces = [p.get_filename() or "sans nom" for p in msg.iter_attachments()]
     if pieces:
         contenu += f"\n\n[{len(pieces)} pièce{'s' if len(pieces) > 1 else ''} jointe{'s' if len(pieces) > 1 else ''} : " \
                    f"{', '.join(pieces)[:200]}, à voir dans la boîte courriel]"
-    return Message.objects.create(
-        entreprise=entreprise, client=client, genre=Genre.RECU, canal=Message.Canal.COURRIEL, sens=Message.Sens.ENTRANT,
-        statut=Message.Statut.RECU, lu=False, expediteur=expediteur,
+    m = Message.objects.create(
+        entreprise=entreprise, client=client, genre=Genre.INTERAC if avis_interac else Genre.RECU, canal=Message.Canal.COURRIEL,
+        sens=Message.Sens.ENTRANT, statut=Message.Statut.RECU, lu=avis_interac, expediteur=expediteur,
         destinataire=", ".join(a for _, a in getaddresses([str(msg.get("To", ""))]))[:254], sujet=sujet,
         contenu=contenu or "(message vide)", reponse_a=origine, message_id_externe=mid, envoye_le=date,
+    )
+    if avis_interac:  # D5 : virement à confirmer (écran Virements), pas un message à lire
+        v = interac.creer(entreprise, m, sujet, corps)
+        if v is None:  # montant illisible : Louis le voit comme un message ordinaire
+            Message.objects.filter(pk=m.pk).update(lu=False)
+            m.lu = False
+        elif v.client_id and not m.client_id:
+            Message.objects.filter(pk=m.pk).update(client=v.client)
+            m.client = v.client
+    return m
+
+
+def traiter_envoye(entreprise, octets):
+    """Un courriel du dossier des envoyés. Si c'est un envoi de l'app (sa copie), on le rattache à son
+    message; sinon c'est Louis qui a écrit de son téléphone ou de son ordinateur : on le note dans la
+    fiche du client (historique E6)."""
+    msg = email.message_from_bytes(octets, policy=policy.default)
+    mid = (str(msg.get("Message-ID", "")).strip() or "sha256:" + hashlib.sha256(octets).hexdigest())[:300]
+    notre = _notre_message(entreprise, mid)
+    if notre is not None:
+        return notre
+    deja = Message.objects.filter(entreprise=entreprise, message_id_externe=mid).first()
+    if deja is not None:
+        return deja
+    destinataires = [a.lower() for _, a in getaddresses([str(msg.get("To", "")), str(msg.get("Cc", ""))]) if a]
+    client = Client.objects.filter(entreprise=entreprise, courriel__in=destinataires).order_by("pk").first() if destinataires else None
+    origine = _notre_message(entreprise, str(msg.get("In-Reply-To", "")), str(msg.get("References", "")))
+    if client is None and origine is not None:
+        client = origine.client
+    try:
+        date = parsedate_to_datetime(str(msg["Date"])) if msg.get("Date") else timezone.now()
+        if timezone.is_naive(date):
+            date = timezone.make_aware(date)
+    except (TypeError, ValueError):
+        date = timezone.now()
+    return Message.objects.create(
+        entreprise=entreprise, client=client, genre=Genre.MANUEL, canal=Message.Canal.COURRIEL, sens=Message.Sens.SORTANT,
+        statut=Message.Statut.ENVOYE, envoye_le=date, expediteur=parseaddr(str(msg.get("From", "")))[1].lower(),
+        destinataire=", ".join(destinataires)[:254], sujet=str(msg.get("Subject", "")).strip()[:200],
+        contenu=nettoyer(_corps(msg)) or "(message vide)", message_id_externe=mid,
     )
