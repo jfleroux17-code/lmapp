@@ -9,6 +9,7 @@ urlpatterns = [
     path("", views.accueil, name="accueil"),
     path("clients/<int:pk>/", views.fiche, name="fiche"),
     path("clients/<int:client_pk>/factures/nouvelle/", argent.nouvelle_facture, name="nouvelle_facture"),
+    path("clients/<int:client_pk>/relance/", argent.relancer, name="relancer"),
     path("factures/", argent.factures, name="factures"),
     path("factures/<int:pk>/", argent.facture, name="facture"),
     path("factures/<int:pk>/lignes/", argent.ajouter_ligne, name="ajouter_ligne"),

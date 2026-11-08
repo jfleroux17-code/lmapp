@@ -20,6 +20,7 @@
       <div class="min-w-0">
         <div class="truncate font-semibold">{{ l.client.nom_affiche }}</div>
         <div class="text-sm {% if l.jours > 60 %}text-danger{% else %}text-gray-400{% endif %}">{% if l.jours %}depuis {{ l.jours }} jour{{ l.jours|pluralize }}{% else %}d'aujourd'hui{% endif %} · {{ l.factures }} facture{{ l.factures|pluralize }}</div>
+        {% if l.relance %}<div class="text-sm text-gray-400">{{ l.relance.get_genre_display }} le {{ l.relance.cree_le|date:"j F" }}</div>{% endif %}
       </div>
       <div class="whitespace-nowrap text-lg font-bold">{{ l.du|argent }}</div>
     </a>

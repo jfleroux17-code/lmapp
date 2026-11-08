@@ -58,6 +58,7 @@
     {% if du %}<span class="text-lg font-bold text-danger">Doit {{ du|argent }}</span>{% else %}<span class="text-ok">Rien à payer</span>{% endif %}
   </div>
   {% if ecriture %}<a href="{% url 'terrain:nouvelle_facture' client.pk %}" class="gros-bouton mb-3 border-2 border-accent text-accent">+ Nouvelle facture</a>{% endif %}
+  {% if relance %}{% include "terrain/argent/_relance.html" %}{% endif %}
   {% if factures_client %}
     <div class="carte divide-y divide-bordure">
       {% for f in factures_client %}{% include "terrain/argent/_ligne_facture.html" %}{% endfor %}

@@ -210,8 +210,12 @@ def comptes(request):
         c["du"] += f.solde_du
         c["factures"] += 1
     lignes = list(par_client.values())
+    from communications.relances import dernieres
+
+    relances = dernieres(par_client.keys())
     for l in lignes:
         l["jours"] = max((aujourdhui - l["depuis"]).days, 0)
+        l["relance"] = relances.get(l["client"].pk)
     tri = request.GET.get("tri", "anciennete")
     lignes.sort(key=(lambda l: -l["du"]) if tri == "montant" else (lambda l: l["depuis"]))
     encaisse_30j = (Paiement.objects.filter(entreprise=request.entreprise, date__gt=aujourdhui - timedelta(days=30))
@@ -226,11 +230,20 @@ def comptes(request):
 
 def resume_client(client):
     """Pour la fiche client : solde dû et dernières factures."""
+    from communications import relances
+    from communications.models import Message
+
     qs = client.factures.avec_solde().order_by("-date_facture", "-pk")
-    return {
-        "du": sum((f.solde_du for f in client.factures.a_recevoir()), ZERO),
-        "factures_client": qs[:10],
-    }
+    dues = relances.factures_dues(client)
+    resume = {"du": sum((f.solde_du for f in dues), ZERO), "factures_client": qs[:10]}
+    if dues:
+        niveau = relances.niveau_suivant(client, dues)
+        resume["relance"] = {
+            "niveau": niveau, "niveaux": [(n, g.label) for n, g in enumerate(relances.RELANCES, start=1)],
+            "canaux": " et ".join(dict(Message.Canal.choices)[c].lower() for c in relances.canaux(client)),
+            "historique": Message.objects.filter(client=client, genre__in=relances.RELANCES).order_by("-cree_le")[:5],
+        }
+    return resume
 
 
 @require_POST
@@ -250,3 +263,25 @@ def envoyer_facture(request, pk):
     else:
         messages.error(request, f"{m.get_statut_display()} : {m.erreur}")
     return redirect("terrain:facture", pk=f.pk)
+
+
+@require_POST
+@ecriture_requise
+def relancer(request, client_pk):
+    """Relance du client (C8) : tout ce qu'il doit, au niveau proposé ou choisi, par son canal préféré."""
+    from communications import relances
+
+    client = get_object_or_404(Client, pk=client_pk, entreprise=request.entreprise)
+    niveau = request.POST.get("niveau", "")
+    try:
+        envoyes = relances.relancer(client, int(niveau) if niveau.isdigit() else None)
+    except ValidationError as e:
+        messages.error(request, " ".join(e.messages))
+        return redirect("terrain:fiche", pk=client.pk)
+    partis = [m for m in envoyes if m.statut == m.Statut.EN_FILE]
+    if partis:
+        messages.success(request, f"{envoyes[0].get_genre_display()} en route : " + ", ".join(m.destinataire for m in partis) + ".")
+    for m in envoyes:
+        if m not in partis:
+            messages.error(request, f"{m.get_canal_display()} pas envoyé : {m.erreur}")
+    return redirect("terrain:fiche", pk=client.pk)

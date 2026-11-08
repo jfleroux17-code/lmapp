@@ -16,6 +16,12 @@ class Genre(models.TextChoices):
     PASSAGE_FAIT = "passage_fait", "Passage terminé"
     MANUEL = "manuel", "Message manuel"
     FACTURE = "facture", "Facture"
+    RELANCE_1 = "relance_1", "Rappel"
+    RELANCE_2 = "relance_2", "Deuxième avis"
+    RELANCE_3 = "relance_3", "Dernier avis"
+
+
+RELANCES = [Genre.RELANCE_1, Genre.RELANCE_2, Genre.RELANCE_3]
 
 
 # Textes par défaut, sans nom de déneigeur (CLAUDE.md, règle 7) : la signature de
@@ -24,8 +30,12 @@ GABARITS_PAR_DEFAUT = {
     Genre.DEBUT: "Bonjour, les opérations de déneigement commencent. Les passages se font dans l'ordre habituel de la tournée.",
     Genre.PROXIMITE: "Bonjour, on arrive au {adresse} d'ici environ {minutes} minutes.",
     Genre.PASSAGE_FAIT: "Bonjour, le déneigement au {adresse} est fait ({heure}).",
+    # Relances (C8) : ton gradué, sans menace que Louis n'aurait pas décidée (modifiables dans l'administration)
+    Genre.RELANCE_1: "Bonjour {client}, petit rappel : votre compte montre un solde de {montant} ({factures}). {paiement}",
+    Genre.RELANCE_2: "Bonjour {client}, deuxième avis : le solde de {montant} ({factures}) est impayé depuis le {depuis}. Merci de le régler dès que possible. {paiement}",
+    Genre.RELANCE_3: "Bonjour {client}, dernier avis : le solde de {montant} ({factures}) est impayé depuis le {depuis}. Merci de le régler sans tarder, ou de nous appeler si le paiement pose problème. {paiement}",
 }
-VARIABLES = "{adresse}, {minutes}, {heure}, {client}"
+VARIABLES = "{adresse}, {minutes}, {heure}, {client}; relances : {montant}, {factures}, {depuis}, {paiement}"
 
 
 class Gabarit(Horodate):
@@ -69,6 +79,8 @@ class Message(Horodate):
     contenu = models.TextField()
     facture = models.ForeignKey("facturation.Facture", on_delete=models.SET_NULL, null=True, blank=True, related_name="messages",
                                 help_text="Courriel : PDF de la facture joint.")
+    factures_jointes = models.ManyToManyField("facturation.Facture", blank=True, related_name="relances",
+                                              help_text="Relance par courriel : PDF de chaque facture jointe.")
     statut = models.CharField(max_length=10, choices=Statut.choices, default=Statut.PREPARE)
     envoye_le = models.DateTimeField(null=True, blank=True)
     erreur = models.CharField(max_length=300, blank=True)

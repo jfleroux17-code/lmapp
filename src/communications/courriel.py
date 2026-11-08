@@ -30,15 +30,18 @@ def construire(message):
     m["Subject"] = message.sujet or ent.nom
     m["Date"] = formatdate(localtime=True)
     m["Message-ID"] = make_msgid(idstring=f"lmapp{message.pk}", domain=adresse.split("@")[1])
+    jointes = ([message.facture] if message.facture_id else []) + [f for f in message.factures_jointes.order_by("date_facture", "pk")
+                                                                    if f.pk != message.facture_id]
     m.set_content(message.contenu)
-    m.add_alternative(render_to_string("communications/courriel.html", {"m": message, "ent": ent, "telephone": telephone.afficher(ent.telephone),
-                                                                        "paragraphes": message.contenu.split("\n\n")}),
-                      subtype="html")
-    if message.facture_id:
+    m.add_alternative(render_to_string("communications/courriel.html", {
+        "m": message, "ent": ent, "telephone": telephone.afficher(ent.telephone),
+        "paragraphes": message.contenu.split("\n\n"), "nb_jointes": len(jointes),
+    }), subtype="html")
+    if jointes:
         from facturation import pdf
 
-        m.add_attachment(pdf.rendre(message.facture), maintype="application", subtype="pdf",
-                         filename=pdf.nom_fichier(message.facture))
+        for f in jointes:
+            m.add_attachment(pdf.rendre(f), maintype="application", subtype="pdf", filename=pdf.nom_fichier(f))
     return m
 
 
