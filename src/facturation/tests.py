@@ -247,3 +247,21 @@ class PdfTests(TestCase):
         c2 = Client.objects.create(entreprise=self.autre, nom="Ailleurs")
         f2 = Facture.objects.create(entreprise=self.autre, client=c2)
         self.assertEqual(self.client.get(f"/factures/{f2.pk}/pdf/").status_code, 404)
+
+
+class VersementsDusTests(TestCase):
+    def test_brouillons_pour_les_versements_dus_seulement(self):
+        from facturation.tasks import facturer_versements_dus
+
+        ent = Entreprise.objects.create(nom="Essai", slug="essai", domaine="essai.exemple.test", inscrit_taxes=True)
+        c = Client.objects.create(entreprise=ent, nom="Tremblay")
+        s = Saison.objects.create(entreprise=ent, nom="2026-2027", debut=date(2026, 11, 1), fin=date(2027, 4, 15))
+        contrat = Contrat.objects.create(entreprise=ent, client=c, saison=s, prix=D("400"))
+        v1, v2 = contrat.creer_echeancier([date(2026, 11, 15), date(2027, 1, 15)])
+        inactif = Contrat.objects.create(entreprise=ent, client=c, saison=s, prix=D("100"), actif=False)
+        inactif.creer_echeancier([date(2026, 11, 1)])
+        self.assertEqual(facturer_versements_dus(date(2026, 12, 1)), 1)
+        v1.refresh_from_db()
+        self.assertEqual((v1.facture.statut, v1.facture.total), ("brouillon", D("229.95")))
+        self.assertEqual(facturer_versements_dus(date(2026, 12, 2)), 0)  # relançable
+        self.assertEqual(facturer_versements_dus(date(2027, 1, 15)), 1)
