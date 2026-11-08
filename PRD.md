@@ -1,8 +1,8 @@
-# LMAPP : Plan de projet (PRD v1.5)
+# LMAPP : Plan de projet (PRD v1.6)
 
 **Application de gestion pour Louis Méthot Déneigement**
 Porteur du projet : Jean-François Leroux
-Date : 8 novembre 2026 (v1.5 : Louis inscrit aux taxes, nom légal « Les Entretiens Paysagers L.M. », question 14 sur le nom affiché; v1.4 : multi-entreprise précisé en section P, une installation, une fiche par déneigeur, administration à une adresse neutre; v1.3 : phase 0 et prochaines étapes mises à jour, DNS, jeton Cloudflare, ouverture au routeur et comptes administrateur faits, netplan par MAC; v1.2 : Caddy dans un projet `edge` séparé, environnement de test en marche, vrais certificats Let's Encrypt par validation DNS, DNS `louis` et `test` en place; v1.1 : dépôt Git et pile Docker en marche sur `ld1` (validée sur le réseau interne), test sur `test.ledeneigeur.com`, ouverture au routeur filtrée par IP source, état du DNS Cloudflare et du disque en 6.1.1; v1.0 : sous-domaine louis.ledeneigeur.com, MAC dynamique, pas de port public au départ, CLAUDE.md déposé sur ld1; v0.9 : Claude Code réellement installé et connecté sur `ld1` (2.1.319); v0.8 : serveur `ld1` installé et sécurisé, IP fixe 172.16.4.100, état du serveur en 6.1.1; v0.7 : domaine ledeneigeur.com et découpage par sous-domaine; v0.6 : iPhone 17 Pro Max confirmé, décision de bâtir, SMTP2GO et boîte IMAP, hébergement sans frais, section O, specs de la VM)
+Date : 8 novembre 2026 (v1.6 : demandes de JF après son essai : bouton Annuler partout, visuel à revoir, clients modifiables dans l'app, correction de position au cellulaire, mode déneigeur seul ou équipe (A12, A13, K9, K10); v1.5 : Louis inscrit aux taxes, nom légal « Les Entretiens Paysagers L.M. », question 14 sur le nom affiché; v1.4 : multi-entreprise précisé en section P, une installation, une fiche par déneigeur, administration à une adresse neutre; v1.3 : phase 0 et prochaines étapes mises à jour, DNS, jeton Cloudflare, ouverture au routeur et comptes administrateur faits, netplan par MAC; v1.2 : Caddy dans un projet `edge` séparé, environnement de test en marche, vrais certificats Let's Encrypt par validation DNS, DNS `louis` et `test` en place; v1.1 : dépôt Git et pile Docker en marche sur `ld1` (validée sur le réseau interne), test sur `test.ledeneigeur.com`, ouverture au routeur filtrée par IP source, état du DNS Cloudflare et du disque en 6.1.1; v1.0 : sous-domaine louis.ledeneigeur.com, MAC dynamique, pas de port public au départ, CLAUDE.md déposé sur ld1; v0.9 : Claude Code réellement installé et connecté sur `ld1` (2.1.319); v0.8 : serveur `ld1` installé et sécurisé, IP fixe 172.16.4.100, état du serveur en 6.1.1; v0.7 : domaine ledeneigeur.com et découpage par sous-domaine; v0.6 : iPhone 17 Pro Max confirmé, décision de bâtir, SMTP2GO et boîte IMAP, hébergement sans frais, section O, specs de la VM)
 Statut : brouillon à valider avant tout développement
 
 ---
@@ -89,6 +89,8 @@ Légende : **V1** = version de base, **V2** = saison suivante ou dès que V1 rou
 | A9 | Import initial par fichier CSV ou Excel à partir des papiers de Louis | V1 |
 | A10 | Historique des propriétaires d'une adresse (changement de proprio en cours de saison) | Plus tard |
 | A11 | Balises ou piquets : nombre installés, date d'installation, date de retrait | V2 |
+| A12 | Ajout et modification des clients et des adresses **dans l'app**, au cellulaire, sans passer par l'administration (demande de JF, 8 novembre 2026). Qui peut modifier : voir K9 | V1 |
+| A13 | Correction de la position d'une adresse dans l'app : carte plein écran, on déplace la carte sous un repère fixe au centre (pas de glisser-déposer du point avec des gants), bouton « Je suis devant » qui prend la position GPS du téléphone, puis Enregistrer ou Annuler. Remplace la carte de l'administration, jugée peu intuitive par JF | V1 |
 
 ### B. Contrats, prix et saison
 
@@ -217,6 +219,8 @@ Légende : **V1** = version de base, **V2** = saison suivante ou dès que V1 rou
 |---|---|---|
 | K1 | Connexion sécurisée (mot de passe fort, option code à usage unique), session longue sur le cellulaire de Louis | V1 |
 | K2 | Rôles : administrateur (JF), opérateur (Louis), lecture seule (comptable) | V1 |
+| K9 | Mode de l'entreprise (décision de JF, 8 novembre 2026), réglage dans la fiche `Entreprise` : **déneigeur seul** (le propriétaire fait tout dans l'app : clients, adresses, positions, factures; cas de Louis) ou **équipe** (plusieurs déneigeurs : les opérateurs voient les fiches et marquent leurs passages; seuls les administrateurs de l'entreprise modifient les clients). Le mode change les droits et cache ce qui ne sert qu'à une équipe, pas la structure des données | V1 |
+| K10 | Règle d'interface (demande de JF, 8 novembre 2026) : chaque écran a un bouton **Annuler** bien visible qui ramène à l'écran précédent sans rien enregistrer. Aucun changement n'est enregistré sans un geste clair (bouton Enregistrer) | V1 |
 | K3 | Sauvegarde automatique quotidienne de la base de données avec copie hors du serveur | V1 |
 | K4 | Journal des actions (qui a modifié quoi) | V2 |
 | K5 | Conformité Loi 25 : données personnelles minimales, politique de confidentialité, suppression sur demande, registre d'incidents | V1 (minimum) |
