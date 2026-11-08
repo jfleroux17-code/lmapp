@@ -309,7 +309,7 @@ Pourquoi :
 | Compte | `deploy`, sudo avec mot de passe, groupe `docker` |
 | SSH | Clé ED25519 de JF seulement, mot de passe désactivé, `root` interdit, `AllowUsers deploy` (`/etc/ssh/sshd_config.d/00-ld1.conf`) |
 | Disque | Disque virtuel de 250 Go, mais le volume logique `ubuntu-vg/ubuntu-lv` ne fait que 98 Go (allocation partielle de l'installateur). 14 Go utilisés (15 %) le 7 novembre 2026. Agrandissement reporté : alerte à 70 % |
-| Pare-feu | `ufw` : SSH seulement depuis `172.16.4.0/24`, 80 et 443 limités au réseau interne (selon CLAUDE.md; à confirmer avec `sudo ufw status verbose`), tout le reste refusé en entrée. ufw ne protège pas les ports publiés par Docker |
+| Pare-feu | `ufw` : SSH seulement depuis `172.16.4.0/24`, 80 et 443 ouverts à tous (vérifié le 7 novembre 2026; la barrière est le routeur), tout le reste refusé en entrée (dont le port 5000 de la console locale de COVE). ufw ne protège pas les ports publiés par Docker |
 | DNS | Zone `ledeneigeur.com` chez Cloudflare. `louis` et `test` : A vers `216.46.12.226`, DNS seulement. Racine et `www` en proxy vers `69.16.231.58`. Plus de générique `*` en A |
 | Certificats | Let's Encrypt pour `louis.ledeneigeur.com` et `test.ledeneigeur.com`, obtenus le 7 novembre 2026 par validation DNS Cloudflare (jeton dans `edge/.env`), renouvelés automatiquement par Caddy |
 | IP publique | `216.46.12.226` (IP de sortie de ld1, mesurée le 7 novembre 2026; l'IP d'entrée peut différer si le routeur en a plusieurs) |
