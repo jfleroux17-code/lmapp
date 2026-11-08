@@ -45,6 +45,8 @@ Mise à jour : 8 novembre 2026.
 - [x] COVE inclut `/srv/lmapp/sauvegardes/` : sélection `/` au complet (vérifié le 7 novembre 2026, `sudo /opt/MXB/bin/ClientTool control.selection.list`). La copie brute de `/var/lib/docker` (base en marche) n'est pas fiable pour restaurer : toujours repartir des fichiers `.dump`.
 - [ ] Trancher les fonctionnalités V1 dans le catalogue du PRD (section 5), au besoin.
 
+- [ ] **Déployer en prod** ce qui attend en test depuis le 8 novembre 2026 (écrans d'argent de Louis, comptes à recevoir, factures automatiques des versements, import des prix et des soldes) : `! sh /srv/lmapp/outils/deployer_prod.sh` dans Claude Code, ou dans un terminal SSH sur ld1. La permission de Claude Code a bloqué le déploiement automatique.
+
 ## Louis
 
 Questions de la section 10 du PRD, les plus importantes d'abord.
