@@ -96,6 +96,7 @@ def fiche(request, pk):
         "autre_telephone": telephone.afficher(client.telephone_autre),
         "ecriture": peut_ecrire(request),
         "passages": Passage.objects.filter(adresse__client=client).select_related("operation", "adresse").order_by("-heure")[:10],
+        "messages_client": client.messages.order_by("-cree_le")[:10],
         **resume_client(client),
     }
     return render(request, "terrain/fiche.html", contexte)

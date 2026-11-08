@@ -193,9 +193,24 @@ def avis_manuels(request):
 
 @membre_requis
 def liste_messages(request):
-    """Les messages préparés ou envoyés, les plus récents d'abord."""
-    qs = Message.objects.filter(entreprise=request.entreprise).select_related("client", "operation")[:100]
-    return render(request, "terrain/messages.html", {"liste": qs})
+    """Messages reçus (E7) et envoyés, les plus récents d'abord. Les reçus pas encore ouverts en premier."""
+    base = Message.objects.filter(entreprise=request.entreprise).select_related("client", "operation")
+    recus = base.filter(sens=Message.Sens.ENTRANT)
+    vue = request.GET.get("vue") or ("recus" if recus.exists() else "envoyes")
+    if vue == "recus":
+        liste = recus.order_by("lu", "-cree_le")[:100]
+    else:
+        vue, liste = "envoyes", base.filter(sens=Message.Sens.SORTANT)[:100]
+    return render(request, "terrain/messages.html", {"liste": liste, "vue": vue})
+
+
+@membre_requis
+def message(request, pk):
+    """Un message au complet. Ouvrir un message reçu le marque lu."""
+    m = get_object_or_404(Message.objects.select_related("client", "reponse_a", "facture"), pk=pk, entreprise=request.entreprise)
+    if m.sens == Message.Sens.ENTRANT and not m.lu:
+        Message.objects.filter(pk=m.pk).update(lu=True)
+    return render(request, "terrain/message.html", {"m": m})
 
 
 # Ordre de la tournée (F1) : boutons haut et bas plutôt que glisser (gants).

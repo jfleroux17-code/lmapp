@@ -66,6 +66,15 @@
   {% endif %}
 </section>
 
+{% if messages_client %}
+<section class="mb-4">
+  <h2 class="mb-2 text-lg font-bold">Messages</h2>
+  <div class="carte divide-y divide-bordure">
+    {% for m in messages_client %}{% include "terrain/_ligne_message.html" %}{% endfor %}
+  </div>
+</section>
+{% endif %}
+
 {% if passages %}
 <section class="mb-4">
   <h2 class="mb-2 text-lg font-bold">Passages</h2>

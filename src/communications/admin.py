@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from communications.models import GABARITS_PAR_DEFAUT, Gabarit, Message
+from communications.models import GABARITS_PAR_DEFAUT, EtatBoite, Gabarit, Message
 
 
 @admin.register(Gabarit)
@@ -15,10 +15,16 @@ class GabaritAdmin(admin.ModelAdmin):
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ["cree_le", "client", "genre", "canal", "destinataire", "statut"]
-    list_filter = ["entreprise", "genre", "canal", "statut"]
-    search_fields = ["client__nom", "destinataire", "contenu"]
+    list_display = ["cree_le", "sens", "client", "genre", "canal", "destinataire", "expediteur", "statut"]
+    list_filter = ["entreprise", "sens", "genre", "canal", "statut", "lu"]
+    search_fields = ["client__nom", "destinataire", "expediteur", "sujet", "contenu"]
     readonly_fields = [f.name for f in Message._meta.fields]
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(EtatBoite)
+class EtatBoiteAdmin(admin.ModelAdmin):
+    list_display = ["entreprise", "dernier_uid", "lue_le", "erreur"]
+    readonly_fields = ["uidvalidite", "lue_le", "erreur"]

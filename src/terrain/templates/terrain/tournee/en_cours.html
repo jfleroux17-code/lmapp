@@ -70,7 +70,7 @@
     <section class="carte mb-5 p-4">
       <div class="mb-3 flex items-center justify-between gap-3">
         <h2 class="text-lg font-bold">Avis aux clients</h2>
-        <a href="{% url 'terrain:messages' %}" class="text-accent" x-text="nb_avis + (nb_avis > 1 ? ' messages ›' : ' message ›')"></a>
+        <a href="{% url 'terrain:messages' %}?vue=envoyes" class="text-accent" x-text="nb_avis + (nb_avis > 1 ? ' messages ›' : ' message ›')"></a>
       </div>
       <button type="button" x-show="!gps" @click="activerGps()" class="gros-bouton border-2 border-accent text-accent">Activer la position (avis de proximité)</button>
       <button type="button" x-show="gps" @click="arreterGps()" class="gros-bouton border-2 border-bordure text-gray-300">Arrêter la position</button>

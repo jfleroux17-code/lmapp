@@ -31,6 +31,7 @@ urlpatterns = [
     path("tournee/ordre/arrets/<int:adresse_pk>/", tournee.deplacer_arret, name="deplacer_arret"),
     path("tournee/ordre/secteurs/<int:secteur_pk>/", tournee.deplacer_secteur, name="deplacer_secteur"),
     path("messages/", tournee.liste_messages, name="messages"),
+    path("messages/<int:pk>/", tournee.message, name="message"),
     path("connexion/", views.Connexion.as_view(), name="connexion"),
     path("deconnexion/", auth_views.LogoutView.as_view(), name="deconnexion"),
     path("manifest.webmanifest", views.manifeste, name="manifeste"),

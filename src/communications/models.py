@@ -19,6 +19,7 @@ class Genre(models.TextChoices):
     RELANCE_1 = "relance_1", "Rappel"
     RELANCE_2 = "relance_2", "Deuxième avis"
     RELANCE_3 = "relance_3", "Dernier avis"
+    RECU = "recu", "Message reçu"
 
 
 RELANCES = [Genre.RELANCE_1, Genre.RELANCE_2, Genre.RELANCE_3]
@@ -68,13 +69,24 @@ class Message(Horodate):
         ENVOYE = "envoye", "Envoyé"
         ECHEC = "echec", "Échec"
         BLOQUE = "bloque", "Bloqué (environnement de test, destinataire non permis)"
+        RECU = "recu", "Reçu"
+
+    class Sens(models.TextChoices):
+        SORTANT = "sortant", "Envoyé par l'app"
+        ENTRANT = "entrant", "Reçu"
 
     entreprise = models.ForeignKey(Entreprise, on_delete=models.PROTECT, related_name="messages")
     client = models.ForeignKey(Client, on_delete=models.SET_NULL, null=True, blank=True, related_name="messages")
     operation = models.ForeignKey("tournee.Operation", on_delete=models.SET_NULL, null=True, blank=True, related_name="messages")
     genre = models.CharField(max_length=15, choices=Genre.choices)
     canal = models.CharField(max_length=10, choices=Canal.choices)
-    destinataire = models.CharField(max_length=254)
+    sens = models.CharField(max_length=7, choices=Sens.choices, default=Sens.SORTANT)
+    destinataire = models.CharField(max_length=254, blank=True)
+    expediteur = models.CharField("expéditeur", max_length=254, blank=True, help_text="Messages reçus.")
+    lu = models.BooleanField(default=True, help_text="Messages reçus : faux tant que Louis ne l'a pas ouvert.")
+    reponse_a = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True, related_name="reponses",
+                                  help_text="Message de l'app auquel ce message répond.")
+    message_id_externe = models.CharField(max_length=300, blank=True, help_text="Message-ID d'un courriel reçu (doublons).")
     sujet = models.CharField(max_length=200, blank=True, help_text="Courriels seulement.")
     contenu = models.TextField()
     facture = models.ForeignKey("facturation.Facture", on_delete=models.SET_NULL, null=True, blank=True, related_name="messages",
@@ -94,8 +106,29 @@ class Message(Horodate):
             # G3 : un seul avis de chaque genre par client et par opération
             models.UniqueConstraint(fields=["operation", "client", "genre"], condition=models.Q(genre__in=["debut", "proximite", "passage_fait"]),
                                     name="un_avis_par_client_et_operation"),
+            # E5 : un courriel reçu n'est enregistré qu'une fois
+            models.UniqueConstraint(fields=["entreprise", "message_id_externe"], condition=~models.Q(message_id_externe=""),
+                                    name="un_courriel_recu_une_fois"),
         ]
-        indexes = [models.Index(fields=["entreprise", "-cree_le"], name="message_entreprise_date")]
+        indexes = [models.Index(fields=["entreprise", "-cree_le"], name="message_entreprise_date"),
+                   models.Index(fields=["entreprise", "sens", "lu"], name="message_non_lus")]
 
     def __str__(self):
         return f"{self.get_genre_display()} à {self.client or self.destinataire}"
+
+
+class EtatBoite(models.Model):
+    """Où en est la lecture de la boîte IMAP d'une entreprise (E5) : dernier UID traité.
+    On ne marque ni ne déplace rien dans la boîte : Louis peut la lire ailleurs."""
+    entreprise = models.OneToOneField(Entreprise, on_delete=models.CASCADE, related_name="etat_boite")
+    uidvalidite = models.BigIntegerField(default=0)
+    dernier_uid = models.BigIntegerField(default=0)
+    lue_le = models.DateTimeField(null=True, blank=True)
+    erreur = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        verbose_name = "état de la boîte courriel"
+        verbose_name_plural = "états de la boîte courriel"
+
+    def __str__(self):
+        return f"Boîte de {self.entreprise}"

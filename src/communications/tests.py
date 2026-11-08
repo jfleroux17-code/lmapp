@@ -467,3 +467,136 @@ class RelanceTests(TestCase):
             e = courriel.construire(m)
         self.assertEqual([p.get_filename() for p in e.iter_attachments()], [f"solde-{self.vieux.pk}.pdf", "facture-57.pdf"])
         self.assertIn("Les 2 factures sont jointes", e.get_body(("html",)).get_content())
+
+
+def _courriel(de="client@example.com", sujet="Re: Facture", corps="Allo", **entetes):
+    from email.message import EmailMessage
+    e = EmailMessage()
+    e["From"], e["To"], e["Subject"] = de, "louis@exemple.test", sujet
+    e["Message-ID"] = entetes.pop("mid", f"<{abs(hash((de, sujet, corps)))}@exemple.com>")
+    e["Date"] = "Sun, 08 Nov 2026 15:42:12 -0500"
+    for k, v in entetes.items():
+        e[k.replace("_", "-")] = v
+    e.set_content(corps)
+    return e
+
+
+@override_settings(ALLOWED_HOSTS=["*"], IMAP_HOTE="imap.exemple.test", IMAP_UTILISATEUR="louis@exemple.test", IMAP_MOT_DE_PASSE="secret")
+class ReceptionTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.ent = Entreprise.objects.create(nom="Entretiens Essai", slug="essai", domaine=HOTE, courriel_reponse="louis@exemple.test")
+        cls.autre = Entreprise.objects.create(nom="Autre", slug="autre", domaine="autre.exemple.test")
+        cls.c = Client.objects.create(entreprise=cls.ent, nom="Tremblay", courriel="client@example.com")
+        Client.objects.create(entreprise=cls.autre, nom="Pas le bon", courriel="client@example.com")
+        U = get_user_model()
+        cls.louis = U.objects.create_user("louis", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="operateur")
+
+    def traiter(self, e):
+        from communications import reception
+        return reception.traiter(self.ent, e.as_bytes())
+
+    def test_rattache_par_l_adresse_et_garde_seulement_la_reponse(self):
+        corps = "Je paie demain.\n\nLe 8 nov. 2026 à 15 h 42, Entretiens Essai <louis@exemple.test> a écrit :\n> Bonjour, rappel..."
+        m = self.traiter(_courriel(de="Client Tremblay <Client@Example.com>", corps=corps, mid="<r1@example.com>"))
+        self.assertEqual((m.client, m.sens, m.statut, m.lu, m.expediteur), (self.c, "entrant", "recu", False, "client@example.com"))
+        self.assertEqual(m.contenu, "Je paie demain.")
+        self.assertEqual(m.sujet, "Re: Facture")
+        self.assertIsNone(self.traiter(_courriel(de="client@example.com", corps=corps, mid="<r1@example.com>")))  # une seule fois
+
+    def test_rattache_par_la_reponse_a_un_message_de_l_app(self):
+        envoye = Message.objects.create(entreprise=self.ent, client=self.c, genre="relance_1", canal="courriel",
+                                        destinataire="client@example.com", contenu="x", statut="envoye")
+        m = self.traiter(_courriel(de="conjoint@example.com", In_Reply_To=f"<1794.1.123.lmapp{envoye.pk}@exemple.test>"))
+        self.assertEqual((m.client, m.reponse_a), (self.c, envoye))
+
+    def test_expediteur_inconnu_html_et_piece_jointe(self):
+        from email.message import EmailMessage
+        e = EmailMessage()
+        e["From"], e["Subject"], e["Message-ID"] = "inconnu@example.com", "Prix?", "<x1@example.com>"
+        e.set_content("<p>Combien pour <b>mon entrée</b>?</p><p>Merci</p>", subtype="html")
+        e.add_attachment(b"\xff\xd8", maintype="image", subtype="jpeg", filename="entree.jpg")
+        m = self.traiter(e)
+        self.assertIsNone(m.client)
+        self.assertIn("Combien pour mon entrée?", m.contenu)
+        self.assertNotIn("<b>", m.contenu)
+        self.assertIn("[1 pièce jointe : entree.jpg", m.contenu)
+
+    def test_ignores_et_rebond(self):
+        self.assertIsNone(self.traiter(_courriel(de="noreply-dmarc-support@google.com", sujet="Report domain: exemple.test")))
+        self.assertIsNone(self.traiter(_courriel(de="louis@exemple.test", sujet="copie")))
+        parti = Message.objects.create(entreprise=self.ent, client=self.c, genre="facture", canal="courriel",
+                                       destinataire="mauvais@example.com", contenu="x", statut="envoye")
+        rebond = _courriel(de="Mail Delivery System <Mailer-Daemon@woww.exemple.test>", sujet="Mail delivery failed",
+                           corps=f"This message was created automatically.\nDiagnostic-Code: smtp; 550 5.1.1 User unknown\n"
+                                 f"Message-ID: <1794.1.99.lmapp{parti.pk}@exemple.test>")
+        self.assertIsNone(self.traiter(rebond))
+        parti.refresh_from_db()
+        self.assertEqual(parti.statut, "echec")
+        self.assertEqual(parti.erreur, "Courriel revenu : 550 5.1.1 User unknown")
+        self.assertFalse(Message.objects.filter(sens="entrant").exists())
+
+    def test_lecture_imap_sans_historique_puis_nouveaux(self):
+        from communications import lecture
+        from communications.models import EtatBoite
+        boite = {1: _courriel(corps="vieux").as_bytes(), 2: _courriel(corps="vieux 2").as_bytes()}
+
+        class FauxImap:
+            def __init__(s, *a, **k): pass
+            def __enter__(s): return s
+            def __exit__(s, *a): return False
+            def login(s, u, p): assert (u, p) == ("louis@exemple.test", "secret")
+            def select(s, dossier, readonly=False): assert readonly; return "OK", [b"2"]
+            def response(s, code): return code, [b"777"]
+            def uid(s, commande, *args):
+                if commande == "search":
+                    if args[1] == "ALL":
+                        return "OK", [b" ".join(str(u).encode() for u in boite)]
+                    debut = int(args[1].split()[1].split(":")[0])
+                    return "OK", [b" ".join(str(u).encode() for u in boite if u >= debut) or str(max(boite)).encode()]
+                assert commande == "fetch" and args[1] == "(BODY.PEEK[])"  # jamais marqué lu
+                return "OK", [(b"1 (UID x BODY[] {n}", boite[int(args[0])]), b")"]
+
+        with mock.patch("communications.lecture.imaplib.IMAP4_SSL", FauxImap):
+            self.assertEqual(lecture.lire(self.ent), 0)  # première lecture : on part de maintenant
+            self.assertEqual(EtatBoite.objects.get(entreprise=self.ent).dernier_uid, 2)
+            self.assertEqual(lecture.lire(self.ent), 0)  # rien de neuf (le serveur renvoie le dernier)
+            boite[3] = _courriel(corps="plante").as_bytes()
+            boite[4] = _courriel(corps="Je paie demain").as_bytes()
+            vrai = lecture.reception.traiter
+            with mock.patch("communications.lecture.reception.traiter",
+                            side_effect=lambda e, o: (_ for _ in ()).throw(ValueError("illisible")) if b"plante" in o else vrai(e, o)):
+                self.assertEqual(lecture.lire(self.ent), 1)
+        self.assertEqual(EtatBoite.objects.get(entreprise=self.ent).dernier_uid, 4)  # le courriel qui plante ne bloque pas
+        self.assertEqual(Message.objects.get(sens="entrant").contenu, "Je paie demain")
+
+    def test_tache_en_prod_seulement(self):
+        from communications.tasks import lire_boite_aux_2_minutes
+        with override_settings(COURRIEL_LECTURE_ACTIVE=False):
+            self.assertEqual(lire_boite_aux_2_minutes.func(0), "lecture désactivée")
+        with override_settings(COURRIEL_LECTURE_ACTIVE=True), mock.patch("communications.lecture.lire", return_value=2) as lire:
+            self.assertEqual(lire_boite_aux_2_minutes.func(0), 2)
+        lire.assert_called_once_with(self.ent)
+        with override_settings(COURRIEL_LECTURE_ACTIVE=True, IMAP_UTILISATEUR="autre@exemple.test"):
+            self.assertEqual(lire_boite_aux_2_minutes.func(0), "aucune entreprise pour cette boîte")
+
+    def test_ecrans(self):
+        m = self.traiter(_courriel(corps="Je paie demain."))
+        self.client.defaults["HTTP_HOST"] = HOTE
+        self.client.force_login(self.louis)
+        accueil = self.client.get("/")
+        self.assertContains(accueil, "✉ 1")
+        liste = self.client.get("/messages/")
+        self.assertEqual(liste.context["vue"], "recus")
+        self.assertContains(liste, "Nouveau")
+        fiche = self.client.get(f"/clients/{self.c.pk}/")
+        self.assertContains(fiche, "Je paie demain.")
+        page = self.client.get(f"/messages/{m.pk}/")
+        self.assertContains(page, "Reçu de client@example.com")
+        self.assertContains(page, "Fiche de Tremblay")
+        m.refresh_from_db()
+        self.assertTrue(m.lu)
+        self.assertNotContains(self.client.get("/"), "✉")
+        etranger = Message.objects.create(entreprise=self.autre, genre="recu", canal="courriel", sens="entrant", contenu="x")
+        self.assertEqual(self.client.get(f"/messages/{etranger.pk}/").status_code, 404)

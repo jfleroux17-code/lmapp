@@ -48,6 +48,9 @@ IMAP_UTILISATEUR = env("IMAP_UTILISATEUR", "")
 IMAP_MOT_DE_PASSE = env("IMAP_MOT_DE_PASSE", "")
 IMAP_DOSSIER_ENVOYES = env("IMAP_DOSSIER_ENVOYES", "INBOX.Sent")
 COURRIEL_HELO = env("COURRIEL_HELO", "ld1.ledeneigeur.com")  # nom donné au serveur de courriel (pas l'IP du conteneur)
+# Lecture de la boîte (E5) : en prod seulement par défaut, pour que les vrais courriels des clients
+# n'aillent jamais dans la base de test.
+COURRIEL_LECTURE_ACTIVE = env_bool("COURRIEL_LECTURE_ACTIVE", LMAPP_ENV == "prod")
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env_bool("DJANGO_DEBUG", False)
@@ -105,6 +108,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "core.context_processors.environnement",
+                "core.context_processors.messages_non_lus",
             ],
         },
     },

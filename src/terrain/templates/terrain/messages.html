@@ -1,22 +1,17 @@
 {% extends "terrain/base.html" %}
 {% block titre %}Messages{% endblock %}
 {% block contenu %}
-<a href="{% url 'terrain:tournee' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Tournée</a>
-<h1 class="mb-1 text-2xl font-bold">Messages</h1>
-<p class="mb-4 text-gray-400">Les 100 plus récents. « Préparé » : le message n'est pas parti (la raison est en dessous).</p>
+<h1 class="mb-3 text-2xl font-bold">Messages</h1>
+<div class="mb-4 grid grid-cols-2 gap-2">
+  <a href="?vue=recus" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if vue == 'recus' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Reçus{% if non_lus %} ({{ non_lus }}){% endif %}</a>
+  <a href="?vue=envoyes" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if vue == 'envoyes' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Envoyés</a>
+</div>
 <div class="carte divide-y divide-bordure">
   {% for m in liste %}
-    <div class="p-4">
-      <div class="mb-1 flex items-start justify-between gap-3">
-        <span class="font-semibold">{{ m.client.nom_affiche|default:m.destinataire }}</span>
-        <span class="pastille {% if m.statut == 'envoye' %}bg-ok/20 text-ok{% elif m.statut == 'echec' %}bg-danger/20 text-danger{% else %}bg-bordure text-gray-300{% endif %}">{% if m.statut == "prepare" %}Préparé{% elif m.statut == "bloque" %}Bloqué{% else %}{{ m.get_statut_display }}{% endif %}</span>
-      </div>
-      <div class="mb-1 text-sm text-gray-400">{{ m.get_genre_display }} · {{ m.get_canal_display|lower }} · {{ m.cree_le|date:"j F, H \h i" }}</div>
-      <div class="whitespace-pre-line text-gray-200">{{ m.contenu }}</div>
-      {% if m.erreur %}<div class="mt-1 text-sm {% if m.statut == 'echec' %}text-danger{% else %}text-gray-400{% endif %}">{{ m.erreur }}</div>{% endif %}
-    </div>
+    {% include "terrain/_ligne_message.html" with avec_client=True %}
   {% empty %}
-    <p class="p-4 text-gray-400">Aucun message.</p>
+    <p class="p-4 text-gray-400">{% if vue == "recus" %}Aucun message reçu.{% else %}Aucun message envoyé.{% endif %}</p>
   {% endfor %}
 </div>
+{% if vue == "envoyes" %}<p class="mt-3 text-sm text-gray-400">« Préparé » : le message n'est pas parti (la raison est indiquée).</p>{% endif %}
 {% endblock %}

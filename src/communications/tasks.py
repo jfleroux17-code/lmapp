@@ -37,3 +37,23 @@ def envoyer_message(context, message_id):
         m.save(update_fields=["statut", "envoye_le", "erreur", "fournisseur_id", "modifie_le"])
         log.info("message %s : %s", m.pk, m.statut)
         return m.statut
+
+
+@app.periodic(cron="*/2 * * * *")
+@app.task(queue="communications", queueing_lock="lire_boite")
+def lire_boite_aux_2_minutes(timestamp):
+    """E5 : courriels reçus. En prod seulement (COURRIEL_LECTURE_ACTIVE), et seulement si une entreprise a
+    pour adresse d'affaires le compte configuré."""
+    from django.conf import settings
+
+    from communications import lecture
+
+    if not settings.COURRIEL_LECTURE_ACTIVE:
+        return "lecture désactivée"
+    ent = lecture.entreprise_de_la_boite()
+    if ent is None:
+        return "aucune entreprise pour cette boîte"
+    n = lecture.lire(ent)
+    if n:
+        log.info("boîte de %s : %s courriel(s) reçu(s)", ent, n)
+    return n

@@ -38,9 +38,12 @@
   {% if user.is_authenticated %}
     <header class="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-bordure bg-nuit/95 px-4 py-3 backdrop-blur" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
       <a href="{% url 'terrain:accueil' %}" class="truncate text-lg font-bold">{{ request.entreprise.nom|default:"LMAPP" }}</a>
-      <form method="post" action="{% url 'terrain:deconnexion' %}">{% csrf_token %}
-        <button class="rounded-xl border border-bordure px-4 py-2 text-sm text-gray-300">Déconnexion</button>
-      </form>
+      <div class="flex shrink-0 items-center gap-2">
+        {% if non_lus %}<a href="{% url 'terrain:messages' %}?vue=recus" class="rounded-xl bg-accent px-3 py-2 text-sm font-bold text-nuit" aria-label="{{ non_lus }} message{{ non_lus|pluralize }} non lu{{ non_lus|pluralize }}">✉ {{ non_lus }}</a>{% endif %}
+        <form method="post" action="{% url 'terrain:deconnexion' %}">{% csrf_token %}
+          <button class="rounded-xl border border-bordure px-4 py-2 text-sm text-gray-300">Déconnexion</button>
+        </form>
+      </div>
     </header>
   {% endif %}
   {% if user.is_authenticated and request.entreprise %}
