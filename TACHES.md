@@ -28,7 +28,8 @@ Mise à jour : 8 novembre 2026.
 - [x] Boîte `louis@ledeneigeur.com` sur le serveur de courriel de JF (`woww.joxs.net`), à la place de SMTP2GO. Connexion IMAP et SMTP vérifiée depuis le worker (8 novembre 2026). MX, SPF et DMARC ajoutés chez Cloudflare.
 - [x] DKIM de `ledeneigeur.com` (sélecteur `default`) publié chez Cloudflare (8 novembre 2026).
 - [ ] JF : demander à Beanfield le DNS inverse de 216.46.12.228 vers `woww.joxs.net` (sinon risque de pourriels chez Gmail et Outlook).
-- [ ] JF : adresse courriel pour les essais (`LMAPP_DESTINATAIRES_TEST`).
+- [x] Premier courriel d'essai à JF (8 novembre 2026) : SPF, DKIM et DMARC « pass », mais arrivé dans les pourriels (domaine neuf, DNS inverse générique). IP sur aucune liste noire vérifiée.
+- [ ] JF : dans Gmail, « non-spam », ajouter `louis@ledeneigeur.com` aux contacts et répondre au courriel d'essai. Facultatif : Google Postmaster Tools pour `ledeneigeur.com` (valeur TXT à donner à Claude Code).
 - [x] Twilio : compte payant, numéro 450-300-1166, `TWILIO_ACCOUNT_SID` et `TWILIO_AUTH_TOKEN` dans les deux `.env` (8 novembre 2026). Premier texto d'essai livré au cellulaire de JF, depuis le test.
 - [ ] SMTP2GO : sous-compte de Louis, domaine `ledeneigeur.com` vérifié (SPF, DKIM, DMARC chez Cloudflare), `SMTP2GO_API_KEY` dans les `.env`.
 - [ ] Boîte IMAP (proposé : `info@ledeneigeur.com`), MX chez Cloudflare, accès dans les `.env`.
