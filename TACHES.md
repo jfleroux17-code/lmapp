@@ -19,7 +19,7 @@ Mise à jour : 8 novembre 2026.
 - [x] Fiche de Louis créée en prod (Louis Méthot Déneigement, `louis`, `louis.ledeneigeur.com`, Sainte-Adèle 8 km, centre rempli).
 - [x] Sainte-Adèle cochée « ville par défaut » dans la fiche de Louis.
 - [x] Utilisateur `louis` créé, membre « Opérateur » (entre dans l'app, pas dans l'administration).
-- [ ] Compléter la fiche de Louis avec les infos de sa facture papier (reçue par texto le 8 novembre 2026) : nom légal « Les Entretiens Paysagers L.M. », adresse, téléphone, courriel, « inscrit aux taxes » coché, numéros de TPS et de TVQ (sur la photo de sa facture, à comparer avec un papier officiel). Les numéros vont dans la fiche seulement, jamais dans Git.
+- [ ] Compléter la fiche de Louis (prod). Fait le 8 novembre 2026 : nom légal « Les Entretiens Paysagers L.M. », téléphone 514-962-6273, Sainte-Adèle, « inscrit aux taxes » coché (TPS 5 %, TVQ 9,975 %). **Manque** (sur la photo de sa facture, pas sur ld1) : adresse et code postal, courriel Gmail, numéros de TPS et de TVQ. À donner à Claude Code ou à entrer dans l'administration (Base, Entreprises). Le nom affiché reste « Louis Méthot Déneigement » jusqu'à la réponse à la question 14.
 - [ ] Envoyer le gabarit d'import à Louis, ou transcrire ses papiers : `scp deploy@172.16.4.100:/srv/lmapp/gabarits/gabarit_import_clients.xlsx .`
 - [ ] Poser à Louis les questions de la section « Louis » ci-dessous.
 
