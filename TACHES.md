@@ -52,7 +52,9 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - [x] **Taxes** : inscrit à la TPS et à la TVQ, numéros reçus (8 novembre 2026). Les factures auront les taxes.
 - [ ] **Numéro de facture** : quel est le dernier numéro utilisé dans son carnet papier? La numérotation de l'app continuera à partir du suivant (sinon elle commence à 1).
 - [ ] **Nom affiché** : ses factures portent « Les Entretiens Paysagers L.M. » (logo « Entretiens LM »). Proposé : nom légal sur les factures, et un nom que ses clients reconnaissent (ex. « Entretiens LM ») à l'écran et à la fin des textos. À confirmer.
-- [ ] **Prix** : contrat saisonnier, au passage, ou les deux? Combien de versements, à quelles dates?
+- [x] **Versements** (8 novembre 2026) : contrat saisonnier en 2 versements égaux, le 1er novembre et entre la mi-janvier et la fin de janvier; 3e versement possible pour les contrats de plus de 1 200 $ par saison.
+- [x] **Type de contrat** : saisonnier seulement, pas de facturation au passage.
+- [ ] **Détails des versements** : date du 2e versement (fixe ou au cas par cas)? Dates d'un échéancier en 3 versements? (Louis rappelle JF le 9 novembre.)
 - [ ] **Clients** : combien d'actifs? Combien d'anciens clients lui doivent de l'argent, et à peu près combien en tout?
 - [ ] **Sa liste de clients** dans le gabarit, ou en photos de ses papiers (noms, adresses, cellulaires, prix entendus, montants dus).
 - [ ] **Services** : entrée seulement, ou aussi bordage de la ville, pelletage, abrasif, toitures?
@@ -65,6 +67,16 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - [ ] **Matériel** : support de téléphone et chargeur pour le tracteur.
 
 ## Claude Code
+
+### Priorité : demandes de JF du 8 novembre 2026 (avant que Louis essaie l'app)
+
+Après son essai des écrans. Une étape à la fois, chacune en test, montrée à JF sur son iPhone avant la suivante.
+
+- [ ] **Mode de l'entreprise** (PRD K9) : champ dans `Entreprise`, « déneigeur seul » ou « équipe ». Seul : le propriétaire fait tout dans l'app. Équipe : seuls les administrateurs de l'entreprise modifient les clients, les opérateurs consultent. Louis en « déneigeur seul ».
+- [ ] **Bouton Annuler partout** (PRD K10) : sur chaque écran, ramène à l'écran précédent sans rien enregistrer. Rien ne s'enregistre sans un bouton Enregistrer.
+- [ ] **Modifier un client dans l'app** (PRD A12) : ajout et modification du client et de ses adresses (coordonnées, particularités du terrain, statut, notes) depuis la fiche, au cellulaire, sans l'administration. Gros champs, clavier adapté (téléphone, courriel, code postal).
+- [ ] **Corriger la position d'une adresse dans l'app** (PRD A13) : carte plein écran avec repère fixe au centre (on déplace la carte, pas le point), bouton « Je suis devant » (GPS du téléphone), Enregistrer ou Annuler. La position devient `manuelle` ou `gps`, jamais écrasée par le géocodage.
+- [ ] **Revoir le visuel** : JF le trouve « très moyen ». Proposer à JF deux ou trois pistes (captures d'écran de la recherche et de la fiche) avant de tout changer. Garder les contraintes : gros boutons pour les gants, lisible dehors, thème sombre ou clair à décider avec JF.
 
 ### Possible sans attendre
 
@@ -79,7 +91,7 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 
 ### En attente
 
-- Prix et services de Louis (questions 4 et 5) : le modèle accepte saisonnier et au passage, 1 à 4 versements; ses réponses fixeront les valeurs par défaut.
+- Prix et services de Louis (questions 4 et 5) : contrat saisonnier seulement (réglé le 8 novembre 2026), 2 versements par défaut, 3 au-delà de 1 200 $ par saison (seuil et dates en configuration). Le modèle accepte aussi « au passage », gardé pour plus tard. Reste la question 5 (services).
 - Textos et courriels : comptes Twilio, SMTP2GO et boîte IMAP.
 - Import des prix et des soldes dus : modèles `Contrat` et `Facture` (genre solde d'ouverture) prêts; colonnes à ajouter au gabarit d'import quand on aura son fichier.
 - Deuxième déneigeur (PRD section P) : déplacer `/admin/` vers une adresse neutre réservée à JF (proposé : `admin.ledeneigeur.com`), et documenter l'ajout d'un sous-domaine (Cloudflare, `Caddyfile`, `DJANGO_ALLOWED_HOSTS`, fiche `Entreprise`). Attend qu'il y ait un deuxième déneigeur.
