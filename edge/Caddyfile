@@ -39,7 +39,19 @@
 		-Server
 		X-Content-Type-Options nosniff
 		Referrer-Policy same-origin
+		# HSTS : le navigateur refuse ensuite le HTTP pour ce domaine pendant un an.
+		# Pas de « preload » : ce serait très long à retirer.
+		Strict-Transport-Security "max-age=31536000"
 	}
+
+	# Administration réservée aux IP de JF (LMAPP_IPS_ADMIN dans edge/.env, hors Git).
+	# Variable vide ou absente : /admin/ refusé à tout le monde (sécuritaire).
+	# Lu au démarrage : après un changement des IP, recréer Caddy (docker compose up -d).
+	@admin_interdit {
+		path /admin /admin/*
+		not remote_ip {$LMAPP_IPS_ADMIN}
+	}
+	respond @admin_interdit "Accès refusé." 403
 }
 
 louis.ledeneigeur.com {
