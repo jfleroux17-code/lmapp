@@ -143,6 +143,13 @@ LOGIN_URL = "terrain:connexion"
 LOGIN_REDIRECT_URL = "terrain:accueil"
 LOGOUT_REDIRECT_URL = "terrain:connexion"
 
+# Limitation des essais de connexion (core.connexions) : au-delà de ces nombres
+# d'échecs dans la fenêtre, blocage temporaire de l'IP ou du nom d'utilisateur.
+AUTHENTICATION_BACKENDS = ["core.connexions.AuthentificationLimitee"]
+LMAPP_CONNEXION_MAX_IP = int(env("LMAPP_CONNEXION_MAX_IP", "10"))
+LMAPP_CONNEXION_MAX_COMPTE = int(env("LMAPP_CONNEXION_MAX_COMPTE", "20"))
+LMAPP_CONNEXION_FENETRE_MIN = int(env("LMAPP_CONNEXION_FENETRE_MIN", "15"))
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

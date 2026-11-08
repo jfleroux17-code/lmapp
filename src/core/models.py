@@ -170,3 +170,26 @@ class VilleDesservie(Horodate):
     @classmethod
     def par_defaut_de(cls, entreprise_id):
         return cls.objects.filter(entreprise_id=entreprise_id, par_defaut=True).first()
+
+
+class EchecConnexion(models.Model):
+    """Un essai de connexion raté, pour la limitation des essais (core.connexions).
+
+    Gardé 24 heures au plus : l'IP est une donnée personnelle (Loi 25).
+    """
+
+    moment = models.DateTimeField(auto_now_add=True, db_index=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    nom_utilisateur = models.CharField(max_length=150, blank=True)
+
+    class Meta:
+        verbose_name = "échec de connexion"
+        verbose_name_plural = "échecs de connexion"
+        ordering = ["-moment"]
+        indexes = [
+            models.Index(fields=["ip", "moment"], name="echec_ip_moment"),
+            models.Index(fields=["nom_utilisateur", "moment"], name="echec_nom_moment"),
+        ]
+
+    def __str__(self):
+        return f"{self.moment:%Y-%m-%d %H:%M} {self.nom_utilisateur} ({self.ip})"

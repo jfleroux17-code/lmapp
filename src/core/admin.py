@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.gis.geos import Point
 
-from core.models import Entreprise, Membre, VilleDesservie
+from core.models import EchecConnexion, Entreprise, Membre, VilleDesservie
 
 _titre = "LMAPP : administration"
 if settings.LMAPP_ENV != "prod":
@@ -74,3 +74,19 @@ class MembreAdmin(admin.ModelAdmin):
     list_display = ["utilisateur", "entreprise", "role"]
     list_filter = ["entreprise", "role"]
     autocomplete_fields = ["utilisateur"]
+
+
+@admin.register(EchecConnexion)
+class EchecConnexionAdmin(admin.ModelAdmin):
+    """Consultation des essais ratés. Supprimer les lignes d'une IP ou d'un nom lève son blocage."""
+
+    list_display = ("moment", "nom_utilisateur", "ip")
+    list_filter = ("moment",)
+    search_fields = ("nom_utilisateur", "ip")
+    readonly_fields = ("moment", "nom_utilisateur", "ip")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False

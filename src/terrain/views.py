@@ -6,6 +6,7 @@ Mobile d'abord, une main, des gants. Tout est filtré par request.entreprise
 import re
 from urllib.parse import quote
 
+from django.conf import settings
 from django.contrib.auth import views as auth_views
 from django.db.models import F, Min, Prefetch, Q
 from django.shortcuts import get_object_or_404, render
@@ -20,6 +21,11 @@ MAX_RESULTATS = 50
 class Connexion(auth_views.LoginView):
     template_name = "terrain/connexion.html"
     redirect_authenticated_user = True
+
+    def form_invalid(self, form):
+        # core.connexions marque la requête quand le refus vient d'un blocage
+        bloquee = getattr(self.request, "connexion_bloquee", False)
+        return self.render_to_response(self.get_context_data(form=form, bloquee=bloquee, fenetre_min=settings.LMAPP_CONNEXION_FENETRE_MIN), status=429 if bloquee else 200)
 
 
 def _recherche(entreprise, q):

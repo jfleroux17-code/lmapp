@@ -65,7 +65,8 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 
 - [x] Premiers écrans de Louis (PWA mobile) : connexion, recherche, fiche client. En prod le 7 novembre 2026.
 - [x] Icône de l'app (flocon jaune, générique) : iPhone, manifeste PWA, onglet. En prod le 7 novembre 2026.
-- [ ] Avant l'ouverture à toutes les IP : limiter les essais de connexion (verrouillage après échecs).
+- [x] Avant l'ouverture à toutes les IP : limiter les essais de connexion (fait le 7 novembre 2026 : blocage temporaire après 10 échecs par IP ou 20 par nom d'utilisateur en 15 minutes, `/connexion/` et `/admin/`).
+- [ ] Avant l'ouverture à toutes les IP, le reste : `/admin/` réservé aux IP de JF, HSTS, webhooks vérifiés par signature, balayage externe (PRD 6.1.1).
 - [x] Sauvegarde de la base (K3) toutes les 12 heures : en prod le 7 novembre 2026, test de restauration réussi.
 - [ ] Test de restauration chaque mois (`sh outils/tester_restauration.sh`), prochain vers le 7 décembre 2026.
 
