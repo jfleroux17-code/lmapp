@@ -30,6 +30,7 @@ urlpatterns = [
     path("tournee/position/", tournee.position, name="position"),
     path("tournee/avis/", tournee.avis_manuels, name="avis_manuels"),
     path("tournee/ordre/", tournee.ordre, name="ordre"),
+    path("tournee/collecter/", tournee.a_collecter, name="a_collecter"),
     path("tournee/ordre/arrets/<int:adresse_pk>/", tournee.deplacer_arret, name="deplacer_arret"),
     path("tournee/ordre/secteurs/<int:secteur_pk>/", tournee.deplacer_secteur, name="deplacer_secteur"),
     path("messages/", tournee.liste_messages, name="messages"),

@@ -4,7 +4,7 @@
 {% block contenu %}
 <a href="{% url 'terrain:comptes' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Comptes</a>
 <h1 class="mb-1 text-2xl font-bold">Virements Interac</h1>
-<p class="mb-4 text-gray-400">Lus dans les avis d'Interac. Rien n'est enregistré sans votre confirmation.</p>
+<p class="mb-4 text-gray-400">Lus dans les avis d'Interac. Rien n'est enregistré sans votre confirmation. Un reçu part au client à l'enregistrement.</p>
 
 {% for v in a_confirmer %}
   <div class="carte mb-4 p-4">
@@ -19,6 +19,7 @@
       {% if v.facture %}
         <form method="post" action="{% url 'terrain:virement' v.pk %}" class="mt-4" x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
           <input type="hidden" name="facture" value="{{ v.facture.pk }}">
+          <input type="hidden" name="recu" value="1">
           <button class="gros-bouton bg-accent text-nuit" :class="{ 'opacity-60': envoi }">Enregistrer : {{ v.facture.client.nom_affiche }}</button>
           <p class="mt-1 text-center text-sm text-gray-400">{{ v.facture }} · {{ v.raison }}</p>
         </form>
@@ -32,6 +33,7 @@
             <option value="">Facture…</option>
             {% for f in dues %}<option value="{{ f.pk }}">{{ f.client.nom_affiche }} : {{ f }} ({{ f.solde_du|argent }})</option>{% endfor %}
           </select>
+          <input type="hidden" name="recu" value="1">
           <button class="gros-bouton border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">Enregistrer sur cette facture</button>
         </form>
         <form method="post" action="{% url 'terrain:virement' v.pk %}" class="mt-3" @submit="if (!confirm('Ignorer ce virement? (déjà enregistré à la main, ou pas pour un client)')) $event.preventDefault()">{% csrf_token %}

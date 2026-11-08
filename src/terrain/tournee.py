@@ -19,9 +19,21 @@ from tournee import services
 from tournee.models import Operation, Passage, PositionGPS, arrets
 
 
-def _arret_json(a, i, passage):
+def soldes_dus(entreprise):
+    """{client_id: montant dû} pour les clients qui doivent quelque chose (factures émises et soldes antérieurs)."""
+    from facturation.models import Facture
+
+    dus = {}
+    for client_id, solde in Facture.objects.filter(entreprise=entreprise).a_recevoir().values_list("client", "solde_du"):
+        dus[client_id] = dus.get(client_id, 0) + solde
+    return dus
+
+
+def _arret_json(a, i, passage, dus=None):
+    from facturation.templatetags.argent import argent
     from terrain.views import _liens_navigation
 
+    du = (dus or {}).get(a.client_id)
     return {
         "id": a.pk, "rang": i, "client_id": a.client_id, "client": a.client.nom_affiche,
         "fiche": reverse("terrain:fiche", args=[a.client_id]),
@@ -31,6 +43,8 @@ def _arret_json(a, i, passage):
         "consignes": a.consignes,
         "navigation": _liens_navigation(a),
         "passage": _passage_json(passage),
+        # D3 : argent à collecter en passant (client qui paie comptant), sinon simple rappel du solde
+        "du": argent(du) if du else "", "comptant": a.client.mode_paiement == Client.ModePaiement.COMPTANT,
     }
 
 
@@ -50,9 +64,10 @@ def tournee(request):
             "dernieres": Operation.objects.filter(entreprise=request.entreprise).order_by("-debut")[:5],
         })
     passages = {p.adresse_id: p for p in op.passages.all()}
+    dus = soldes_dus(request.entreprise)
     donnees = {
         "operation": {"id": op.pk, "type": op.get_type_display(), "debut": timezone.localtime(op.debut).strftime("%H h %M")},
-        "arrets": [_arret_json(a, i, passages.get(a.pk)) for i, a in enumerate(arrets(request.entreprise), start=1)],
+        "arrets": [_arret_json(a, i, passages.get(a.pk), dus) for i, a in enumerate(arrets(request.entreprise), start=1)],
         "raisons": Passage.Raison.choices,
         "synchro": reverse("terrain:synchro"),
         "ecriture": peut_ecrire(request),
@@ -275,3 +290,24 @@ def deplacer_secteur(request, secteur_pk):
         s = get_object_or_404(Secteur, pk=secteur_pk, entreprise=request.entreprise)
         Secteur.objects.bulk_update(_echanger(secteurs, s, request.POST.get("sens"), "ordre"), ["ordre"])
     return _reponse_ordre(request, f"s{s.pk}")
+
+
+@membre_requis
+def a_collecter(request):
+    """À collecter (D3) : clients qui paient comptant et doivent de l'argent, dans l'ordre de la tournée.
+    Pendant une opération, ceux déjà faits sont marqués."""
+    from facturation.templatetags.argent import argent  # noqa: F401 (gabarit)
+
+    dus = soldes_dus(request.entreprise)
+    op = Operation.en_cours_de(request.entreprise)
+    faits = set(op.passages.filter(statut=Passage.Statut.FAIT).values_list("adresse__client_id", flat=True)) if op else set()
+    lignes, vus = [], set()
+    for a in arrets(request.entreprise):
+        c = a.client
+        if c.pk in vus or not dus.get(c.pk) or c.mode_paiement != Client.ModePaiement.COMPTANT:
+            continue
+        vus.add(c.pk)
+        lignes.append({"client": c, "adresse": a, "du": dus[c.pk], "fait": c.pk in faits})
+    return render(request, "terrain/tournee/a_collecter.html", {
+        "lignes": lignes, "total": sum((l["du"] for l in lignes), 0), "operation": op,
+    })

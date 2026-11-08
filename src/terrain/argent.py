@@ -44,6 +44,7 @@ class PaiementForm(forms.Form):
     montant = MontantField(max_digits=10, decimal_places=2, min_value=Decimal("0.01"))
     reference = forms.CharField(max_length=100, required=False)
     date = forms.DateField(required=False)
+    recu = forms.BooleanField(required=False)
 
 
 def _facture(request, pk):
@@ -186,7 +187,21 @@ def paiement(request, pk):
     reste = f.solde
     messages.success(request, f"{p.get_mode_display()} de {argent(p.montant)} enregistré. "
                               + ("Facture payée au complet." if reste <= 0 else f"Reste {argent(reste)}."))
+    if d.get("recu"):
+        _annoncer_recu(request, [p])
     return redirect("terrain:facture", pk=f.pk)
+
+
+def _annoncer_recu(request, paiements):
+    """Envoie le reçu (C13) et dit à Louis s'il est parti."""
+    from communications.recus import envoyer_recu
+
+    envoyes = envoyer_recu(paiements)
+    partis = [m.destinataire for m in envoyes if m.statut == m.Statut.EN_FILE]
+    if partis:
+        messages.info(request, "Reçu en route : " + ", ".join(partis) + ".")
+    elif envoyes:
+        messages.info(request, f"Reçu pas envoyé : {envoyes[0].erreur}")
 
 
 @membre_requis
@@ -221,6 +236,7 @@ def comptes(request):
     encaisse_30j = (Paiement.objects.filter(entreprise=request.entreprise, date__gt=aujourdhui - timedelta(days=30))
                     .aggregate(s=Sum("montant"))["s"] or ZERO)
     return render(request, "terrain/argent/comptes.html", {
+        "saison": _bilan_saison(request.entreprise),
         "lignes": lignes, "tri": tri, "total": sum((l["du"] for l in lignes), ZERO),
         "plus_de_60": sum((l["du"] for l in lignes if l["jours"] > 60), ZERO),
         "encaisse_30j": encaisse_30j,
@@ -324,4 +340,27 @@ def virement(request, pk):
         return redirect("terrain:virements")
     detail = ", ".join(f"{argent(p.montant)} sur {p.facture}" for p in faits)
     messages.success(request, f"Virement de {argent(v.montant)} enregistré pour {f.client.nom_affiche} : {detail}.")
+    if request.POST.get("recu"):
+        _annoncer_recu(request, faits)
     return redirect("terrain:virements")
+
+
+def _bilan_saison(entreprise):
+    """J1 : la saison en un coup d'œil (facturé, encaissé, clients, opérations), de son début à aujourd'hui."""
+    from clients.importation import saison_en_cours
+    from tournee.models import Operation, Passage
+
+    saison = saison_en_cours(entreprise)
+    periode = {"date__gte": saison.debut, "date__lte": saison.fin}
+    factures = Facture.objects.filter(entreprise=entreprise, genre=Facture.Genre.FACTURE, statut=Facture.Statut.EMISE,
+                                      date_facture__gte=saison.debut, date_facture__lte=saison.fin)
+    return {
+        "nom": saison.nom, "debut": saison.debut, "fin": saison.fin,
+        "facture": factures.aggregate(s=Sum("total"))["s"] or ZERO,
+        "taxes": factures.aggregate(s=Sum("tps"))["s"] or ZERO, "tvq": factures.aggregate(s=Sum("tvq"))["s"] or ZERO,
+        "encaisse": Paiement.objects.filter(entreprise=entreprise, **periode).aggregate(s=Sum("montant"))["s"] or ZERO,
+        "clients": Client.objects.filter(entreprise=entreprise, statut__in=[Client.Statut.ACTIF, Client.Statut.RECOUVREMENT]).count(),
+        "operations": Operation.objects.filter(entreprise=entreprise, debut__date__gte=saison.debut, debut__date__lte=saison.fin).count(),
+        "passages": Passage.objects.filter(entreprise=entreprise, statut=Passage.Statut.FAIT,
+                                           heure__date__gte=saison.debut, heure__date__lte=saison.fin).count(),
+    }

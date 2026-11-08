@@ -379,3 +379,30 @@ class InteracTests(TestCase):
         autre.refresh_from_db()
         self.assertEqual(autre.statut, "ignore")
         self.assertNotContains(self.client.get("/comptes/"), "à confirmer")
+
+
+@override_settings(ALLOWED_HOSTS=["*"])
+class BilanSaisonTests(TestCase):
+    def test_bilan_de_la_saison_dans_les_comptes(self):
+        from django.contrib.auth import get_user_model
+        from django.utils import timezone
+        from core.models import Membre
+        ent = Entreprise.objects.create(nom="Essai", slug="essai", domaine="essai.exemple.test", inscrit_taxes=True,
+                                        numero_tps="1", numero_tvq="2")
+        aujourdhui = timezone.localdate()
+        Saison.objects.create(entreprise=ent, nom="Saison test", debut=aujourdhui.replace(day=1), fin=aujourdhui)
+        c = Client.objects.create(entreprise=ent, nom="Tremblay")
+        f = Facture.objects.create(entreprise=ent, client=c)
+        f.lignes.create(description="Déneigement", quantite=1, prix_unitaire=D("100.00"))
+        f.recalculer()
+        f.emettre()
+        Paiement.objects.create(entreprise=ent, facture=f, montant=D("50.00"), mode="comptant")
+        u = get_user_model().objects.create_user("louis", password="x" * 12)
+        Membre.objects.create(utilisateur=u, entreprise=ent, role="operateur")
+        self.client.defaults["HTTP_HOST"] = "essai.exemple.test"
+        self.client.force_login(u)
+        page = self.client.get("/comptes/")
+        b = page.context["saison"]
+        self.assertEqual((b["nom"], b["facture"], b["encaisse"], b["clients"], b["taxes"], b["tvq"]),
+                         ("Saison test", D("114.98"), D("50.00"), 1, D("5.00"), D("9.98")))
+        self.assertContains(page, "Saison Saison test")

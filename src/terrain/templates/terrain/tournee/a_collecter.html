@@ -1,0 +1,25 @@
+{% extends "terrain/base.html" %}
+{% load argent %}
+{% block titre %}À collecter{% endblock %}
+{% block contenu %}
+<a href="{% url 'terrain:tournee' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Tournée</a>
+<h1 class="mb-1 text-2xl font-bold">À collecter</h1>
+<p class="mb-4 text-gray-400">Clients qui paient comptant et qui doivent de l'argent, dans l'ordre de la tournée.</p>
+<div class="carte mb-4 p-4"><div class="text-sm text-gray-400">Total à collecter</div><div class="text-2xl font-bold text-ok">{{ total|argent }}</div></div>
+<div class="carte divide-y divide-bordure">
+  {% for l in lignes %}
+    <a href="{% url 'terrain:fiche' l.client.pk %}" class="flex min-h-16 items-center justify-between gap-3 p-4 active:bg-bordure">
+      <div class="min-w-0">
+        <div class="truncate font-semibold {% if l.fait %}text-gray-500{% endif %}">{{ l.client.nom_affiche }}</div>
+        <div class="truncate text-sm text-gray-400">{{ l.adresse.ligne1 }}{% if l.adresse.secteur %} · {{ l.adresse.secteur.nom }}{% endif %}</div>
+      </div>
+      <div class="text-right">
+        <div class="whitespace-nowrap text-lg font-bold">{{ l.du|argent }}</div>
+        {% if l.fait %}<div class="text-sm text-ok">passage fait</div>{% endif %}
+      </div>
+    </a>
+  {% empty %}
+    <p class="p-4 text-gray-400">Personne à collecter : aucun client au comptant ne doit d'argent.</p>
+  {% endfor %}
+</div>
+{% endblock %}

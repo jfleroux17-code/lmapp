@@ -34,6 +34,8 @@
       </div>
       <a :href="courant.fiche" class="block text-xl font-bold" x-text="courant.client"></a>
       <div class="mb-3 text-lg" x-text="courant.ligne1 + (courant.ligne2 ? ', ' + courant.ligne2 : '')"></div>
+      <p x-show="courant.du && courant.comptant" class="mb-3 rounded-xl bg-ok/15 p-3 text-lg font-bold text-ok" x-text="'À collecter : ' + courant.du + ' (comptant)'"></p>
+      <p x-show="courant.du && !courant.comptant" class="mb-3 text-sm text-gray-400" x-text="'Solde dû : ' + courant.du"></p>
       <p x-show="courant.recouvrement" class="mb-3 rounded-xl bg-danger/10 p-3 text-danger">Compte en recouvrement.</p>
       <ul x-show="courant.neige || courant.obstacles || courant.borne || courant.pente || courant.consignes" class="mb-4 space-y-1 border-l-4 border-accent pl-3">
         <li x-show="courant.neige"><span class="text-gray-400">Neige :</span> <span x-text="courant.neige"></span></li>
@@ -112,7 +114,10 @@
     <p x-show="!arrets.length" class="p-4 text-gray-400">Aucun client actif avec une adresse.</p>
   </div>
 
-  <a href="{% url 'terrain:ordre' %}" class="gros-bouton mb-6 border-2 border-bordure">Ordre de la tournée</a>
+  <div class="mb-6 grid grid-cols-2 gap-2">
+    <a href="{% url 'terrain:a_collecter' %}" class="gros-bouton border-2 border-bordure">À collecter</a>
+    <a href="{% url 'terrain:ordre' %}" class="gros-bouton border-2 border-bordure">Ordre</a>
+  </div>
   {% if ecriture %}
     <form method="post" action="{% url 'terrain:terminer' %}" @submit="if (enAttente) { $event.preventDefault(); message = ''; alert('Des passages attendent encore le réseau : terminer quand ils seront envoyés.') } else if (!confirm('Terminer l\'opération?')) { $event.preventDefault() }">{% csrf_token %}
       <button class="gros-bouton border-2 border-danger/60 text-danger">Terminer l'opération</button>

@@ -279,3 +279,40 @@ class OrdreTests(TourneeBase):
         self.assertNotContains(page, "Monter")
         self.assertEqual(self.client.post(f"/tournee/ordre/arrets/{self.a2.pk}/", {"sens": "haut"}).status_code, 403)
         self.assertEqual(self.ordre(), [self.a1.pk, self.a2.pk, self.a_mont.pk, self.a_sans_rang.pk])
+
+
+@override_settings(ALLOWED_HOSTS=["*"])
+class ACollecterTests(TourneeBase):
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        U = get_user_model()
+        cls.louis = U.objects.create_user("louis", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="operateur")
+        Client.objects.filter(pk__in=[cls.a2.client_id, cls.a_mont.client_id]).update(mode_paiement="comptant")
+        Client.objects.filter(pk=cls.a1.client_id).update(mode_paiement="interac")
+        for adresse, montant in [(cls.a2, "120.00"), (cls.a1, "80.00")]:
+            f = Facture.objects.create(entreprise=cls.ent, client=adresse.client)
+            f.lignes.create(description="Déneigement", quantite=1, prix_unitaire=D(montant), taxable=False)
+            f.recalculer()
+            f.emettre()
+
+    def setUp(self):
+        self.client.defaults["HTTP_HOST"] = HOTE
+        self.client.force_login(self.louis)
+
+    def test_liste_dans_l_ordre_de_la_tournee(self):
+        page = self.client.get("/tournee/collecter/")
+        lignes = page.context["lignes"]
+        self.assertEqual([l["client"].pk for l in lignes], [self.a2.client_id])  # comptant et doit; Pelletier ne doit rien, Tremblay paie par Interac
+        self.assertEqual(page.context["total"], D("120.00"))
+        self.assertContains(page, "120,00")
+
+    def test_montant_sur_la_carte_de_l_arret(self):
+        op = Operation.objects.create(entreprise=self.ent)
+        arrets_ = {a["id"]: a for a in self.client.get("/tournee/").context["donnees"]["arrets"]}
+        self.assertEqual((arrets_[self.a2.pk]["du"], arrets_[self.a2.pk]["comptant"]), ("120,00 $", True))
+        self.assertEqual((arrets_[self.a1.pk]["du"], arrets_[self.a1.pk]["comptant"]), ("80,00 $", False))
+        self.assertEqual(arrets_[self.a_mont.pk]["du"], "")
+        services.marquer(op, self.a2, "fait")
+        self.assertTrue(self.client.get("/tournee/collecter/").context["lignes"][0]["fait"])

@@ -6,7 +6,7 @@ const VERSION = "{{ version }}";
 const CACHE_STATIQUE = "lmapp-statique-" + VERSION;
 const CACHE_PAGES = "lmapp-pages";
 const A_PRECHARGER = {{ prechargement|safe }};
-const PAGES_GARDEES = [/^\/$/, /^\/tournee\/$/, /^\/clients\/\d+\/$/, /^\/comptes\/$/, /^\/factures\/$/];
+const PAGES_GARDEES = [/^\/$/, /^\/tournee\/$/, /^\/tournee\/collecter\/$/, /^\/clients\/\d+\/$/, /^\/comptes\/$/, /^\/factures\/$/];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE_STATIQUE).then((c) => c.addAll(A_PRECHARGER)).then(() => self.skipWaiting()));

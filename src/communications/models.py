@@ -21,6 +21,7 @@ class Genre(models.TextChoices):
     RELANCE_3 = "relance_3", "Dernier avis"
     RECU = "recu", "Message reçu"
     INTERAC = "interac", "Avis de virement Interac"
+    RECU_PAIEMENT = "recu_paiement", "Reçu de paiement"
 
 
 RELANCES = [Genre.RELANCE_1, Genre.RELANCE_2, Genre.RELANCE_3]
@@ -36,8 +37,11 @@ GABARITS_PAR_DEFAUT = {
     Genre.RELANCE_1: "Bonjour {client}, petit rappel : votre compte montre un solde de {montant} ({factures}). {paiement}",
     Genre.RELANCE_2: "Bonjour {client}, deuxième avis : le solde de {montant} ({factures}) est impayé depuis le {depuis}. Merci de le régler dès que possible. {paiement}",
     Genre.RELANCE_3: "Bonjour {client}, dernier avis : le solde de {montant} ({factures}) est impayé depuis le {depuis}. Merci de le régler sans tarder, ou de nous appeler si le paiement pose problème. {paiement}",
+    # Reçu de paiement (C13)
+    Genre.RECU_PAIEMENT: "Bonjour {client}, nous avons bien reçu votre paiement de {montant} ({mode}) le {date}, pour {factures}. {solde} Merci!",
 }
-VARIABLES = "{adresse}, {minutes}, {heure}, {client}; relances : {montant}, {factures}, {depuis}, {paiement}"
+VARIABLES = ("{adresse}, {minutes}, {heure}, {client}; relances : {montant}, {factures}, {depuis}, {paiement}; "
+             "reçu : {montant}, {mode}, {date}, {factures}, {solde}")
 
 
 class Gabarit(Horodate):

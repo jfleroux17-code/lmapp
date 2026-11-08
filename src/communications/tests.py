@@ -686,3 +686,66 @@ class SegmentsTests(TestCase):
         self.assertEqual(m.segments, 2)
         c = Message.objects.create(entreprise=ent, genre="manuel", canal="courriel", destinataire="a@b.c", contenu="x" * 500)
         self.assertEqual(c.segments, 0)
+
+
+@override_settings(ALLOWED_HOSTS=["*"], LMAPP_ENV="test", LMAPP_DESTINATAIRES_TEST=["client@example.com", "+14505550101"],
+                   SMTP_HOTE="smtp.exemple.test", IMAP_HOTE="", IMAP_UTILISATEUR="louis@exemple.test", IMAP_MOT_DE_PASSE="secret",
+                   TWILIO_ACCOUNT_SID="AC-essai", TWILIO_AUTH_TOKEN="jeton")
+class RecuTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        from facturation.models import Facture
+        cls.ent = Entreprise.objects.create(nom="Entretiens Essai", slug="essai", domaine=HOTE, envois_actifs=True,
+                                            courriel_reponse="louis@exemple.test", numero_texto="+14503001166",
+                                            prochain_numero_facture=57, signature_messages="Entretiens Essai")
+        cls.c = Client.objects.create(entreprise=cls.ent, prenom="Ginette", nom="Tremblay", courriel="client@example.com",
+                                      cellulaire="+14505550101", canal_prefere="texto")
+        cls.f = Facture.objects.create(entreprise=cls.ent, client=cls.c)
+        cls.f.lignes.create(description="Déneigement", quantite=1, prix_unitaire=D("400.00"), taxable=False)
+        cls.f.recalculer()
+        cls.f.emettre()
+        U = get_user_model()
+        cls.louis = U.objects.create_user("louis", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="operateur")
+
+    def setUp(self):
+        mock.patch("communications.tasks.envoyer_message.defer").start()
+        self.addCleanup(mock.patch.stopall)
+        self.client.defaults["HTTP_HOST"] = HOTE
+        self.client.force_login(self.louis)
+
+    def test_recu_apres_un_paiement_partiel_puis_complet(self):
+        r = self.client.post(f"/factures/{self.f.pk}/paiement/", {"mode": "comptant", "montant": "150", "recu": "1"}, follow=True)
+        self.assertContains(r, "Reçu en route : +14505550101.")
+        m = Message.objects.get(genre="recu_paiement")
+        self.assertEqual(m.canal, "texto")
+        self.assertIn("Bonjour Ginette Tremblay, nous avons bien reçu votre paiement de 150,00", m.contenu)
+        self.assertIn("(comptant)", m.contenu)
+        self.assertIn("pour la facture n° 57", m.contenu)
+        self.assertIn("Solde restant à votre compte : 250,00", m.contenu)
+        self.assertIsNotNone(self.f.paiements.get().recu_envoye_le)
+        self.client.post(f"/factures/{self.f.pk}/paiement/", {"mode": "interac", "montant": "250", "recu": "1"})
+        self.assertIn("Votre compte est payé au complet.", Message.objects.filter(genre="recu_paiement").latest("pk").contenu)
+
+    def test_sans_case_cochee_pas_de_recu(self):
+        self.client.post(f"/factures/{self.f.pk}/paiement/", {"mode": "comptant", "montant": "150"})
+        self.assertFalse(Message.objects.filter(genre="recu_paiement").exists())
+        self.assertIsNone(self.f.paiements.get().recu_envoye_le)
+
+    def test_par_courriel_avec_la_facture_jointe(self):
+        from communications import recus
+        from facturation.models import Paiement
+        Client.objects.filter(pk=self.c.pk).update(canal_prefere="courriel")
+        self.c.refresh_from_db()
+        p = Paiement.objects.create(entreprise=self.ent, facture=self.f, montant=D("400.00"), mode="cheque", date=date(2026, 11, 9))
+        p.facture.client.refresh_from_db()
+        (m,) = recus.envoyer_recu([p])
+        self.assertEqual((m.canal, m.sujet), ("courriel", "Reçu : paiement de 400,00 $, Entretiens Essai"))
+        self.assertEqual(list(m.factures_jointes.all()), [self.f])
+        self.assertIn("le 9 novembre 2026", m.contenu)
+
+    def test_interrupteur_eteint(self):
+        Entreprise.objects.filter(pk=self.ent.pk).update(envois_actifs=False)
+        r = self.client.post(f"/factures/{self.f.pk}/paiement/", {"mode": "comptant", "montant": "150", "recu": "1"}, follow=True)
+        self.assertContains(r, "Reçu pas envoyé : Envois réels éteints")
+        self.assertIsNone(self.f.paiements.get().recu_envoye_le)

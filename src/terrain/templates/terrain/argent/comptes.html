@@ -2,6 +2,16 @@
 {% load argent %}
 {% block titre %}À recevoir{% endblock %}
 {% block contenu %}
+<details class="carte mb-4 p-4" open>
+  <summary class="flex min-h-10 cursor-pointer items-center justify-between font-bold"><span>Saison {{ saison.nom }}</span><span class="text-sm font-normal text-gray-400">{{ saison.debut|date:"j M" }} au {{ saison.fin|date:"j M" }}</span></summary>
+  <div class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2">
+    <div><div class="text-sm text-gray-400">Facturé</div><div class="text-xl font-bold">{{ saison.facture|argent }}</div></div>
+    <div><div class="text-sm text-gray-400">Encaissé</div><div class="text-xl font-bold text-ok">{{ saison.encaisse|argent }}</div></div>
+    <div><div class="text-sm text-gray-400">Clients servis</div><div class="text-xl font-bold">{{ saison.clients }}</div></div>
+    <div><div class="text-sm text-gray-400">Opérations · passages</div><div class="text-xl font-bold">{{ saison.operations }} · {{ saison.passages }}</div></div>
+  </div>
+  {% if saison.taxes or saison.tvq %}<p class="mt-2 text-sm text-gray-400">Taxes facturées : TPS {{ saison.taxes|argent }}, TVQ {{ saison.tvq|argent }}</p>{% endif %}
+</details>
 <div class="mb-4 grid grid-cols-2 gap-3">
   <div class="carte p-4"><div class="text-sm text-gray-400">À recevoir</div><div class="text-2xl font-bold text-accent">{{ total|argent }}</div></div>
   <div class="carte p-4"><div class="text-sm text-gray-400">Encaissé, 30 jours</div><div class="text-2xl font-bold text-ok">{{ encaisse_30j|argent }}</div></div>
