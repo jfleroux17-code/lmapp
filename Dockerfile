@@ -62,6 +62,9 @@ CMD ["gunicorn", "config.wsgi:application", \
      "--bind", "0.0.0.0:8000", \
      "--workers", "3", \
      "--timeout", "60", \
+     "--no-control-socket", \
      "--access-logfile", "-"]
+# --no-control-socket : Gunicorn 26 ouvrirait sinon une interface de contrôle dans
+# /app/.gunicorn, impossible (et inutile) dans un conteneur en lecture seule.
 # Proxies de confiance de Gunicorn : variable FORWARDED_ALLOW_IPS du .env
 # (l'IP fixe de Caddy). Sans elle, Gunicorn ne croit que 127.0.0.1.
