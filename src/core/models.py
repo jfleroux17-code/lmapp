@@ -72,6 +72,10 @@ class Entreprise(Horodate):
         "adresse de réponse des courriels", blank=True,
         help_text="La boîte IMAP lue par l'app, ex. info@ledeneigeur.com.",
     )
+    envois_actifs = models.BooleanField(
+        "envois réels activés", default=False,
+        help_text="Éteint : les textos et courriels restent « Préparé », rien ne part. À allumer seulement quand on est prêt à écrire aux clients.",
+    )
     signature_messages = models.CharField(
         "signature des messages", max_length=100, blank=True,
         help_text="Identification de l'expéditeur à la fin des textos (LCAP), ex. « Louis Méthot Déneigement ».",

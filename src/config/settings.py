@@ -33,6 +33,11 @@ LMAPP_ENV = env("LMAPP_ENV", "test")
 # Hors prod, les seuls destinataires permis d'un envoi réel (cellulaires +1..., courriels de JF), séparés par des virgules
 LMAPP_DESTINATAIRES_TEST = env_liste("LMAPP_DESTINATAIRES_TEST", "")
 
+# Twilio (textos, PRD M1). Le numéro d'envoi est celui de l'entreprise (Entreprise.numero_texto).
+TWILIO_ACCOUNT_SID = env("TWILIO_ACCOUNT_SID", "")
+TWILIO_AUTH_TOKEN = env("TWILIO_AUTH_TOKEN", "")
+TWILIO_API = env("TWILIO_API", "https://api.twilio.com")
+
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env_bool("DJANGO_DEBUG", False)
 ALLOWED_HOSTS = env_liste("DJANGO_ALLOWED_HOSTS")

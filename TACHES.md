@@ -25,7 +25,7 @@ Mise à jour : 8 novembre 2026.
 
 ### Comptes de services (textos et courriels, phase 1)
 
-- [ ] Twilio : compte, numéro local (450 ou 579), `TWILIO_ACCOUNT_SID` et `TWILIO_AUTH_TOKEN` dans `/srv/lmapp/.env` et `/srv/lmapp/test/.env`.
+- [ ] Twilio : ~~compte payant~~ et ~~numéro 450-300-1166~~ (fait le 8 novembre 2026), `TWILIO_ACCOUNT_SID` déjà dans les deux `.env`. **Reste : `TWILIO_AUTH_TOKEN`** dans `/srv/lmapp/.env` et `/srv/lmapp/test/.env` (avec `nano`), puis premier texto d'essai vers le cellulaire de JF.
 - [ ] SMTP2GO : sous-compte de Louis, domaine `ledeneigeur.com` vérifié (SPF, DKIM, DMARC chez Cloudflare), `SMTP2GO_API_KEY` dans les `.env`.
 - [ ] Boîte IMAP (proposé : `info@ledeneigeur.com`), MX chez Cloudflare, accès dans les `.env`.
 - [ ] Stripe : seulement si des clients veulent payer par carte (question 8 de Louis).
@@ -88,6 +88,7 @@ Après son essai des écrans. Une étape à la fois, chacune en test, montrée �
 - [x] Sauvegarde de la base (K3) toutes les 12 heures : en prod le 7 novembre 2026, test de restauration réussi.
 - [ ] Volet argent, étape 1 sur 5 : modèle (saisons, services, contrats et versements, factures, paiements, soldes d'ouverture) et administration. **En prod le 8 novembre 2026** (aucune facture encore; numérotation à 1 en attendant le numéro du carnet de Louis). Étape 2, PDF de la facture : **en prod le 8 novembre 2026** (lien « Voir le PDF » dans l'administration). Étapes 3 et 4, écrans de Louis (facture au cellulaire, paiements comptant, Interac, chèque, débit) et comptes à recevoir : **en prod le 8 novembre 2026**. Aussi, en prod : import des prix (contrats) et des soldes dus avec les clients, colonnes bleues du gabarit; brouillons créés chaque nuit pour les versements de contrat arrivés à leur date (C5). Ensuite : envois et relances (attendent Twilio et SMTP2GO).
 - [x] Phase 2 (3 étapes), en prod. Étape 1 : opérations et passages (F1 à F6, F8, F11) : **en prod le 8 novembre 2026**. Étape 2, mode hors ligne (F10) : **en prod le 8 novembre 2026** (essayé dans un vrai navigateur : réseau coupé, page rechargée sans réseau, envoi au retour). Étape 3, avis de proximité (G1 à G5) : **en prod le 8 novembre 2026**, préparés sans envoi tant que Twilio n'est pas là (essayé dans un vrai navigateur avec une position simulée). Ordre de la tournée à l'écran (F1, boutons ▲ et ▼ par arrêt et par secteur) : **en prod le 8 novembre 2026**. Reste pour plus tard : position de Louis sur une carte (G6, V2).
+- [ ] Envoi des textos par Twilio (M1) : **en test le 8 novembre 2026**, en attente de l'Auth Token. Garde-fous : interrupteur « envois réels activés » dans la fiche de l'entreprise (éteint par défaut, à allumer en prod seulement avec le « go » de JF), et en test seulement le cellulaire de JF. Ensuite : réception des textos (il faut ouvrir le 443 à Twilio), envoi des factures et relances.
 - [ ] Test de restauration chaque mois (`sh outils/tester_restauration.sh`), prochain vers le 7 décembre 2026.
 
 ### En attente

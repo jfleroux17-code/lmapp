@@ -1,11 +1,16 @@
+import base64
+import io
 import json
+from unittest import mock
+from urllib.error import HTTPError, URLError
+from urllib.parse import parse_qs
 
 from django.contrib.auth import get_user_model
 from django.contrib.gis.geos import Point
 from django.test import TestCase, override_settings
 
 from clients.models import Adresse, Client, Secteur
-from communications import avis, envoi
+from communications import avis, envoi, twilio
 from communications.models import Gabarit, Message
 from core.models import Entreprise, Membre
 from tournee import services
@@ -89,14 +94,96 @@ class AvisTests(TestCase):
 
     def test_garde_fou_hors_prod(self):
         m = Message.objects.create(entreprise=self.ent, genre="manuel", canal="texto", destinataire="+14505550199", contenu="x")
-        self.assertEqual(envoi.envoyer(m).statut, "prepare")  # aucun fournisseur : rien ne part
+        with override_settings(TWILIO_ACCOUNT_SID="", TWILIO_AUTH_TOKEN=""):
+            self.assertEqual(envoi.envoyer(m).statut, "prepare")  # aucun fournisseur : rien ne part
         with override_settings(TWILIO_ACCOUNT_SID="AC-essai", TWILIO_AUTH_TOKEN="essai"):
-            self.assertEqual(envoi.envoyer(m).statut, "bloque")  # fournisseur là, mais destinataire non permis en test
+            self.assertEqual(envoi.envoyer(m).statut, "prepare")  # envois réels éteints (défaut)
+            self.assertIn("éteints", m.erreur)
+            Entreprise.objects.filter(pk=self.ent.pk).update(envois_actifs=True)
+            m.entreprise.refresh_from_db()
+            self.assertEqual(envoi.envoyer(m).statut, "prepare")  # pas de numéro de texto d'affaires
+            self.assertIn("Numéro", m.erreur)
+            Entreprise.objects.filter(pk=self.ent.pk).update(numero_texto="+14503001166")
+            m.entreprise.refresh_from_db()
+            self.assertEqual(envoi.envoyer(m).statut, "bloque")  # tout est là, mais destinataire non permis en test
             self.assertFalse(envoi.destinataire_permis("+14505550199"))
             with override_settings(LMAPP_DESTINATAIRES_TEST=["+14505550199"]):
                 self.assertTrue(envoi.destinataire_permis("+14505550199"))
+                with mock.patch("communications.tasks.envoyer_message.defer") as defer:
+                    with self.captureOnCommitCallbacks(execute=True) as rappels:
+                        self.assertEqual(envoi.envoyer(m).statut, "en_file")
+                        defer.assert_not_called()  # seulement après la transaction
+                self.assertEqual(len(rappels), 1)
+                defer.assert_called_once_with(message_id=m.pk)
             with override_settings(LMAPP_ENV="prod"):
                 self.assertTrue(envoi.destinataire_permis("+14505550199"))
+
+
+@override_settings(TWILIO_ACCOUNT_SID="AC-essai", TWILIO_AUTH_TOKEN="jeton", TWILIO_API="https://api.exemple.test")
+class EnvoiTwilioTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai", domaine=HOTE, numero_texto="+14503001166", envois_actifs=True)
+
+    def message(self, statut="en_file"):
+        return Message.objects.create(entreprise=self.ent, genre="manuel", canal="texto", destinataire="+14505550199",
+                                      contenu="Bonjour", statut=statut)
+
+    def tache(self, m, essais_faits=0):
+        from types import SimpleNamespace
+        from communications.tasks import envoyer_message
+        return envoyer_message.func(SimpleNamespace(job=SimpleNamespace(attempts=essais_faits)), message_id=m.pk)
+
+    def test_appel_a_twilio(self):
+        reponse = mock.MagicMock()
+        reponse.__enter__.return_value = io.BytesIO(b'{"sid": "SM123"}')
+        with mock.patch("communications.twilio.urlopen", return_value=reponse) as u:
+            self.assertEqual(twilio.envoyer_texto("+14503001166", "+14505550199", "Allo"), "SM123")
+        req = u.call_args.args[0]
+        self.assertEqual(req.full_url, "https://api.exemple.test/2010-04-01/Accounts/AC-essai/Messages.json")
+        self.assertEqual(parse_qs(req.data.decode()), {"From": ["+14503001166"], "To": ["+14505550199"], "Body": ["Allo"]})
+        self.assertEqual(req.get_header("Authorization"), "Basic " + base64.b64encode(b"AC-essai:jeton").decode())
+
+    def test_erreurs_de_twilio(self):
+        def erreur(code, corps):
+            return HTTPError("u", code, "x", {}, io.BytesIO(corps))
+        with mock.patch("communications.twilio.urlopen", side_effect=erreur(400, b'{"code": 21211, "message": "Invalid To"}')):
+            with self.assertRaisesMessage(twilio.Refuse, "Twilio 21211 : Invalid To"):
+                twilio.envoyer_texto("a", "b", "c")
+        for e, attendue in [(erreur(503, b"panne"), twilio.Indisponible), (erreur(429, b"{}"), twilio.Indisponible),
+                            (URLError("dns"), twilio.Indisponible), (TimeoutError(), twilio.Incertain)]:
+            with mock.patch("communications.twilio.urlopen", side_effect=e), self.assertRaises(attendue):
+                twilio.envoyer_texto("a", "b", "c")
+
+    def test_tache_envoye(self):
+        m = self.message()
+        with mock.patch("communications.twilio.envoyer_texto", return_value="SM9") as t:
+            self.assertEqual(self.tache(m), "envoye")
+        t.assert_called_once_with("+14503001166", "+14505550199", "Bonjour")
+        m.refresh_from_db()
+        self.assertEqual((m.statut, m.fournisseur_id), ("envoye", "SM9"))
+        self.assertIsNotNone(m.envoye_le)
+        with mock.patch("communications.twilio.envoyer_texto") as t:
+            self.assertEqual(self.tache(m), "rien à faire")  # tâche en double : pas de deuxième texto
+        t.assert_not_called()
+
+    def test_tache_refus_et_reessais(self):
+        m = self.message()
+        with mock.patch("communications.twilio.envoyer_texto", side_effect=twilio.Refuse("Twilio 21610 : désabonné")):
+            self.assertEqual(self.tache(m), "echec")
+        m.refresh_from_db()
+        self.assertEqual(m.erreur, "Twilio 21610 : désabonné")
+        m = self.message()
+        with mock.patch("communications.twilio.envoyer_texto", side_effect=twilio.Indisponible("panne")):
+            with self.assertRaises(twilio.Indisponible):
+                self.tache(m, essais_faits=0)  # Procrastinate réessaiera
+            m.refresh_from_db()
+            self.assertEqual(m.statut, "en_file")
+            self.assertEqual(self.tache(m, essais_faits=4), "echec")  # dernier essai
+        m = self.message(statut="prepare")
+        with mock.patch("communications.twilio.envoyer_texto") as t:
+            self.assertEqual(self.tache(m), "rien à faire")
+        t.assert_not_called()
 
 
 @override_settings(ALLOWED_HOSTS=["*"], LMAPP_ENV="test", LMAPP_DESTINATAIRES_TEST=[])

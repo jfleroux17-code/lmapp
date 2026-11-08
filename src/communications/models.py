@@ -52,7 +52,8 @@ class Message(Horodate):
         COURRIEL = "courriel", "Courriel"
 
     class Statut(models.TextChoices):
-        PREPARE = "prepare", "Préparé, pas envoyé (aucun fournisseur configuré)"
+        PREPARE = "prepare", "Préparé, pas envoyé"
+        EN_FILE = "en_file", "En file d'envoi"
         ENVOYE = "envoye", "Envoyé"
         ECHEC = "echec", "Échec"
         BLOQUE = "bloque", "Bloqué (environnement de test, destinataire non permis)"
@@ -67,6 +68,7 @@ class Message(Horodate):
     statut = models.CharField(max_length=10, choices=Statut.choices, default=Statut.PREPARE)
     envoye_le = models.DateTimeField(null=True, blank=True)
     erreur = models.CharField(max_length=300, blank=True)
+    fournisseur_id = models.CharField("identifiant chez le fournisseur", max_length=64, blank=True)
 
     class Meta:
         verbose_name = "message"

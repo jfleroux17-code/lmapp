@@ -1,16 +1,21 @@
-"""Envoi des messages. Aucun fournisseur pour l'instant : les messages restent « préparés ».
+"""Envoi des messages (PRD E2, G2 à G5, M1).
 
-Le jour où Twilio ou SMTP2GO seront configurés (clés dans .env), l'envoi réel se
-branchera dans `envoyer()`. Le garde-fou hors prod est déjà en place.
+`envoyer(message)` décide du sort du message, puis le worker l'envoie (`communications.tasks`) :
+  - Préparé (rien ne part) : fournisseur pas configuré (.env), envois réels éteints dans la fiche
+    de l'entreprise (`envois_actifs`, éteint par défaut), ou numéro de texto d'affaires manquant;
+  - Bloqué : hors prod, destinataire absent de LMAPP_DESTINATAIRES_TEST (garde-fou du test);
+  - En file, puis Envoyé ou Échec.
+Courriels : pas de fournisseur pour l'instant (SMTP2GO), ils restent préparés.
 """
 from django.conf import settings
+from django.db import transaction
 
 from communications.models import Message
 
 
 def fournisseur_configure(canal):
     if canal == Message.Canal.TEXTO:
-        return bool(getattr(settings, "TWILIO_ACCOUNT_SID", "") and getattr(settings, "TWILIO_AUTH_TOKEN", ""))
+        return bool(settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN)
     return bool(getattr(settings, "SMTP2GO_API_KEY", ""))
 
 
@@ -21,12 +26,28 @@ def destinataire_permis(destinataire):
     return destinataire.lower() in {d.lower() for d in settings.LMAPP_DESTINATAIRES_TEST}
 
 
-def envoyer(message):
+def _pourquoi_pas(message):
+    ent = message.entreprise
     if not fournisseur_configure(message.canal):
-        message.statut = Message.Statut.PREPARE  # rien ne peut partir
+        return "Aucun fournisseur configuré."
+    if not ent.envois_actifs:
+        return "Envois réels éteints dans la fiche de l'entreprise."
+    if message.canal == Message.Canal.TEXTO and not ent.numero_texto:
+        return "Numéro de texto d'affaires manquant dans la fiche de l'entreprise."
+    return ""
+
+
+def envoyer(message):
+    raison = _pourquoi_pas(message)
+    if raison:
+        message.statut, message.erreur = Message.Statut.PREPARE, raison
     elif not destinataire_permis(message.destinataire):
-        message.statut = Message.Statut.BLOQUE  # hors prod : seulement les destinataires de JF
-    else:  # pragma: no cover : branché avec le fournisseur (Twilio, SMTP2GO)
-        raise NotImplementedError("Envoi réel pas encore branché.")
-    message.save(update_fields=["statut", "modifie_le"])
+        message.statut, message.erreur = Message.Statut.BLOQUE, "Environnement de test : destinataire non permis."
+    else:
+        from communications.tasks import envoyer_message
+
+        message.statut, message.erreur = Message.Statut.EN_FILE, ""
+        pk = message.pk
+        transaction.on_commit(lambda: envoyer_message.defer(message_id=pk))
+    message.save(update_fields=["statut", "erreur", "modifie_le"])
     return message
