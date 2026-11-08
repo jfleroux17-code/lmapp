@@ -16,6 +16,7 @@
 }
 
 @layer base {
+  [x-cloak] { display: none !important; }
   html { font-size: 18px; -webkit-text-size-adjust: 100%; }
   body { @apply bg-nuit text-neige antialiased; }
   /* Respecter l'encoche et la barre d'accueil de l'iPhone */

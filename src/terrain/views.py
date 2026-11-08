@@ -134,3 +134,25 @@ def favicon(request):
     from django.templatetags.static import static
 
     return redirect(static("icones/icone-192.png"), permanent=True)
+
+
+def service_worker(request):
+    """Service worker à la racine (portée « / ») : cache de l'app pour le mode hors ligne (F10).
+    La version suit le CSS compilé : un nouveau déploiement remplace le cache des fichiers statiques."""
+    import json
+
+    from django.http import HttpResponse
+    from django.template.loader import render_to_string
+    from django.templatetags.static import static
+
+    fichiers = ["css/app.css", "vendor/htmx-2.0.11.min.js", "vendor/alpine-3.17.5.min.js", "terrain/tournee.js",
+                "icones/icone-192.png", "icones/icone-180.png", "icones/icone.svg"]
+    urls = [static(f) for f in fichiers]
+    import hashlib
+
+    version = hashlib.sha256(json.dumps(urls).encode()).hexdigest()[:12]  # change quand un fichier change (noms à empreinte)
+    corps = render_to_string("terrain/sw.js", {"version": version, "prechargement": json.dumps(urls)})
+    r = HttpResponse(corps, content_type="application/javascript; charset=utf-8")
+    r["Cache-Control"] = "no-cache"
+    r["Service-Worker-Allowed"] = "/"
+    return r

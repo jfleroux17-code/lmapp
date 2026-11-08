@@ -1,41 +1,93 @@
 """Écrans de tournée de Louis (PRD F1 à F6, F8) : une opération, l'arrêt suivant, Fait ou Sauté en une tape."""
+import json
+
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.http import JsonResponse
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from clients.models import Adresse
+from clients.models import Adresse, Client
 from core.acces import ecriture_requise, membre_requis, peut_ecrire
 from tournee import services
 from tournee.models import Operation, Passage, arrets
 
 
-@membre_requis
-def tournee(request):
+def _arret_json(a, i, passage):
     from terrain.views import _liens_navigation
 
+    return {
+        "id": a.pk, "rang": i, "client_id": a.client_id, "client": a.client.nom_affiche,
+        "fiche": reverse("terrain:fiche", args=[a.client_id]),
+        "ligne1": a.ligne1, "ligne2": a.ligne2, "secteur": a.secteur.nom if a.secteur else "",
+        "ordre": a.ordre_tournee, "recouvrement": a.client.statut == Client.Statut.RECOUVREMENT,
+        "neige": a.ou_mettre_neige, "obstacles": a.obstacles, "borne": a.borne_fontaine, "pente": a.entree_en_pente,
+        "consignes": a.consignes,
+        "navigation": _liens_navigation(a),
+        "passage": _passage_json(passage),
+    }
+
+
+def _passage_json(p):
+    if p is None:
+        return None
+    return {"statut": p.statut, "raison": p.raison, "raison_texte": p.get_raison_display() if p.raison else "",
+            "heure": timezone.localtime(p.heure).strftime("%H:%M"), "note": p.note}
+
+
+@membre_requis
+def tournee(request):
     op = Operation.en_cours_de(request.entreprise)
     if op is None:
         return render(request, "terrain/tournee/demarrer.html", {
             "types": Operation.Type.choices, "ecriture": peut_ecrire(request),
             "dernieres": Operation.objects.filter(entreprise=request.entreprise).order_by("-debut")[:5],
         })
-    liste = list(arrets(request.entreprise))
     passages = {p.adresse_id: p for p in op.passages.all()}
-    choisi = None
-    if request.GET.get("arret"):
-        choisi = next((a for a in liste if str(a.pk) == request.GET["arret"]), None)
-    prochain = next((a for a in liste if a.pk not in passages), None)
-    courant = choisi or prochain
-    return render(request, "terrain/tournee/en_cours.html", {
-        "op": op, "ecriture": peut_ecrire(request),
-        "lignes": [{"a": a, "passage": passages.get(a.pk), "rang": i} for i, a in enumerate(liste, start=1)],
-        "courant": courant, "passage_courant": passages.get(courant.pk) if courant else None,
-        "navigation": _liens_navigation(courant) if courant else [],
-        "faits": sum(1 for p in passages.values() if p.statut == Passage.Statut.FAIT),
-        "sautes": sum(1 for p in passages.values() if p.statut == Passage.Statut.SAUTE),
-        "total": len(liste), "raisons": Passage.Raison.choices,
-    })
+    donnees = {
+        "operation": {"id": op.pk, "type": op.get_type_display(), "debut": timezone.localtime(op.debut).strftime("%H h %M")},
+        "arrets": [_arret_json(a, i, passages.get(a.pk)) for i, a in enumerate(arrets(request.entreprise), start=1)],
+        "raisons": Passage.Raison.choices,
+        "synchro": reverse("terrain:synchro"),
+        "ecriture": peut_ecrire(request),
+        "choisi": int(request.GET["arret"]) if request.GET.get("arret", "").isdigit() else None,
+    }
+    return render(request, "terrain/tournee/en_cours.html", {"op": op, "donnees": donnees, "ecriture": donnees["ecriture"]})
+
+
+@require_POST
+@ecriture_requise
+def synchro(request):
+    """Passages tapés sur le cellulaire, envoyés dès que possible (F10) : en direct, ou en
+    rafale au retour du réseau. Chaque passage porte son opération et l'heure de la tape.
+    Réponse : les identifiants acceptés (le cellulaire les retire de sa file) et refusés."""
+    try:
+        recu = json.loads(request.body)
+        lot = recu["passages"]
+        assert isinstance(lot, list) and len(lot) <= 500
+    except (ValueError, KeyError, AssertionError, TypeError):
+        return JsonResponse({"erreur": "Données illisibles."}, status=400)
+    acceptes, refuses, maintenant = [], [], timezone.now()
+    for item in lot:
+        cle = str(item.get("cle", ""))[:64]
+        try:
+            op = Operation.objects.get(pk=int(item["operation"]), entreprise=request.entreprise)
+            adresse = Adresse.objects.get(pk=int(item["adresse"]), entreprise=request.entreprise)
+            statut, raison = item.get("statut"), item.get("raison") or ""
+            if statut not in Passage.Statut.values or (statut == Passage.Statut.SAUTE and raison not in Passage.Raison.values):
+                raise ValueError("statut")
+            quand = parse_datetime(str(item.get("quand", ""))) or maintenant
+            # Heure du cellulaire : ni dans le futur, ni avant le début de l'opération
+            quand = min(max(quand, op.debut), maintenant)
+            p = services.marquer(op, adresse, statut, raison=raison, note=str(item.get("note", "")).strip()[:300], quand=quand)
+            acceptes.append({"cle": cle, "adresse": adresse.pk, "passage": _passage_json(p), "facture": bool(p.ligne_facture_id)})
+        except (Operation.DoesNotExist, Adresse.DoesNotExist, KeyError, ValueError, TypeError, ValidationError):
+            refuses.append(cle)
+    return JsonResponse({"acceptes": acceptes, "refuses": refuses})
 
 
 @require_POST

@@ -105,26 +105,80 @@ class EcransTests(TourneeBase):
         self.client.defaults["HTTP_HOST"] = HOTE
         self.client.force_login(self.louis)
 
+    def donnees(self, url="/tournee/"):
+        return self.client.get(url).context["donnees"]
+
+    def synchro(self, *passages):
+        import json
+        return self.client.post("/tournee/synchro/", json.dumps({"passages": list(passages)}), content_type="application/json")
+
     def test_une_operation_complete(self):
         self.assertContains(self.client.get("/tournee/"), "Démarrer : Neige")
         r = self.client.post("/tournee/demarrer/", {"type": "neige"}, follow=True)
         self.assertContains(r, "Opération « Neige » commencée.")
-        self.assertEqual(r.context["courant"], self.a1)  # premier arrêt
-        r = self.client.post(f"/tournee/passages/{self.a1.pk}/", {"statut": "fait", "note": "Boîte aux lettres croche"}, follow=True)
-        self.assertContains(r, "Tremblay, 1, rue Tremblay : fait.")
-        self.assertEqual(r.context["courant"], self.a2)  # le suivant
-        r = self.client.post(f"/tournee/passages/{self.a2.pk}/", {"statut": "saute", "raison": "non_paye"}, follow=True)
-        self.assertEqual(r.context["courant"], self.a_mont)
-        self.assertEqual((r.context["faits"], r.context["sautes"], r.context["total"]), (1, 1, 4))
-        # Choisir un arrêt hors de l'ordre
-        self.assertEqual(self.client.get(f"/tournee/?arret={self.a_sans_rang.pk}").context["courant"], self.a_sans_rang)
+        d = r.context["donnees"]
+        self.assertEqual([a["id"] for a in d["arrets"]], [self.a1.pk, self.a2.pk, self.a_mont.pk, self.a_sans_rang.pk])
+        self.assertTrue(d["arrets"][1]["recouvrement"])
+        self.assertIn("maps.apple.com", d["arrets"][0]["navigation"][0][1])
+        op = d["operation"]["id"]
+        r = self.synchro({"cle": "a", "operation": op, "adresse": self.a1.pk, "statut": "fait", "note": "Boîte aux lettres croche",
+                          "quand": "2026-11-08T09:15:00+00:00"},
+                         {"cle": "b", "operation": op, "adresse": self.a2.pk, "statut": "saute", "raison": "non_paye"})
+        self.assertEqual([x["cle"] for x in r.json()["acceptes"]], ["a", "b"])
+        self.assertEqual(r.json()["refuses"], [])
+        arrets_ = self.donnees()["arrets"]
+        self.assertEqual((arrets_[0]["passage"]["statut"], arrets_[1]["passage"]["raison"]), ("fait", "non_paye"))
         r = self.client.post("/tournee/terminer/", follow=True)
         self.assertContains(r, "Opération terminée : 1 fait, 1 sauté, 2 pas visités.")
-        self.assertIsNotNone(Operation.objects.get().fin)
-        # Historique dans la fiche (F5, F8)
         fiche = self.client.get(f"/clients/{self.a1.client.pk}/")
         self.assertContains(fiche, "Boîte aux lettres croche")
         self.assertContains(self.client.get(f"/clients/{self.a2.client.pk}/"), "Sauté : compte non payé")
+
+    def test_synchro_hors_ligne_garde_l_heure_de_la_tape(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        self.client.post("/tournee/demarrer/", {"type": "neige"})
+        op = Operation.objects.get()
+        tape = timezone.now() - timedelta(minutes=20)
+        Operation.objects.filter(pk=op.pk).update(debut=timezone.now() - timedelta(hours=1))
+        self.synchro({"cle": "x", "operation": op.pk, "adresse": self.a1.pk, "statut": "fait", "quand": tape.isoformat()})
+        self.assertLess(abs((Passage.objects.get().heure - tape).total_seconds()), 1)
+        # Heure dans le futur (horloge du téléphone déréglée) : ramenée à maintenant
+        self.synchro({"cle": "y", "operation": op.pk, "adresse": self.a2.pk, "statut": "fait", "quand": (timezone.now() + timedelta(days=1)).isoformat()})
+        self.assertLessEqual(Passage.objects.get(adresse=self.a2).heure, timezone.now())
+        # La même tape envoyée deux fois (réponse perdue) : un seul passage
+        self.synchro({"cle": "x", "operation": op.pk, "adresse": self.a1.pk, "statut": "fait", "quand": tape.isoformat()})
+        self.assertEqual(Passage.objects.filter(adresse=self.a1).count(), 1)
+
+    def test_synchro_apres_la_fin_de_l_operation(self):
+        self.client.post("/tournee/demarrer/", {"type": "neige"})
+        op = Operation.objects.get()
+        self.client.post("/tournee/terminer/")
+        # Tapé hors ligne avant la fin, arrivé après : accepté dans son opération
+        r = self.synchro({"cle": "z", "operation": op.pk, "adresse": self.a1.pk, "statut": "fait"})
+        self.assertEqual(len(r.json()["acceptes"]), 1)
+
+    def test_synchro_refuse_ce_qui_ne_va_pas(self):
+        self.client.post("/tournee/demarrer/", {"type": "neige"})
+        op = Operation.objects.get()
+        etrangere = Adresse.objects.create(entreprise=self.autre, client=Client.objects.create(entreprise=self.autre, nom="X"),
+                                           ligne1="1, rue X", ville="Ailleurs")
+        op_autre = Operation.objects.create(entreprise=self.autre)
+        r = self.synchro({"cle": "1", "operation": op.pk, "adresse": etrangere.pk, "statut": "fait"},
+                         {"cle": "2", "operation": op_autre.pk, "adresse": self.a1.pk, "statut": "fait"},
+                         {"cle": "3", "operation": op.pk, "adresse": self.a1.pk, "statut": "saute"},
+                         {"cle": "4", "operation": op.pk, "adresse": self.a1.pk, "statut": "n'importe quoi"},
+                         {"cle": "5", "operation": "abc", "adresse": self.a1.pk, "statut": "fait"})
+        self.assertEqual(r.json(), {"acceptes": [], "refuses": ["1", "2", "3", "4", "5"]})
+        self.assertFalse(Passage.objects.exists())
+        self.assertEqual(self.client.post("/tournee/synchro/", "pas du json", content_type="application/json").status_code, 400)
+
+    def test_service_worker(self):
+        r = self.client.get("/sw.js")
+        self.assertEqual(r["Content-Type"], "application/javascript; charset=utf-8")
+        self.assertEqual(r["Service-Worker-Allowed"], "/")
+        self.assertContains(r, "terrain/tournee.")
+        self.assertContains(self.client.get("/"), "serviceWorker.register")
 
     def test_saute_sans_raison_refuse_et_pas_d_operation(self):
         self.client.post(f"/tournee/passages/{self.a1.pk}/", {"statut": "fait"})
@@ -147,5 +201,7 @@ class EcransTests(TourneeBase):
         self.client.force_login(self.lecteur)
         page = self.client.get("/tournee/")
         self.assertEqual(page.status_code, 200)
+        self.assertFalse(page.context["donnees"]["ecriture"])
         self.assertNotContains(page, "Terminer l'opération")
+        self.assertEqual(self.client.post("/tournee/synchro/", '{"passages": []}', content_type="application/json").status_code, 403)
         self.assertEqual(self.client.post(f"/tournee/passages/{self.a1.pk}/", {"statut": "fait"}).status_code, 403)

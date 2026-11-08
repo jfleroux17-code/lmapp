@@ -16,6 +16,19 @@
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <script src="{% static 'vendor/htmx-2.0.11.min.js' %}" defer></script>
   <script src="{% static 'vendor/alpine-3.17.5.min.js' %}" defer></script>
+  {% if user.is_authenticated %}
+  <script>
+    // Mode hors ligne (F10) : enregistre le service worker; à la déconnexion, il vide les pages gardées
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("{% url 'terrain:service_worker' %}", { scope: "/" });
+      document.addEventListener("submit", (e) => {
+        if (e.target.action && e.target.action.endsWith("{% url 'terrain:deconnexion' %}") && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage("deconnexion");
+        }
+      });
+    }
+  </script>
+  {% endif %}
   <title>{% block titre %}{{ request.entreprise.nom|default:"LMAPP" }}{% endblock %}</title>
 </head>
 <body class="min-h-full zone-sure">
