@@ -43,6 +43,7 @@ class EntrepriseAdmin(admin.ModelAdmin):
         ("Coordonnées", {"fields": ["telephone", "courriel", "adresse_ligne1", "adresse_ligne2", "ville", "province", "code_postal"]}),
         ("Taxes et factures", {"fields": ["inscrit_taxes", "numero_tps", "numero_tvq", "taux_tps", "taux_tvq", "prochain_numero_facture"]}),
         ("Communications", {"fields": ["numero_texto", "courriel_reponse", "signature_messages"]}),
+        ("Avis pendant les opérations", {"fields": ["avis_proximite_actif", "avis_rayon_m", "minutes_par_arret", "avis_passage_fait"]}),
         ("Paiement Interac", {"fields": ["interac_courriel", "interac_instructions"]}),
     ]
 

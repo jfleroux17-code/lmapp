@@ -5,6 +5,10 @@
 <p class="mb-5 text-gray-400">Aucune opération en cours.</p>
 {% if ecriture %}
   <form method="post" action="{% url 'terrain:demarrer' %}" class="mb-8 space-y-3" x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+    <label class="carte flex min-h-14 cursor-pointer items-center gap-3 p-4">
+      <input type="checkbox" name="aviser_debut" value="1" checked class="h-6 w-6 accent-[#f5c400]">
+      <span>Aviser tous les clients du début des opérations</span>
+    </label>
     {% for valeur, nom in types %}
       <button name="type" value="{{ valeur }}" class="gros-bouton min-h-16 {% if forloop.first %}bg-accent text-nuit{% else %}border-2 border-bordure{% endif %}" :class="{ 'opacity-60': envoi }">Démarrer : {{ nom }}</button>
     {% endfor %}

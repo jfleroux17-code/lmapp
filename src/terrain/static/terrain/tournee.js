@@ -12,6 +12,10 @@ document.addEventListener("alpine:init", () => {
     note: "",
     message: "",
     menuSaute: false,
+    gps: false,
+    gpsEtat: "",
+    surveillance: null,
+    dernierEnvoi: null,
 
     get cleFile() { return "lmapp-tournee-" + this.operation.id; },
 
@@ -23,6 +27,49 @@ document.addEventListener("alpine:init", () => {
       window.addEventListener("offline", () => { this.horsLigne = true; });
       setInterval(() => this.envoyer(), 30000);
       this.envoyer();
+      if (localStorage.getItem("lmapp-gps") === "1" && this.avis_proximite) this.activerGps();
+    },
+
+    // G1 : position pendant que l'écran est ouvert (l'iPhone ne permet pas plus en arrière-plan)
+    activerGps() {
+      if (!("geolocation" in navigator)) { this.gpsEtat = "Ce téléphone ne donne pas sa position."; return; }
+      this.gps = true; this.gpsEtat = "Recherche de la position…";
+      localStorage.setItem("lmapp-gps", "1");
+      this.surveillance = navigator.geolocation.watchPosition(
+        (pos) => this.nouvellePosition(pos),
+        (err) => { this.gpsEtat = err.code === 1 ? "Position refusée : la permettre dans Réglages, Safari, Position." : "Position introuvable pour l'instant."; },
+        { enableHighAccuracy: true, maximumAge: 15000, timeout: 30000 });
+    },
+    arreterGps() {
+      if (this.surveillance !== null) navigator.geolocation.clearWatch(this.surveillance);
+      this.surveillance = null; this.gps = false; this.gpsEtat = "";
+      localStorage.setItem("lmapp-gps", "0");
+    },
+    distanceM(a, b) {
+      const r = 6371000, rad = Math.PI / 180;
+      const dLat = (b.lat - a.lat) * rad, dLon = (b.lon - a.lon) * rad;
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
+      return 2 * r * Math.asin(Math.sqrt(h));
+    },
+    async nouvellePosition(pos) {
+      const ici = { lat: pos.coords.latitude, lon: pos.coords.longitude, precision: Math.round(pos.coords.accuracy), t: Date.now() };
+      this.gpsEtat = "Position active (précision " + ici.precision + " m).";
+      const d = this.dernierEnvoi;
+      // Au plus une fois par 30 secondes, ou tout de suite après 150 m de route
+      if (d && Date.now() - d.t < 30000 && this.distanceM(d, ici) < 150) return;
+      this.dernierEnvoi = ici;
+      try {
+        const r = await fetch(this.position, {
+          method: "POST", credentials: "same-origin",
+          headers: { "Content-Type": "application/json", "X-CSRFToken": this.jetonCsrf() },
+          body: JSON.stringify({ operation: this.operation.id, lat: ici.lat, lon: ici.lon, precision: ici.precision }),
+        });
+        if (r.ok) {
+          const rep = await r.json();
+          this.nb_avis = rep.nb_avis;
+          if (rep.avis) this.message = rep.avis + (rep.avis > 1 ? " avis de proximité préparés." : " avis de proximité préparé.");
+        }
+      } catch (e) { /* hors ligne : la prochaine position partira au retour du réseau */ }
     },
 
     get courant() {

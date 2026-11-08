@@ -107,3 +107,18 @@ class Passage(Horodate):
             lie = getattr(self, champ, None)
             if lie is not None and self.entreprise_id and lie.entreprise_id != self.entreprise_id:
                 raise ValidationError({champ: "Appartient à une autre entreprise."})
+
+
+class PositionGPS(models.Model):
+    """Position du cellulaire pendant une opération (G1), envoyée par l'écran de tournée ouvert."""
+
+    operation = models.ForeignKey(Operation, on_delete=models.CASCADE, related_name="positions")
+    moment = models.DateTimeField(default=timezone.now)
+    position = gis.PointField(srid=4326, geography=True)
+    precision_m = models.PositiveIntegerField("précision (m)", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "position GPS"
+        verbose_name_plural = "positions GPS"
+        ordering = ["-moment"]
+        indexes = [models.Index(fields=["operation", "-moment"], name="position_operation_moment")]

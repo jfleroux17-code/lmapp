@@ -66,6 +66,37 @@
   </template>
   <p x-show="!courant" class="carte mb-5 p-4 text-ok">Tous les arrêts sont faits.</p>
 
+  <template x-if="ecriture && avis_proximite">
+    <section class="carte mb-5 p-4">
+      <div class="mb-3 flex items-center justify-between gap-3">
+        <h2 class="text-lg font-bold">Avis aux clients</h2>
+        <a href="{% url 'terrain:messages' %}" class="text-accent" x-text="nb_avis + (nb_avis > 1 ? ' messages ›' : ' message ›')"></a>
+      </div>
+      <button type="button" x-show="!gps" @click="activerGps()" class="gros-bouton border-2 border-accent text-accent">Activer la position (avis de proximité)</button>
+      <button type="button" x-show="gps" @click="arreterGps()" class="gros-bouton border-2 border-bordure text-gray-300">Arrêter la position</button>
+      <p x-show="gpsEtat" x-text="gpsEtat" class="mt-2 text-sm text-gray-400"></p>
+      <p class="mt-2 text-sm text-gray-500">Garder cet écran ouvert : l'iPhone ne donne pas la position d'une page en arrière-plan.</p>
+    </section>
+  </template>
+
+  {% if ecriture %}
+  <details class="carte mb-5 p-4">
+    <summary class="flex min-h-12 cursor-pointer items-center font-semibold text-gray-300">Avis manuels (si la position ne marche pas)</summary>
+    <div class="mt-3 space-y-2">
+      <form method="post" action="{% url 'terrain:avis_manuels' %}">{% csrf_token %}
+        <input type="hidden" name="mode" value="prochains">
+        <button class="gros-bouton border-2 border-bordure">Aviser les 3 prochains arrêts</button>
+      </form>
+      {% for pk, nom in secteurs %}
+        <form method="post" action="{% url 'terrain:avis_manuels' %}">{% csrf_token %}
+          <input type="hidden" name="mode" value="secteur"><input type="hidden" name="secteur" value="{{ pk }}">
+          <button class="gros-bouton border-2 border-bordure">Aviser le secteur {{ nom }}</button>
+        </form>
+      {% endfor %}
+    </div>
+  </details>
+  {% endif %}
+
   <h2 class="mb-2 text-lg font-bold">Arrêts</h2>
   <div class="carte mb-6 divide-y divide-bordure">
     <template x-for="a in arrets" :key="a.id">

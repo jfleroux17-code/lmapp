@@ -30,6 +30,8 @@ def env_liste(nom, defaut=""):
 
 # Environnement : "prod" ou "test". Sert aux garde-fous (envois réels, etc.).
 LMAPP_ENV = env("LMAPP_ENV", "test")
+# Hors prod, les seuls destinataires permis d'un envoi réel (cellulaires +1..., courriels de JF), séparés par des virgules
+LMAPP_DESTINATAIRES_TEST = env_liste("LMAPP_DESTINATAIRES_TEST", "")
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env_bool("DJANGO_DEBUG", False)
@@ -51,6 +53,7 @@ INSTALLED_APPS = [
     "clients",
     "facturation",
     "tournee",
+    "communications",
     "terrain",
 ]
 

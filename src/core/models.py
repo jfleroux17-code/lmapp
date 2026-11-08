@@ -77,6 +77,13 @@ class Entreprise(Horodate):
         help_text="Identification de l'expéditeur à la fin des textos (LCAP), ex. « Louis Méthot Déneigement ».",
     )
 
+    # Avis aux clients pendant une opération (PRD G2 à G5)
+    avis_proximite_actif = models.BooleanField("avis de proximité", default=True, help_text="Texto aux clients quand le déneigeur approche.")
+    avis_rayon_m = models.PositiveIntegerField("rayon des avis (m)", default=800, validators=[MinValueValidator(100), MaxValueValidator(5000)])
+    minutes_par_arret = models.PositiveIntegerField("minutes par arrêt", default=6, validators=[MinValueValidator(1), MaxValueValidator(60)],
+                                                    help_text="Pour estimer « d'ici environ X minutes ».")
+    avis_passage_fait = models.BooleanField("avis « c'est fait »", default=False, help_text="Texto au client quand son passage est fait.")
+
     # Paiement Interac (PRD D4)
     interac_courriel = models.EmailField("courriel Interac", blank=True)
     interac_instructions = models.TextField(

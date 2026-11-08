@@ -13,8 +13,10 @@ from django.views.decorators.http import require_POST
 
 from clients.models import Adresse, Client
 from core.acces import ecriture_requise, membre_requis, peut_ecrire
+from communications import avis
+from communications.models import Message
 from tournee import services
-from tournee.models import Operation, Passage, arrets
+from tournee.models import Operation, Passage, PositionGPS, arrets
 
 
 def _arret_json(a, i, passage):
@@ -55,8 +57,13 @@ def tournee(request):
         "synchro": reverse("terrain:synchro"),
         "ecriture": peut_ecrire(request),
         "choisi": int(request.GET["arret"]) if request.GET.get("arret", "").isdigit() else None,
+        "position": reverse("terrain:position"),
+        "avis_proximite": request.entreprise.avis_proximite_actif,
+        "nb_avis": op.messages.count(),
     }
-    return render(request, "terrain/tournee/en_cours.html", {"op": op, "donnees": donnees, "ecriture": donnees["ecriture"]})
+    secteurs = sorted({(a.secteur.ordre, a.secteur.pk, a.secteur.nom) for a in arrets(request.entreprise) if a.secteur})
+    return render(request, "terrain/tournee/en_cours.html", {"op": op, "donnees": donnees, "ecriture": donnees["ecriture"],
+                                                             "secteurs": [(pk, nom) for _, pk, nom in secteurs]})
 
 
 @require_POST
@@ -100,7 +107,11 @@ def demarrer(request):
     try:
         with transaction.atomic():  # point de sauvegarde : le refus ne gâche pas le reste de la requête
             op = Operation.objects.create(entreprise=request.entreprise, type=t, operateur=request.user)
-        messages.success(request, f"Opération « {op.get_type_display()} » commencée.")
+        texte = f"Opération « {op.get_type_display()} » commencée."
+        if request.POST.get("aviser_debut") == "1":
+            n = avis.aviser_debut(op)
+            texte += f" {n} avis de début préparé{'s' if n > 1 else ''}."
+        messages.success(request, texte)
     except IntegrityError:
         messages.info(request, "Une opération est déjà en cours.")
     return redirect("terrain:tournee")
@@ -138,3 +149,50 @@ def terminer(request):
         messages.success(request, f"Opération terminée : {faits} fait{'s' if faits > 1 else ''}, {sautes} sauté{'s' if sautes > 1 else ''}"
                                   + (f", {reste} pas visité{'s' if reste > 1 else ''}." if reste > 0 else "."))
     return redirect("terrain:tournee")
+
+
+PRECISION_MAX_M = 150  # au-delà (GPS pas encore accroché, intérieur), on garde la position sans aviser
+
+
+@require_POST
+@ecriture_requise
+def position(request):
+    """G1 : position du cellulaire, envoyée par l'écran de tournée ouvert. Déclenche les avis de proximité (G2)."""
+    from django.contrib.gis.geos import Point
+
+    try:
+        d = json.loads(request.body)
+        lat, lon = float(d["lat"]), float(d["lon"])
+        precision = int(float(d.get("precision") or 9999))
+        assert -90 <= lat <= 90 and -180 <= lon <= 180
+    except (ValueError, KeyError, TypeError, AssertionError):
+        return JsonResponse({"erreur": "Position illisible."}, status=400)
+    op = Operation.en_cours_de(request.entreprise)
+    if op is None or str(op.pk) != str(d.get("operation")):
+        return JsonResponse({"erreur": "Aucune opération en cours.", "avis": 0}, status=409)
+    point = Point(lon, lat, srid=4326)
+    PositionGPS.objects.create(operation=op, position=point, precision_m=min(precision, 99999))
+    nouveaux = avis.aviser_proximite(op, point) if precision <= PRECISION_MAX_M else 0
+    return JsonResponse({"avis": nouveaux, "nb_avis": op.messages.count()})
+
+
+@require_POST
+@ecriture_requise
+def avis_manuels(request):
+    """G4 : avis de secours quand la géolocalisation ne fonctionne pas."""
+    op = Operation.en_cours_de(request.entreprise)
+    if op is None:
+        return redirect("terrain:tournee")
+    if request.POST.get("mode") == "secteur" and request.POST.get("secteur", "").isdigit():
+        n = avis.aviser_secteur(op, int(request.POST["secteur"]))
+    else:
+        n = avis.aviser_prochains(op, 3)
+    messages.success(request, f"{n} avis préparé{'s' if n > 1 else ''}." if n else "Personne de plus à aviser (déjà avisés ou sans cellulaire).")
+    return redirect("terrain:tournee")
+
+
+@membre_requis
+def liste_messages(request):
+    """Les messages préparés ou envoyés, les plus récents d'abord."""
+    qs = Message.objects.filter(entreprise=request.entreprise).select_related("client", "operation")[:100]
+    return render(request, "terrain/messages.html", {"liste": qs})

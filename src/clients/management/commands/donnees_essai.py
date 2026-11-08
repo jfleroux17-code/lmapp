@@ -21,6 +21,7 @@ from clients.models import Adresse, Client, Secteur
 from core.models import Entreprise, VilleDesservie
 from facturation.models import Contrat, Facture, Paiement, Saison, Service
 from tournee.models import Operation
+from communications.models import Message
 
 ENTREPRISE = {
     "slug": "essai",
@@ -89,6 +90,7 @@ class Command(BaseCommand):
                 ancienne = Entreprise.objects.filter(slug=ENTREPRISE["slug"]).first()
                 if ancienne is not None:
                     # Ordre imposé par les clés protégées : l'argent, puis adresses, clients, secteurs, l'entreprise
+                    Message.objects.filter(entreprise=ancienne).delete()
                     Operation.objects.filter(entreprise=ancienne).delete()  # et leurs passages
                     Paiement.objects.filter(entreprise=ancienne).delete()
                     Facture.objects.filter(entreprise=ancienne).delete()

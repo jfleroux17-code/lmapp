@@ -61,4 +61,7 @@ def marquer(operation, adresse, statut, raison="", note="", position=None, quand
         if p.statut == Passage.Statut.FAIT and p.ligne_facture_id is None:
             _facturer(p)
         p.save()
+    from communications.avis import aviser_passage_fait
+
+    aviser_passage_fait(p)  # G5, si l'entreprise l'a activé (une fois par opération)
     return p

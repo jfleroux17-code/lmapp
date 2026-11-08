@@ -1,0 +1,21 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Messages{% endblock %}
+{% block contenu %}
+<a href="{% url 'terrain:tournee' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Tournée</a>
+<h1 class="mb-1 text-2xl font-bold">Messages</h1>
+<p class="mb-4 text-gray-400">Les 100 plus récents. Tant que le service de textos n'est pas branché, ils sont préparés mais ne partent pas.</p>
+<div class="carte divide-y divide-bordure">
+  {% for m in liste %}
+    <div class="p-4">
+      <div class="mb-1 flex items-start justify-between gap-3">
+        <span class="font-semibold">{{ m.client.nom_affiche|default:m.destinataire }}</span>
+        <span class="pastille {% if m.statut == 'envoye' %}bg-ok/20 text-ok{% elif m.statut == 'echec' %}bg-danger/20 text-danger{% else %}bg-bordure text-gray-300{% endif %}">{% if m.statut == "prepare" %}Préparé{% elif m.statut == "bloque" %}Bloqué{% else %}{{ m.get_statut_display }}{% endif %}</span>
+      </div>
+      <div class="mb-1 text-sm text-gray-400">{{ m.get_genre_display }} · {{ m.get_canal_display|lower }} · {{ m.cree_le|date:"j F, H \h i" }}</div>
+      <div class="whitespace-pre-line text-gray-200">{{ m.contenu }}</div>
+    </div>
+  {% empty %}
+    <p class="p-4 text-gray-400">Aucun message.</p>
+  {% endfor %}
+</div>
+{% endblock %}
