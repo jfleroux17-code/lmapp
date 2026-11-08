@@ -157,3 +157,16 @@ class AjouterDeneigeurTests(TestCase):
         Entreprise.objects.create(nom="Louis", slug="louis", domaine="louis.ledeneigeur.com")
         with self.assertRaisesMessage(CommandError, "existe déjà"):
             self.appeler("louis", "--nom", "x", "--ville", "x", "--utilisateur", "x", "--appliquer")
+
+
+@override_settings(ALLOWED_HOSTS=["*"])
+class AdminNeutreTests(TestCase):
+    def test_admin_seulement_sur_l_adresse_neutre(self):
+        jf = get_user_model().objects.create_superuser("jf", password="x" * 12)
+        self.client.force_login(jf)
+        self.assertEqual(self.client.get("/admin/", HTTP_HOST="louis.exemple.test").status_code, 200)  # variable vide : comme avant
+        with self.settings(LMAPP_HOTE_ADMIN="admin.exemple.test"):
+            self.assertEqual(self.client.get("/admin/", HTTP_HOST="louis.exemple.test").status_code, 404)
+            self.assertEqual(self.client.get("/admin/plateforme/", HTTP_HOST="louis.exemple.test").status_code, 404)
+            self.assertEqual(self.client.get("/admin/", HTTP_HOST="admin.exemple.test").status_code, 200)
+            self.assertEqual(self.client.get("/sante/", HTTP_HOST="louis.exemple.test").status_code, 200)

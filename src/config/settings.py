@@ -60,6 +60,10 @@ COURRIEL_GARDER_JOURS = int(env("COURRIEL_GARDER_JOURS", "30"))
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env_bool("DJANGO_DEBUG", False)
 ALLOWED_HOSTS = env_liste("DJANGO_ALLOWED_HOSTS")
+# PRD Q6 : adresse neutre de l'administration (ex. admin.ledeneigeur.com). Vide : /admin/ sur tous les domaines.
+LMAPP_HOTE_ADMIN = env("LMAPP_HOTE_ADMIN", "").strip().lower()
+if LMAPP_HOTE_ADMIN and LMAPP_HOTE_ADMIN not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(LMAPP_HOTE_ADMIN)
 CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS if h not in ("localhost", "127.0.0.1")]
 
 INSTALLED_APPS = [
@@ -96,6 +100,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "core.middleware.EntrepriseMiddleware",
+    "core.middleware.AdminAdresseNeutreMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]

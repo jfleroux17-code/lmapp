@@ -45,3 +45,21 @@ class EntrepriseMiddleware:
         hote = request.get_host().split(":")[0].lower()
         request.entreprise = Entreprise.objects.filter(domaine=hote, active=True).first()
         return self.get_response(request)
+
+
+class AdminAdresseNeutreMiddleware:
+    """PRD Q6 : avec LMAPP_HOTE_ADMIN (ex. admin.ledeneigeur.com), /admin/ ne répond que sur cette adresse,
+    jamais sur le sous-domaine d'un déneigeur; ailleurs, 404 (on ne dit même pas que l'administration existe).
+    Vide : /admin/ répond partout (situation d'avant, un seul déneigeur)."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from django.conf import settings
+        from django.http import Http404
+
+        hote = settings.LMAPP_HOTE_ADMIN
+        if hote and request.path.startswith("/admin") and request.get_host().split(":")[0] != hote:
+            raise Http404
+        return self.get_response(request)
