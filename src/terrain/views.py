@@ -97,6 +97,7 @@ def fiche(request, pk):
         "ecriture": peut_ecrire(request),
         "passages": Passage.objects.filter(adresse__client=client).select_related("operation", "adresse").order_by("-heure")[:10],
         "messages_client": client.messages.order_by("-cree_le")[:10],
+        "demandes_client": client.demandes.order_by("statut", "-cree_le")[:10],
         **resume_client(client),
     }
     return render(request, "terrain/fiche.html", contexte)

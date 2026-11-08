@@ -1,0 +1,8 @@
+<a href="{% url 'terrain:demande' d.pk %}" class="block p-4 active:bg-bordure {% if d.urgent and d.statut != 'reglee' %}border-l-4 border-danger{% endif %}">
+  <div class="mb-1 flex items-start justify-between gap-3">
+    <span class="min-w-0 truncate font-semibold">{{ d.client.nom_affiche|default:d.contact|default:"Inconnu" }}</span>
+    <span class="pastille {% if d.statut == 'reglee' %}bg-ok/20 text-ok{% elif d.urgent %}bg-danger/20 text-danger{% elif d.statut == 'planifiee' %}bg-accent/20 text-accent{% else %}bg-bordure text-gray-300{% endif %}">{% if d.statut == "ouverte" and d.urgent %}Urgent{% else %}{{ d.get_statut_display }}{% endif %}</span>
+  </div>
+  <div class="mb-1 text-sm text-gray-400">{{ d.get_genre_display }} · {{ d.cree_le|date:"j F, H \h i" }}{% if d.prevue_le and d.statut == "planifiee" %} · prévue le {{ d.prevue_le|date:"j F" }}{% endif %}</div>
+  <div class="line-clamp-2 text-sm text-gray-300">{{ d.description }}</div>
+</a>

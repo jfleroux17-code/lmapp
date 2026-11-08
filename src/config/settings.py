@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     "facturation",
     "tournee",
     "communications",
+    "demandes",
     "terrain",
 ]
 

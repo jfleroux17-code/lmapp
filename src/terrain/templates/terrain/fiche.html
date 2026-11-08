@@ -66,6 +66,16 @@
   {% endif %}
 </section>
 
+{% if demandes_client or ecriture %}
+<section class="mb-4">
+  <div class="mb-2 flex items-center justify-between gap-3">
+    <h2 class="text-lg font-bold">Demandes</h2>
+    {% if ecriture %}<a href="{% url 'terrain:nouvelle_demande' %}?client={{ client.pk }}" class="flex min-h-12 items-center text-accent">+ Demande</a>{% endif %}
+  </div>
+  {% if demandes_client %}<div class="carte divide-y divide-bordure">{% for d in demandes_client %}{% include "terrain/demandes/_ligne.html" %}{% endfor %}</div>{% endif %}
+</section>
+{% endif %}
+
 {% if messages_client %}
 <section class="mb-4">
   <h2 class="mb-2 text-lg font-bold">Messages</h2>

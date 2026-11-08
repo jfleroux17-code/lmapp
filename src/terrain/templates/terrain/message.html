@@ -13,6 +13,8 @@
 </div>
 {% if m.client %}<a href="{% url 'terrain:fiche' m.client.pk %}" class="gros-bouton mb-3 border-2 border-bordure">Fiche de {{ m.client.nom_affiche }}</a>
 {% elif m.sens == "entrant" %}<p class="mb-3 text-sm text-gray-400">Expéditeur inconnu : aucun client n'a cette adresse courriel.</p>{% endif %}
+{% if m.sens == "entrant" and m.genre != "interac" %}<a href="{% url 'terrain:nouvelle_demande' %}?message={{ m.pk }}" class="gros-bouton mb-3 border-2 border-accent text-accent">Créer une demande</a>{% endif %}
+{% for d in m.demandes.all %}<a href="{% url 'terrain:demande' d.pk %}" class="gros-bouton mb-3 border-2 border-bordure">Demande : {{ d.get_genre_display|lower }} ({{ d.get_statut_display|lower }})</a>{% endfor %}
 {% if m.reponse_a %}<a href="{% url 'terrain:message' m.reponse_a.pk %}" class="gros-bouton mb-3 border-2 border-bordure">En réponse à : {{ m.reponse_a.get_genre_display|lower }}</a>{% endif %}
 {% if m.facture %}<a href="{% url 'terrain:facture' m.facture.pk %}" class="gros-bouton mb-3 border-2 border-bordure">Voir la facture</a>{% endif %}
 {% endblock %}

@@ -16,7 +16,9 @@ def messages_non_lus(request):
     if ent is None or user is None or not user.is_authenticated:
         return {}
     from communications.models import Message
+    from demandes.models import Demande
     from facturation.models import VirementInterac
 
     return {"non_lus": Message.objects.filter(entreprise=ent, sens=Message.Sens.ENTRANT, lu=False).count(),
-            "virements_a_confirmer": VirementInterac.objects.filter(entreprise=ent, statut=VirementInterac.Statut.A_TRAITER).count()}
+            "virements_a_confirmer": VirementInterac.objects.filter(entreprise=ent, statut=VirementInterac.Statut.A_TRAITER).count(),
+            "demandes_urgentes": Demande.objects.filter(entreprise=ent, urgent=True).exclude(statut=Demande.Statut.REGLEE).count()}

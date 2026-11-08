@@ -106,6 +106,7 @@ Après son essai des écrans. Une étape à la fois, chacune en test, montrée �
 - [ ] Reçus de paiement (C13) : **en test le 8 novembre 2026**. Case « Envoyer un reçu au client » (cochée) au paiement, et à l'enregistrement d'un virement Interac; canal préféré du client, facture jointe au courriel, solde restant.
 - [ ] À collecter (D3) : **en test le 8 novembre 2026**. Montant à collecter sur la carte de l'arrêt (client au comptant), liste « À collecter » dans l'ordre de la tournée (gardée hors ligne).
 - [ ] Bilan de la saison (J1) dans l'écran Comptes : **en test le 8 novembre 2026** (facturé, encaissé, taxes, clients servis, opérations et passages).
+- [ ] Demandes des clients (H1, H2) : **en test le 8 novembre 2026** (créée depuis un message reçu dans le navigateur, urgente cochée d'office pour un oubli).
 - [x] Tableau de bord de la plateforme (Q1, `/admin/plateforme/`, superutilisateur seulement) : **en prod le 8 novembre 2026** (boîte de Louis : 0,2 Mo sur 2 Go). Segments de textos comptés à l'envoi, quota de la boîte lu à chaque passage.
 - [ ] Site Internet de présentation (Q5) : site statique dans le dépôt, aperçu sur un sous-domaine réservé à JF, puis mise en ligne sur `ledeneigeur.com` avec son « go ».
 - [ ] Arrivée d'un déneigeur venant d'un logiciel concurrent (Q3) : correspondance des colonnes à l'import, modèles par logiciel à partir de vrais fichiers d'export.

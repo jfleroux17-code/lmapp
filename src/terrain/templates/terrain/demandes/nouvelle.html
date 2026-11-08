@@ -1,0 +1,39 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Nouvelle demande{% endblock %}
+{% block contenu %}
+<a href="{% if client %}{% url 'terrain:fiche' client.pk %}{% else %}{% url 'terrain:demandes' %}{% endif %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Retour</a>
+<h1 class="mb-1 text-2xl font-bold">Nouvelle demande</h1>
+<p class="mb-4 text-gray-400">{% if client %}{{ client.nom_affiche }}{% else %}Client pas dans l'app : noter comment le joindre.{% endif %}{% if message %} · à partir d'un {{ message.get_canal_display|lower }} reçu le {{ message.cree_le|date:"j F" }}{% endif %}</p>
+<form method="post" class="space-y-4" x-data="{ genre: '', urgent: false, envoi: false, urgents: {{ urgents|safe }} }"
+      @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+  {% if client %}<input type="hidden" name="client" value="{{ client.pk }}">{% endif %}
+  {% if message %}<input type="hidden" name="message" value="{{ message.pk }}">{% endif %}
+  <div class="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Genre de demande">
+    {% for valeur, nom in genres %}
+      <label class="flex min-h-14 cursor-pointer items-center justify-center rounded-xl border-2 px-2 text-center text-sm font-semibold"
+             :class="genre === '{{ valeur }}' ? 'border-accent text-accent' : 'border-bordure'">
+        <input type="radio" name="genre" value="{{ valeur }}" class="sr-only" x-model="genre" @change="urgent = urgents.includes(genre)" required>{{ nom }}
+      </label>
+    {% endfor %}
+  </div>
+  <label class="flex min-h-12 cursor-pointer items-center gap-3">
+    <input type="checkbox" name="urgent" value="1" x-model="urgent" class="h-6 w-6 accent-[#f5c400]"><span>Urgent</span>
+  </label>
+  {% if adresses|length > 1 %}
+    <label class="block"><span class="mb-2 block text-gray-300">Adresse</span>
+      <select name="adresse" class="min-h-14 w-full rounded-xl border-2 border-bordure bg-nuit px-3 text-lg">
+        {% for a in adresses %}<option value="{{ a.pk }}">{{ a.ligne1 }}</option>{% endfor %}
+      </select>
+    </label>
+  {% endif %}
+  {% if not client %}
+    <label class="block"><span class="mb-2 block text-gray-300">Personne à joindre</span>
+      <input name="contact" class="champ" maxlength="200" value="{{ contact }}" placeholder="Nom, téléphone, courriel">
+    </label>
+  {% endif %}
+  <label class="block"><span class="mb-2 block text-gray-300">Description</span>
+    <textarea name="description" rows="5" class="champ" required>{{ description }}</textarea>
+  </label>
+  <button class="gros-bouton bg-accent text-nuit" :class="{ 'opacity-60': envoi }">Noter la demande</button>
+</form>
+{% endblock %}

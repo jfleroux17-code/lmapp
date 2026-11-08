@@ -39,6 +39,7 @@
     <header class="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-bordure bg-nuit/95 px-4 py-3 backdrop-blur" style="padding-top: max(0.75rem, env(safe-area-inset-top));">
       <a href="{% url 'terrain:accueil' %}" class="truncate text-lg font-bold">{{ request.entreprise.nom|default:"LMAPP" }}</a>
       <div class="flex shrink-0 items-center gap-2">
+        {% if demandes_urgentes %}<a href="{% url 'terrain:demandes' %}" class="rounded-xl bg-danger px-3 py-2 text-sm font-bold text-nuit" aria-label="{{ demandes_urgentes }} demande{{ demandes_urgentes|pluralize }} urgente{{ demandes_urgentes|pluralize }}">! {{ demandes_urgentes }}</a>{% endif %}
         {% if virements_a_confirmer %}<a href="{% url 'terrain:virements' %}" class="rounded-xl bg-ok px-3 py-2 text-sm font-bold text-nuit" aria-label="{{ virements_a_confirmer }} virement{{ virements_a_confirmer|pluralize }} Interac à confirmer">$ {{ virements_a_confirmer }}</a>{% endif %}
         {% if non_lus %}<a href="{% url 'terrain:messages' %}?vue=recus" class="rounded-xl bg-accent px-3 py-2 text-sm font-bold text-nuit" aria-label="{{ non_lus }} message{{ non_lus|pluralize }} non lu{{ non_lus|pluralize }}">✉ {{ non_lus }}</a>{% endif %}
         <form method="post" action="{% url 'terrain:deconnexion' %}">{% csrf_token %}

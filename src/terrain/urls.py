@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from terrain import argent, tournee, views
+from terrain import argent, demandes, tournee, views
 
 app_name = "terrain"
 
@@ -33,6 +33,10 @@ urlpatterns = [
     path("tournee/collecter/", tournee.a_collecter, name="a_collecter"),
     path("tournee/ordre/arrets/<int:adresse_pk>/", tournee.deplacer_arret, name="deplacer_arret"),
     path("tournee/ordre/secteurs/<int:secteur_pk>/", tournee.deplacer_secteur, name="deplacer_secteur"),
+    path("demandes/", demandes.liste, name="demandes"),
+    path("demandes/nouvelle/", demandes.nouvelle, name="nouvelle_demande"),
+    path("demandes/<int:pk>/", demandes.demande, name="demande"),
+    path("demandes/<int:pk>/statut/", demandes.changer, name="changer_demande"),
     path("messages/", tournee.liste_messages, name="messages"),
     path("messages/<int:pk>/", tournee.message, name="message"),
     path("connexion/", views.Connexion.as_view(), name="connexion"),

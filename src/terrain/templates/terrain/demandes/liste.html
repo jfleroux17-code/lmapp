@@ -1,0 +1,14 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Demandes{% endblock %}
+{% block contenu %}
+<h1 class="mb-3 text-2xl font-bold">Demandes</h1>
+<div class="mb-4 grid grid-cols-2 gap-2">
+  <a href="?vue=a_traiter" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if vue == 'a_traiter' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">À traiter</a>
+  <a href="?vue=reglees" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if vue == 'reglees' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Réglées</a>
+</div>
+{% if ecriture %}<a href="{% url 'terrain:nouvelle_demande' %}" class="gros-bouton mb-4 border-2 border-accent text-accent">+ Nouvelle demande</a>{% endif %}
+<div class="carte divide-y divide-bordure">
+  {% for d in liste %}{% include "terrain/demandes/_ligne.html" %}
+  {% empty %}<p class="p-4 text-gray-400">{% if vue == "reglees" %}Aucune demande réglée.{% else %}Rien à traiter.{% endif %}</p>{% endfor %}
+</div>
+{% endblock %}
