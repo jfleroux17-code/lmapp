@@ -2,7 +2,7 @@
 
 Liste tenue à jour par Claude Code sur ld1, à chaque étape. Le plan complet est dans `PRD.md`, les consignes techniques dans `CLAUDE.md`.
 
-Mise à jour : 7 novembre 2026.
+Mise à jour : 8 novembre 2026.
 
 ## Où on en est
 
@@ -19,6 +19,7 @@ Mise à jour : 7 novembre 2026.
 - [x] Fiche de Louis créée en prod (Louis Méthot Déneigement, `louis`, `louis.ledeneigeur.com`, Sainte-Adèle 8 km, centre rempli).
 - [x] Sainte-Adèle cochée « ville par défaut » dans la fiche de Louis.
 - [x] Utilisateur `louis` créé, membre « Opérateur » (entre dans l'app, pas dans l'administration).
+- [ ] Compléter la fiche de Louis avec les infos de sa facture papier (reçue par texto le 8 novembre 2026) : nom légal « Les Entretiens Paysagers L.M. », adresse, téléphone, courriel, « inscrit aux taxes » coché, numéros de TPS et de TVQ (sur la photo de sa facture, à comparer avec un papier officiel). Les numéros vont dans la fiche seulement, jamais dans Git.
 - [ ] Envoyer le gabarit d'import à Louis, ou transcrire ses papiers : `scp deploy@172.16.4.100:/srv/lmapp/gabarits/gabarit_import_clients.xlsx .`
 - [ ] Poser à Louis les questions de la section « Louis » ci-dessous.
 
@@ -47,14 +48,15 @@ Mise à jour : 7 novembre 2026.
 
 Questions de la section 10 du PRD, les plus importantes d'abord.
 
-- [ ] **Taxes** : inscrit à la TPS et à la TVQ? Si oui, les deux numéros. *Décide du calcul des factures.*
+- [x] **Taxes** : inscrit à la TPS et à la TVQ, numéros reçus (8 novembre 2026). Les factures auront les taxes.
+- [ ] **Nom affiché** : ses factures portent « Les Entretiens Paysagers L.M. » (logo « Entretiens LM »). Proposé : nom légal sur les factures, et un nom que ses clients reconnaissent (ex. « Entretiens LM ») à l'écran et à la fin des textos. À confirmer.
 - [ ] **Prix** : contrat saisonnier, au passage, ou les deux? Combien de versements, à quelles dates?
 - [ ] **Clients** : combien d'actifs? Combien d'anciens clients lui doivent de l'argent, et à peu près combien en tout?
 - [ ] **Sa liste de clients** dans le gabarit, ou en photos de ses papiers (noms, adresses, cellulaires, prix entendus, montants dus).
 - [ ] **Services** : entrée seulement, ou aussi bordage de la ville, pelletage, abrasif, toitures?
-- [ ] **Numéro de texto** : accepte-t-il que les clients textent un nouveau numéro d'affaires?
-- [ ] **Courriel et Interac** : adresse d'affaires déjà connue des clients? Dépôt automatique Interac, sur quelle adresse?
-- [ ] **Carte de crédit** : des clients veulent-ils vraiment payer par carte?
+- [ ] **Numéro de texto** : accepte-t-il que les clients textent un nouveau numéro d'affaires? Ses clients ont son 514-962-6273, qui pourrait rester pour les appels seulement.
+- [ ] **Courriel et Interac** : ses clients connaissent son Gmail (sur ses factures). Reste : dépôt automatique Interac, sur quelle adresse?
+- [ ] **Carte de crédit et débit** : des clients veulent-ils vraiment payer par carte? Son carnet a une case « carte débit » : a-t-il un terminal de paiement?
 - [ ] **Véhicules** : un seul, ou un tracteur et un camion? (Sainte-Adèle seulement et seul pour l'instant : réglé.)
 - [ ] **Comptabilité** : qui la fait, dans quel logiciel?
 - [ ] **Clients commerciaux** : stationnements, immeubles à logements?
