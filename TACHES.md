@@ -33,7 +33,7 @@ Mise à jour : 7 novembre 2026.
 
 - [ ] Netplan par MAC (décision du 7 novembre 2026), configuré par JF avec de l'aide. Instantané avant, `sudo netplan try` depuis la console Hyper-V. Si la MAC reste dynamique dans Hyper-V, la VM peut perdre son réseau quand elle est déplacée ou réimportée.
 - [ ] Redémarrer ld1 à un moment tranquille (services signalés par apt).
-- [ ] `sudo ufw status verbose` et `sudo ss -tlnp 'sport = :36789'` (processus inconnu sur un port local).
+- [ ] `sudo ufw status verbose` et `sudo ss -tlnp 'sport = :36789 or sport = :5000'` : processus inconnu sur un port local (36789), et port 5000 ouvert sur toutes les interfaces par un processus root, sans doute la console web locale de COVE (page web servie, apparue après l'installation de COVE). Pas joignable d'Internet (le routeur ne redirige que le 443), mais vérifier que ufw le bloque depuis le réseau interne, ou le limiter à 127.0.0.1 dans COVE.
 - [ ] Donner les plages d'adresses des autres réseaux (VPN, bureau, centre de données) : conflit possible avec les plages 172.17 à 172.31 de Docker.
 - [x] Copie du dépôt hors de ld1 : GitHub privé `jfleroux17-code/lmapp`, poussé après chaque étape.
 - [x] Dépôt GitHub branché dans le Projet Claude de JF (`PRD.md`, `CLAUDE.md`, `TACHES.md`). Après un envoi, synchroniser la source GitHub dans le projet pour voir la dernière version.
