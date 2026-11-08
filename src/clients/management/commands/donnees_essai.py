@@ -20,6 +20,7 @@ from django.utils import timezone
 from clients.models import Adresse, Client, Secteur
 from core.models import Entreprise, VilleDesservie
 from facturation.models import Contrat, Facture, Paiement, Saison, Service
+from tournee.models import Operation
 
 ENTREPRISE = {
     "slug": "essai",
@@ -88,6 +89,7 @@ class Command(BaseCommand):
                 ancienne = Entreprise.objects.filter(slug=ENTREPRISE["slug"]).first()
                 if ancienne is not None:
                     # Ordre imposé par les clés protégées : l'argent, puis adresses, clients, secteurs, l'entreprise
+                    Operation.objects.filter(entreprise=ancienne).delete()  # et leurs passages
                     Paiement.objects.filter(entreprise=ancienne).delete()
                     Facture.objects.filter(entreprise=ancienne).delete()
                     Contrat.objects.filter(entreprise=ancienne).delete()
@@ -169,6 +171,10 @@ class Command(BaseCommand):
             f.emettre()
             if i == 0:
                 Paiement.objects.create(entreprise=ent, facture=f, date=f.date_facture, montant=Decimal("100"), mode="comptant", note="Paiement partiel (essai)")
+        if len(servis) > 4:  # un client « au passage » : chaque passage fait s'ajoute à sa facture (F11)
+            c = servis[4]
+            Contrat.objects.create(entreprise=ent, client=c, adresse=c.adresses.first(), saison=saison, type="au_passage",
+                                   prix=Decimal("45"), prix_texte="45 $ par passage, plus taxes")
         extra = Facture.objects.create(entreprise=ent, client=servis[0], adresse=servis[0].adresses.first())
         extra.lignes.create(service=services["Pelletage du balcon"], description="Pelletage du balcon", quantite=2, prix_unitaire=Decimal("25"))
         extra.recalculer()  # laissée en brouillon

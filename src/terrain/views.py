@@ -15,6 +15,7 @@ from clients.models import Adresse, Client
 from core.acces import membre_requis, peut_ecrire
 from core import telephone
 from terrain.argent import resume_client
+from tournee.models import Passage
 
 MAX_RESULTATS = 50
 
@@ -94,6 +95,7 @@ def fiche(request, pk):
         "cellulaire": telephone.afficher(client.cellulaire),
         "autre_telephone": telephone.afficher(client.telephone_autre),
         "ecriture": peut_ecrire(request),
+        "passages": Passage.objects.filter(adresse__client=client).select_related("operation", "adresse").order_by("-heure")[:10],
         **resume_client(client),
     }
     return render(request, "terrain/fiche.html", contexte)

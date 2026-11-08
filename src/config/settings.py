@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "core",
     "clients",
     "facturation",
+    "tournee",
     "terrain",
 ]
 

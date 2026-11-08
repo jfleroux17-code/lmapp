@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from terrain import argent, views
+from terrain import argent, tournee, views
 
 app_name = "terrain"
 
@@ -18,6 +18,10 @@ urlpatterns = [
     path("factures/<int:pk>/annuler/", argent.annuler, name="annuler"),
     path("factures/<int:pk>/paiement/", argent.paiement, name="paiement"),
     path("comptes/", argent.comptes, name="comptes"),
+    path("tournee/", tournee.tournee, name="tournee"),
+    path("tournee/demarrer/", tournee.demarrer, name="demarrer"),
+    path("tournee/terminer/", tournee.terminer, name="terminer"),
+    path("tournee/passages/<int:adresse_pk>/", tournee.passage, name="passage"),
     path("connexion/", views.Connexion.as_view(), name="connexion"),
     path("deconnexion/", auth_views.LogoutView.as_view(), name="deconnexion"),
     path("manifest.webmanifest", views.manifeste, name="manifeste"),

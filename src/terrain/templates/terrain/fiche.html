@@ -65,6 +65,24 @@
   {% endif %}
 </section>
 
+{% if passages %}
+<section class="mb-4">
+  <h2 class="mb-2 text-lg font-bold">Passages</h2>
+  <div class="carte divide-y divide-bordure">
+    {% for p in passages %}
+      <div class="flex items-start justify-between gap-3 p-4">
+        <div class="min-w-0">
+          <div>{{ p.heure|date:"j F, H \h i" }} · {{ p.operation.get_type_display|lower }}</div>
+          {% if adresses|length > 1 %}<div class="text-sm text-gray-400">{{ p.adresse.ligne1 }}</div>{% endif %}
+          {% if p.note %}<div class="text-sm text-accent">{{ p.note }}</div>{% endif %}
+        </div>
+        {% if p.statut == "fait" %}<span class="pastille bg-ok/20 text-ok">Fait</span>{% else %}<span class="pastille bg-bordure text-gray-300">Sauté{% if p.raison %} : {{ p.get_raison_display|lower }}{% endif %}</span>{% endif %}
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <section class="carte mb-4 divide-y divide-bordure">
   {% if client.mode_paiement %}<div class="flex justify-between gap-3 p-4"><span class="text-gray-400">Paiement</span><span class="font-semibold">{{ client.get_mode_paiement_display }}</span></div>{% endif %}
   <div class="flex justify-between gap-3 p-4"><span class="text-gray-400">Le joindre par</span><span>{{ client.get_canal_prefere_display }}</span></div>

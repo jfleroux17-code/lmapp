@@ -60,15 +60,15 @@
   {% if f.modifiable %}
     <details class="carte mb-4 p-4">
       <summary class="flex min-h-12 cursor-pointer items-center font-semibold text-accent">+ Ajouter une ligne</summary>
-      <form method="post" action="{% url 'terrain:ajouter_ligne' f.pk %}" class="mt-4" x-data="{ envoi: false }" @submit="envoi = true">{% csrf_token %}
+      <form method="post" action="{% url 'terrain:ajouter_ligne' f.pk %}" class="mt-4" x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
         {% with form=form_ligne %}{% include "terrain/argent/_form_ligne.html" %}{% endwith %}
-        <button class="gros-bouton mt-5 border-2 border-accent text-accent" :disabled="envoi">Ajouter</button>
+        <button class="gros-bouton mt-5 border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">Ajouter</button>
       </form>
     </details>
     {% if lignes %}
       <form method="post" action="{% url 'terrain:emettre' f.pk %}" x-data="{ envoi: false }"
-            @submit="if (!confirm('Émettre la facture? Elle recevra son numéro et ne pourra plus être modifiée.')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
-        <button class="gros-bouton mb-3 bg-accent text-nuit" :disabled="envoi">Émettre la facture ({{ f.total|argent }})</button>
+            @submit="if (envoi || !confirm('Émettre la facture? Elle recevra son numéro et ne pourra plus être modifiée.')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+        <button class="gros-bouton mb-3 bg-accent text-nuit" :class="{ 'opacity-60': envoi }">Émettre la facture ({{ f.total|argent }})</button>
       </form>
     {% endif %}
     <form method="post" action="{% url 'terrain:supprimer_brouillon' f.pk %}" @submit="if (!confirm('Supprimer ce brouillon?')) $event.preventDefault()">{% csrf_token %}
@@ -78,7 +78,7 @@
   {% elif f.statut == "emise" and not f.payee %}
     <section class="carte mb-4 p-4">
       <h2 class="mb-3 text-lg font-bold">Paiement reçu</h2>
-      <form method="post" action="{% url 'terrain:paiement' f.pk %}" x-data="{ mode: '{% if client.mode_paiement and client.mode_paiement != 'carte' %}{{ client.mode_paiement }}{% endif %}', envoi: false }" @submit="envoi = true" class="space-y-4">{% csrf_token %}
+      <form method="post" action="{% url 'terrain:paiement' f.pk %}" x-data="{ mode: '{% if client.mode_paiement and client.mode_paiement != 'carte' %}{{ client.mode_paiement }}{% endif %}', envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }" class="space-y-4">{% csrf_token %}
         <div class="grid grid-cols-2 gap-2">
           {% for valeur, nom in modes %}
             <label class="flex min-h-14 cursor-pointer items-center justify-center rounded-xl border-2 px-2 text-center font-semibold"
@@ -99,7 +99,7 @@
           <summary class="flex min-h-12 cursor-pointer items-center text-gray-400">Reçu un autre jour?</summary>
           <input type="date" name="date" class="champ mt-2" max="{{ aujourdhui|date:'Y-m-d' }}">
         </details>
-        <button class="gros-bouton bg-ok text-nuit" :disabled="envoi || !mode">Enregistrer le paiement</button>
+        <button class="gros-bouton bg-ok text-nuit" :disabled="!mode" :class="{ 'opacity-60': envoi }">Enregistrer le paiement</button>
       </form>
     </section>
   {% endif %}

@@ -1,0 +1,79 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Tournée{% endblock %}
+{% block contenu %}
+<div class="mb-4 flex items-center justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-bold">{{ op.get_type_display }}</h1>
+    <p class="text-gray-400">Depuis {{ op.debut|time:"H \h i" }} · {{ faits }} fait{% if faits > 1 %}s{% endif %}{% if sautes %}, {{ sautes }} sauté{% if sautes > 1 %}s{% endif %}{% endif %} sur {{ total }}</p>
+  </div>
+  <span class="pastille bg-ok/20 text-ok">En cours</span>
+</div>
+<div class="mb-5 h-3 overflow-hidden rounded-full bg-bordure" role="progressbar" aria-valuemin="0" aria-valuemax="{{ total }}" aria-valuenow="{{ faits|add:sautes }}">
+  <div class="h-full bg-ok" style="width: {% widthratio faits|add:sautes total 100 %}%"></div>
+</div>
+
+{% if courant %}
+  <section id="arret" class="carte mb-5 border-2 border-accent p-4">
+    <div class="mb-1 text-sm text-gray-400">{% if passage_courant %}Déjà noté : {{ passage_courant.get_statut_display|lower }}{% if passage_courant.raison %} ({{ passage_courant.get_raison_display|lower }}){% endif %}{% else %}Prochain arrêt{% endif %}{% if courant.secteur %} · {{ courant.secteur }}{% endif %}{% if courant.ordre_tournee %} · rang {{ courant.ordre_tournee }}{% endif %}</div>
+    <a href="{% url 'terrain:fiche' courant.client.pk %}" class="block text-xl font-bold">{{ courant.client.nom_affiche }}</a>
+    <div class="mb-3 text-lg">{{ courant.ligne1 }}{% if courant.ligne2 %}, {{ courant.ligne2 }}{% endif %}</div>
+    {% if courant.client.statut == "recouvrement" %}<p class="mb-3 rounded-xl bg-danger/10 p-3 text-danger">Compte en recouvrement.</p>{% endif %}
+    {% if courant.ou_mettre_neige or courant.obstacles or courant.borne_fontaine or courant.entree_en_pente or courant.consignes %}
+      <ul class="mb-4 space-y-1 border-l-4 border-accent pl-3">
+        {% if courant.ou_mettre_neige %}<li><span class="text-gray-400">Neige :</span> {{ courant.ou_mettre_neige }}</li>{% endif %}
+        {% if courant.obstacles %}<li><span class="text-gray-400">Obstacles :</span> {{ courant.obstacles }}</li>{% endif %}
+        {% if courant.borne_fontaine %}<li class="font-semibold text-accent">Borne-fontaine à dégager</li>{% endif %}
+        {% if courant.entree_en_pente %}<li class="font-semibold text-accent">Entrée en pente</li>{% endif %}
+        {% if courant.consignes %}<li><span class="text-gray-400">Consignes :</span> {{ courant.consignes|linebreaksbr }}</li>{% endif %}
+      </ul>
+    {% endif %}
+    <div class="mb-4 grid grid-cols-3 gap-2">
+      {% for nom, lien in navigation %}
+        <a href="{{ lien }}" class="flex min-h-14 items-center justify-center rounded-xl border-2 border-bordure px-2 text-center text-sm font-semibold" rel="noopener">{{ nom }}</a>
+      {% endfor %}
+    </div>
+    {% if ecriture %}
+      <form method="post" action="{% url 'terrain:passage' courant.pk %}" x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+        <details class="mb-3">
+          <summary class="flex min-h-12 cursor-pointer items-center text-gray-400">+ Note (dommage, obstacle, demande)</summary>
+          <input name="note" class="champ mt-2" maxlength="300" placeholder="Ex. boîte aux lettres accrochée">
+        </details>
+        <button name="statut" value="fait" class="gros-bouton min-h-20 bg-ok text-2xl text-nuit" :class="{ 'opacity-60': envoi }">Fait</button>
+      </form>
+      <details class="mt-3">
+        <summary class="gros-bouton border-2 border-bordure text-gray-300">Sauté…</summary>
+        <form method="post" action="{% url 'terrain:passage' courant.pk %}" class="mt-3 grid grid-cols-1 gap-2" x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+          <input type="hidden" name="statut" value="saute">
+          {% for valeur, nom in raisons %}
+            <button name="raison" value="{{ valeur }}" class="flex min-h-14 items-center justify-center rounded-xl border-2 border-bordure px-3 font-semibold" :class="{ 'opacity-60': envoi }">{{ nom }}</button>
+          {% endfor %}
+        </form>
+      </details>
+    {% endif %}
+  </section>
+{% else %}
+  <p class="carte mb-5 p-4 text-ok">Tous les arrêts sont faits.</p>
+{% endif %}
+
+<h2 class="mb-2 text-lg font-bold">Arrêts</h2>
+<div class="carte mb-6 divide-y divide-bordure">
+  {% for l in lignes %}
+    <a href="?arret={{ l.a.pk }}#arret" class="flex min-h-16 items-center justify-between gap-3 p-4 active:bg-bordure {% if courant and l.a.pk == courant.pk %}bg-accent/10{% endif %}">
+      <div class="min-w-0">
+        <div class="truncate font-semibold {% if l.passage %}text-gray-500{% endif %}">{{ l.rang }}. {{ l.a.client.nom_affiche }}</div>
+        <div class="truncate text-sm text-gray-400">{{ l.a.ligne1 }}{% if l.a.secteur %} · {{ l.a.secteur }}{% endif %}</div>
+      </div>
+      {% if l.passage.statut == "fait" %}<span class="pastille bg-ok/20 text-ok">Fait {{ l.passage.heure|time:"H:i" }}</span>
+      {% elif l.passage.statut == "saute" %}<span class="pastille bg-bordure text-gray-300">Sauté</span>{% endif %}
+    </a>
+  {% empty %}
+    <p class="p-4 text-gray-400">Aucun client actif avec une adresse.</p>
+  {% endfor %}
+</div>
+
+{% if ecriture %}
+  <form method="post" action="{% url 'terrain:terminer' %}" @submit="if (!confirm('Terminer l\'opération?')) $event.preventDefault()">{% csrf_token %}
+    <button class="gros-bouton border-2 border-danger/60 text-danger">Terminer l'opération</button>
+  </form>
+{% endif %}
+{% endblock %}

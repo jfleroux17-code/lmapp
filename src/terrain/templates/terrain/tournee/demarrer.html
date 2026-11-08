@@ -1,0 +1,24 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Tournée{% endblock %}
+{% block contenu %}
+<h1 class="mb-1 text-2xl font-bold">Tournée</h1>
+<p class="mb-5 text-gray-400">Aucune opération en cours.</p>
+{% if ecriture %}
+  <form method="post" action="{% url 'terrain:demarrer' %}" class="mb-8 space-y-3" x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+    {% for valeur, nom in types %}
+      <button name="type" value="{{ valeur }}" class="gros-bouton min-h-16 {% if forloop.first %}bg-accent text-nuit{% else %}border-2 border-bordure{% endif %}" :class="{ 'opacity-60': envoi }">Démarrer : {{ nom }}</button>
+    {% endfor %}
+  </form>
+{% endif %}
+{% if dernieres %}
+  <h2 class="mb-2 text-lg font-bold">Dernières opérations</h2>
+  <div class="carte divide-y divide-bordure">
+    {% for o in dernieres %}
+      <div class="flex justify-between gap-3 p-4">
+        <span>{{ o.get_type_display }}</span>
+        <span class="text-gray-400">{{ o.debut|date:"j F, H \h i" }}</span>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

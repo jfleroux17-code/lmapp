@@ -31,11 +31,12 @@
     </header>
   {% endif %}
   {% if user.is_authenticated and request.entreprise %}
-    <nav class="mx-auto grid max-w-xl grid-cols-3 gap-2 px-4 pt-3">
+    <nav class="mx-auto grid max-w-xl grid-cols-4 gap-2 px-4 pt-3 text-[0.9rem]">
       {% with u=request.resolver_match.url_name %}
+      <a href="{% url 'terrain:tournee' %}" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if u == 'tournee' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Tournée</a>
       <a href="{% url 'terrain:accueil' %}" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if u == 'accueil' or u == 'fiche' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Clients</a>
       <a href="{% url 'terrain:factures' %}" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if u == 'factures' or u == 'facture' or u == 'nouvelle_facture' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Factures</a>
-      <a href="{% url 'terrain:comptes' %}" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if u == 'comptes' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">À recevoir</a>
+      <a href="{% url 'terrain:comptes' %}" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if u == 'comptes' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Comptes</a>
       {% endwith %}
     </nav>
   {% endif %}
