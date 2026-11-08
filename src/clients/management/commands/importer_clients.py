@@ -41,8 +41,8 @@ class Command(BaseCommand):
             w(self.style.WARNING(f"Colonnes ignorées (inconnues) : {', '.join(a.inconnues)}"))
         if a.manquantes:
             raise CommandError(f"Colonnes obligatoires manquantes : {', '.join(a.manquantes)}. Rien n'est importé.")
-        if a.colonnes_plus_tard:
-            w(f"Colonnes lues pour plus tard (contrats et soldes, pas encore importées) : {', '.join(a.colonnes_plus_tard)}")
+        if a.colonnes_argent:
+            w(f"Colonnes d'argent : {', '.join(a.colonnes_argent)} (contrats dans la saison {a.saison}{' : à créer, du 1er novembre au 30 avril, modifiable ensuite' if a.saison and a.saison.pk is None else ''}).")
 
         for l in a.lignes:
             if l.statut == "erreur":
@@ -52,19 +52,19 @@ class Command(BaseCommand):
             if l.statut == "existe":
                 w(f"  ligne {l.numero} : déjà en base, ignorée ({l.description})")
 
-        nb_plus_tard = sum(1 for l in a.lignes if l.plus_tard and l.statut != "erreur")
+        nb_contrats, nb_soldes = a.nb_contrats, a.nb_soldes
         w("")
         w(f"Résumé : {a.nb_clients} client(s) et {len(a.a_creer)} adresse(s) à créer, "
           f"{len(a.secteurs_nouveaux)} secteur(s) nouveau(x){' (' + ', '.join(a.secteurs_nouveaux) + ')' if a.secteurs_nouveaux else ''}, "
           f"{len(a.existantes)} ligne(s) déjà en base, {len(a.erreurs)} ligne(s) en erreur.")
-        if nb_plus_tard:
-            w(f"         {nb_plus_tard} ligne(s) avec prix ou solde dû, à importer à l'étape des contrats et des soldes.")
+        if nb_contrats or nb_soldes:
+            w(f"         {nb_contrats} contrat(s) et {nb_soldes} solde(s) antérieur(s) à créer.")
 
         if not o["appliquer"]:
             w(self.style.WARNING("ESSAI À BLANC : rien n'a été enregistré. Relancer avec --appliquer pour importer."))
             return
         try:
-            nb_clients, nb_adresses = importation.appliquer(a, entreprise, sauter_erreurs=o["sauter_erreurs"])
+            r = importation.appliquer(a, entreprise, sauter_erreurs=o["sauter_erreurs"])
         except ValueError as e:
             raise CommandError(str(e))
-        w(self.style.SUCCESS(f"Importé : {nb_clients} client(s), {nb_adresses} adresse(s)."))
+        w(self.style.SUCCESS(f"Importé : {r.clients} client(s), {r.adresses} adresse(s), {r.contrats} contrat(s), {r.soldes} solde(s) antérieur(s)."))

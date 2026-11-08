@@ -44,14 +44,14 @@ class Command(BaseCommand):
         ws.append([c.exemple2 for c in COLONNES])
         gras = Font(bold=True)
         oblig = PatternFill("solid", fgColor="F5C400")
-        plus_tard = PatternFill("solid", fgColor="D9D9D9")
+        argent = PatternFill("solid", fgColor="DDEBF7")
         for i, c in enumerate(COLONNES, start=1):
             cellule = ws.cell(row=1, column=i)
             cellule.font = gras
             if c.obligatoire:
                 cellule.fill = oblig
-            elif c.plus_tard:
-                cellule.fill = plus_tard
+            elif c.argent:
+                cellule.fill = argent
             ws.column_dimensions[get_column_letter(i)].width = max(14, min(32, len(max(c.titre, c.exemple1, c.exemple2, key=len)) + 2))
             # Numéros et codes en texte : Excel ne doit pas les transformer en nombres
             if c.cle in ("cellulaire", "autre_telephone", "code_postal", "facturation_code_postal", "no_client"):
@@ -65,9 +65,9 @@ class Command(BaseCommand):
             cellule.font = gras
         ex.append(["", "", "Une ligne par adresse de service. Un client avec deux adresses : deux lignes avec le même no_client. "
                    "Les exemples (lignes 2 et 3 de l'onglet Clients) sont fictifs : les effacer avant d'envoyer le fichier. "
-                   "Colonnes en jaune : obligatoires. Colonnes en gris : lues, importées à une étape suivante (contrats et soldes).", ""])
+                   "Colonnes en jaune : obligatoires. Colonnes en bleu : l'argent (prix de la saison, solde dû).", ""])
         for c in COLONNES:
-            ex.append([c.titre, "oui" if c.obligatoire else ("plus tard" if c.plus_tard else ""), c.explication, c.exemple1 or c.exemple2])
+            ex.append([c.titre, "oui" if c.obligatoire else ("argent" if c.argent else ""), c.explication, c.exemple1 or c.exemple2])
         ex.column_dimensions["A"].width = 26
         ex.column_dimensions["B"].width = 12
         ex.column_dimensions["C"].width = 90

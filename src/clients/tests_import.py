@@ -42,7 +42,8 @@ class ImportationTests(TestCase):
                       "Gagnon,4505550102,2 rue A,Val-David,village,2\n")
         a = self._analyser(chemin)
         self.assertEqual(a.secteurs_nouveaux, ["Village"])  # « village » et « Village » : un seul secteur
-        self.assertEqual(importation.appliquer(a, self.ent), (2, 2))
+        r = importation.appliquer(a, self.ent)
+        self.assertEqual((r.clients, r.adresses), (2, 2))
         self.assertEqual(Secteur.objects.get().nom, "Village")
         self.assertEqual(list(Adresse.objects.order_by("ordre_tournee").values_list("ordre_tournee", flat=True)), [1, 2])
         # Relancer le même fichier : tout est déjà en base
@@ -62,7 +63,8 @@ class ImportationTests(TestCase):
             importation.appliquer(a, self.ent)
         self.assertEqual(Client.objects.count(), 0)
         # En sautant les erreurs : seule la ligne valide entre
-        self.assertEqual(importation.appliquer(a, self.ent, sauter_erreurs=True), (1, 1))
+        r = importation.appliquer(a, self.ent, sauter_erreurs=True)
+        self.assertEqual((r.clients, r.adresses), (1, 1))
         self.assertTrue(Adresse.objects.get().borne_fontaine)
 
     def test_un_client_deux_adresses(self):
@@ -102,10 +104,39 @@ class ImportationTests(TestCase):
         self.assertEqual(l.client.consentement_source, "import")
         self.assertTrue(l.avertissements)
 
-    def test_montants_et_colonnes_plus_tard(self):
+    def test_montants_et_colonnes_d_argent(self):
         a = self._analyser(_csv("nom;adresse;ville;prix_saison;solde_du\nRoy;1 rue A;X;450;1 250,50 $\n"))
-        self.assertEqual(a.lignes[0].plus_tard, {"prix_saison": Decimal("450.00"), "solde_du": Decimal("1250.50")})
-        self.assertEqual(sorted(a.colonnes_plus_tard), ["prix_saison", "solde_du"])
+        self.assertEqual(a.lignes[0].argent, {"prix_saison": Decimal("450.00"), "solde_du": Decimal("1250.50")})
+        self.assertEqual(sorted(a.colonnes_argent), ["prix_saison", "solde_du"])
+        self.assertEqual(a.lignes[0].erreurs, [])
+        self.assertIsNone(a.saison.pk)  # pas encore de saison : l'import la créera
+        r = importation.appliquer(a, self.ent)
+        self.assertEqual((r.contrats, r.soldes), (1, 1))
+        self.assertEqual((a.saison.debut.month, a.saison.debut.day, a.saison.fin.month), (11, 1, 4))
+
+    def test_contrats_et_soldes_importes(self):
+        from datetime import date as d
+        from facturation.models import Contrat, Facture, Saison
+
+        Saison.objects.create(entreprise=self.ent, nom="2026-2027", debut=d(2026, 11, 1), fin=d(2027, 4, 15))
+        fichier = _csv(
+            "no_client;nom;adresse;ville;prix_saison;type_contrat;prix_entendu_texte;solde_du;solde_saison;solde_note\n"
+            "1;Roy;1 rue A;X;450;;450 $ en 2 fois;100;2025-2026;Mars pas payé\n"
+            "1;Roy;2 rue A;X;30;au passage;;;;\n"
+            "2;Côté;3 rue A;X;12;à l'heure;;0;;\n"
+            "3;Gagnon;4 rue A;X;;;;80,50;;\n")
+        a = self._analyser(fichier)
+        self.assertEqual((a.nb_contrats, a.nb_soldes), (2, 2))
+        self.assertIn("à créer à la main", " ".join(a.lignes[2].avertissements))
+        r = importation.appliquer(a, self.ent)
+        self.assertEqual((r.clients, r.adresses, r.contrats, r.soldes), (3, 4, 2, 2))
+        roy = Contrat.objects.filter(client__nom="Roy").order_by("prix")
+        self.assertEqual([(c.type, c.prix, c.adresse.ligne1) for c in roy], [("au_passage", Decimal("30.00"), "2 rue A"), ("saisonnier", Decimal("450.00"), "1 rue A")])
+        self.assertEqual(roy.last().prix_texte, "450 $ en 2 fois")
+        s = Facture.objects.get(client__nom="Roy")
+        self.assertEqual((s.genre, s.total, s.saison_origine, s.note_interne, s.statut), ("solde_ouverture", Decimal("100.00"), "2025-2026", "Mars pas payé", "emise"))
+        self.assertEqual(Facture.objects.get(client__nom="Gagnon").total, Decimal("80.50"))
+        self.assertFalse(Facture.objects.filter(client__nom="Côté").exists())  # solde à 0 : rien
 
     def test_excel_avec_numero_en_nombre(self):
         from openpyxl import Workbook

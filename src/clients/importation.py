@@ -25,6 +25,7 @@ from django.utils import timezone
 
 from clients.models import Adresse, Client, Secteur
 from core.models import VilleDesservie
+from facturation.models import Contrat, Facture, Saison
 from core import telephone
 from core.texte import cle, cle_ville
 
@@ -41,7 +42,7 @@ class Colonne:
     exemple1: str = ""
     exemple2: str = ""
     obligatoire: bool = False
-    plus_tard: bool = False  # lue et validée, importée à l'étape des contrats et des soldes
+    argent: bool = False  # contrat ou solde dû (app facturation)
 
 
 COLONNES = [
@@ -73,12 +74,12 @@ COLONNES = [
     Colonne("facturation_ville", "facturation_ville", "Ville de facturation.", "", "Saint-Jérôme"),
     Colonne("facturation_code_postal", "facturation_code_postal", "Code postal de facturation.", "", "J7Z 1A1"),
     Colonne("notes", "notes", "Notes libres.", "", ""),
-    Colonne("prix_saison", "prix_saison", "Prix entendu pour la saison, en dollars (450 ou 450,00).", "450,00", "2400,00", plus_tard=True),
-    Colonne("type_contrat", "type_contrat", "saisonnier, au passage, à l'heure ou sur demande.", "saisonnier", "saisonnier", plus_tard=True),
-    Colonne("prix_entendu_texte", "prix_entendu_texte", "Le prix tel qu'entendu avec le client, en mots.", "450 $ en 2 versements", "200 $ par mois, nov. à avril", plus_tard=True),
-    Colonne("solde_du", "solde_du", "Montant que le client doit encore des saisons passées, en dollars.", "", "350,00", plus_tard=True),
-    Colonne("solde_saison", "solde_saison", "Saison d'origine du solde dû (ex. 2025-2026).", "", "2025-2026", plus_tard=True),
-    Colonne("solde_note", "solde_note", "Note sur le solde dû.", "", "Facture de mars jamais payée", plus_tard=True),
+    Colonne("prix_saison", "prix_saison", "Prix entendu pour la saison, avant taxes, en dollars (450 ou 450,00). Crée un contrat dans la saison en cours (la saison doit exister dans l'administration). Au passage : le prix d'un passage.", "450,00", "2400,00", argent=True),
+    Colonne("type_contrat", "type_contrat", "saisonnier ou au passage (vide = saisonnier). À l'heure ou sur demande : contrat à créer à la main.", "saisonnier", "saisonnier", argent=True),
+    Colonne("prix_entendu_texte", "prix_entendu_texte", "Le prix tel qu'entendu avec le client, en mots.", "450 $ en 2 versements", "200 $ par mois, nov. à avril", argent=True),
+    Colonne("solde_du", "solde_du", "Montant que le client doit encore des saisons passées, en dollars (taxes déjà comprises). Devient un « solde antérieur » à recevoir.", "", "350,00", argent=True),
+    Colonne("solde_saison", "solde_saison", "Saison d'origine du solde dû (ex. 2025-2026).", "", "2025-2026", argent=True),
+    Colonne("solde_note", "solde_note", "Note sur le solde dû (interne, jamais montrée au client).", "", "Facture de mars jamais payée", argent=True),
 ]
 PAR_CLE = {c.cle: c for c in COLONNES}
 
@@ -131,6 +132,30 @@ CHOIX = {
         "a_l_heure": "heure", "heure": "heure", "sur_demande": "demande", "demande": "demande",
     },
 }
+
+
+# Types de contrat que l'import sait créer (les autres : à la main)
+TYPES_IMPORTES = {"saisonnier": Contrat.Type.SAISONNIER, "passage": Contrat.Type.AU_PASSAGE}
+
+
+def saison_en_cours(entreprise):
+    """La saison qui contient aujourd'hui, sinon la plus récente. Aucune : une saison à créer
+    (non enregistrée), du 1er novembre au 30 avril, modifiable ensuite dans l'administration."""
+    aujourdhui = timezone.localdate()
+    qs = Saison.objects.filter(entreprise=entreprise)
+    existante = qs.filter(debut__lte=aujourdhui, fin__gte=aujourdhui).first() or qs.order_by("-debut").first()
+    if existante:
+        return existante
+    an = aujourdhui.year if aujourdhui.month >= 7 else aujourdhui.year - 1
+    return Saison(entreprise=entreprise, nom=f"{an}-{an + 1}", debut=date(an, 11, 1), fin=date(an + 1, 4, 30))
+
+
+@dataclass
+class Resultat:
+    clients: int = 0
+    adresses: int = 0
+    contrats: int = 0
+    soldes: int = 0
 
 
 # Valeurs telles qu'écrites dans le gabarit, pour les messages d'erreur
@@ -277,7 +302,7 @@ class Ligne:
     adresse: Adresse = None
     secteur_nom: str = ""
     groupe: str = ""
-    plus_tard: dict = field(default_factory=dict)
+    argent: dict = field(default_factory=dict)
 
     @property
     def description(self):
@@ -294,6 +319,7 @@ class Analyse:
     manquantes: list
     lignes: list
     secteurs_nouveaux: list
+    saison: Saison = None  # saison des contrats créés par l'import
 
     @property
     def erreurs(self):
@@ -312,8 +338,19 @@ class Analyse:
         return sum(1 for l in self.lignes if l.statut == "a_creer")
 
     @property
-    def colonnes_plus_tard(self):
-        return [k for k in self.colonnes.values() if PAR_CLE[k].plus_tard]
+    def colonnes_argent(self):
+        return [k for k in self.colonnes.values() if PAR_CLE[k].argent]
+
+    def _a_importer(self, cle):
+        return [l for l in self.lignes if l.statut in ("a_creer", "adresse_seulement") and l.argent.get(cle)]
+
+    @property
+    def nb_contrats(self):
+        return sum(1 for l in self._a_importer("prix_saison") if l.argent.get("type_contrat", "saisonnier") in TYPES_IMPORTES)
+
+    @property
+    def nb_soldes(self):
+        return len(self._a_importer("solde_du"))
 
 
 def _messages(erreur):
@@ -336,8 +373,9 @@ def analyser(fichier, entreprise):
             inconnues.append(brute)
     manquantes = [c.titre for c in COLONNES if c.obligatoire and c.cle not in colonnes.values()]
     if manquantes:
-        return Analyse(fichier, colonnes, inconnues, manquantes, [], [])
+        return Analyse(fichier, colonnes, inconnues, manquantes, [], [], None)
 
+    saison = saison_en_cours(entreprise)
     secteurs_existants = {_cle(s.nom): s.nom for s in Secteur.objects.filter(entreprise=entreprise)}
     secteurs_nouveaux = {}
     ville_defaut = VilleDesservie.par_defaut_de(entreprise.pk)
@@ -366,8 +404,17 @@ def analyser(fichier, entreprise):
                 l.erreurs.append(str(e))
 
         for c in COLONNES:
-            if c.plus_tard and g(c.cle):
-                l.plus_tard[c.cle] = conv.get(c.cle, g(c.cle))
+            if c.argent and g(c.cle):
+                l.argent[c.cle] = conv.get(c.cle, g(c.cle))
+        # Contrat (prix de la saison) et solde dû
+        type_c = l.argent.get("type_contrat") or "saisonnier"
+        if l.argent.get("prix_saison") is not None:
+            if type_c not in TYPES_IMPORTES:
+                l.avertissements.append(f"contrat {PERMIS_AFFICHES.get(type_c, type_c)} : à créer à la main dans l'administration")
+        elif "type_contrat" in l.argent:
+            l.avertissements.append("type_contrat sans prix_saison : pas de contrat créé")
+        if l.argent.get("solde_du") == 0:
+            del l.argent["solde_du"]
 
         # Client, validé par les règles du modèle
         client = Client(
@@ -461,7 +508,7 @@ def analyser(fichier, entreprise):
 
     utilises = {_cle(l.secteur_nom) for l in lignes if l.statut in ("a_creer", "adresse_seulement") and l.secteur_nom}
     nouveaux = [nom for cs, nom in secteurs_nouveaux.items() if cs in utilises]
-    return Analyse(fichier, colonnes, inconnues, [], lignes, nouveaux)
+    return Analyse(fichier, colonnes, inconnues, [], lignes, nouveaux, saison)
 
 
 # ---------------------------------------------------------------------------
@@ -475,6 +522,8 @@ def appliquer(analyse, entreprise, sauter_erreurs=False):
     if analyse.erreurs and not sauter_erreurs:
         raise ValueError(f"{len(analyse.erreurs)} ligne(s) en erreur : rien n'est importé (corriger le fichier, ou sauter les erreurs).")
     with transaction.atomic():
+        if analyse.saison is not None and analyse.saison.pk is None and analyse.nb_contrats:
+            analyse.saison.save()  # première saison de l'entreprise, créée par l'import
         secteurs = {}
         prochain_ordre = (Secteur.objects.filter(entreprise=entreprise).order_by("-ordre").values_list("ordre", flat=True).first() or 0) + 1
         for nom in analyse.secteurs_nouveaux:
@@ -484,12 +533,12 @@ def appliquer(analyse, entreprise, sauter_erreurs=False):
             secteurs.setdefault(_cle(s.nom), s)
 
         clients_par_groupe = {}
-        nb_clients = nb_adresses = 0
+        r = Resultat()
         for l in analyse.lignes:
             if l.statut == "a_creer":
                 l.client.save()
                 clients_par_groupe[l.groupe] = l.client
-                nb_clients += 1
+                r.clients += 1
             elif l.statut == "adresse_seulement":
                 if l.groupe not in clients_par_groupe:
                     continue  # le client de ce groupe était en erreur et a été sauté
@@ -498,5 +547,16 @@ def appliquer(analyse, entreprise, sauter_erreurs=False):
             l.adresse.client = clients_par_groupe[l.groupe]
             l.adresse.secteur = secteurs.get(_cle(l.secteur_nom)) if l.secteur_nom else None
             l.adresse.save()
-            nb_adresses += 1
-    return nb_clients, nb_adresses
+            r.adresses += 1
+            client = clients_par_groupe[l.groupe]
+            a = l.argent
+            type_c = TYPES_IMPORTES.get(a.get("type_contrat") or "saisonnier")
+            if a.get("prix_saison") is not None and type_c and analyse.saison is not None:
+                Contrat.objects.create(entreprise=entreprise, client=client, adresse=l.adresse, saison=analyse.saison,
+                                       type=type_c, prix=a["prix_saison"], prix_texte=a.get("prix_entendu_texte", "")[:300])
+                r.contrats += 1
+            if a.get("solde_du"):
+                Facture.solde_ouverture(client, a["solde_du"], saison_origine=a.get("solde_saison", "")[:20],
+                                        note=a.get("solde_note", ""))
+                r.soldes += 1
+    return r
