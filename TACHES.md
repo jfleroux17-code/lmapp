@@ -25,6 +25,10 @@ Mise à jour : 8 novembre 2026.
 
 ### Comptes de services (textos et courriels, phase 1)
 
+- [x] Boîte `louis@ledeneigeur.com` sur le serveur de courriel de JF (`woww.joxs.net`), à la place de SMTP2GO. Connexion IMAP et SMTP vérifiée depuis le worker (8 novembre 2026). MX, SPF et DMARC ajoutés chez Cloudflare.
+- [ ] JF : clé DKIM pour `ledeneigeur.com` dans le panneau du serveur de courriel, puis donner le nom et la valeur à Claude Code (ou l'ajouter chez Cloudflare).
+- [ ] JF : demander à Beanfield le DNS inverse de 216.46.12.228 vers `woww.joxs.net` (sinon risque de pourriels chez Gmail et Outlook).
+- [ ] JF : adresse courriel pour les essais (`LMAPP_DESTINATAIRES_TEST`).
 - [x] Twilio : compte payant, numéro 450-300-1166, `TWILIO_ACCOUNT_SID` et `TWILIO_AUTH_TOKEN` dans les deux `.env` (8 novembre 2026). Premier texto d'essai livré au cellulaire de JF, depuis le test.
 - [ ] SMTP2GO : sous-compte de Louis, domaine `ledeneigeur.com` vérifié (SPF, DKIM, DMARC chez Cloudflare), `SMTP2GO_API_KEY` dans les `.env`.
 - [ ] Boîte IMAP (proposé : `info@ledeneigeur.com`), MX chez Cloudflare, accès dans les `.env`.
