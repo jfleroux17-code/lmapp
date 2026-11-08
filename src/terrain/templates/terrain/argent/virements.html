@@ -34,7 +34,10 @@
             {% for f in dues %}<option value="{{ f.pk }}">{{ f.client.nom_affiche }} : {{ f }} ({{ f.solde_du|argent }})</option>{% endfor %}
           </select>
           <input type="hidden" name="recu" value="1">
-          <button class="gros-bouton border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">Enregistrer sur cette facture</button>
+          <div class="grid grid-cols-2 gap-3">
+            <button type="reset" class="gros-bouton border-2 border-bordure text-gray-300" @click="$el.closest('details').open = false">Annuler</button>
+            <button class="gros-bouton border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">Enregistrer</button>
+          </div>
         </form>
         <form method="post" action="{% url 'terrain:virement' v.pk %}" class="mt-3" @submit="if (!confirm('Ignorer ce virement? (déjà enregistré à la main, ou pas pour un client)')) $event.preventDefault()">{% csrf_token %}
           <button name="action" value="ignorer" class="gros-bouton border-2 border-bordure text-gray-300">Ignorer</button>

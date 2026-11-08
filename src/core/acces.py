@@ -39,3 +39,26 @@ def ecriture_requise(vue):
         return vue(request, *args, **kwargs)
 
     return enveloppe
+
+
+def peut_modifier_clients(request):
+    """A12, K9 : déneigeur seul, quiconque peut écrire; équipe, seulement les administrateurs de l'entreprise."""
+    u = request.user
+    if u.is_superuser:
+        return True
+    membre = Membre.objects.filter(utilisateur=u, entreprise=request.entreprise).first()
+    if membre is None or membre.role == Membre.Role.LECTURE:
+        return False
+    return request.entreprise.mode == request.entreprise.Mode.SEUL or membre.role == Membre.Role.ADMINISTRATEUR
+
+
+def modification_clients_requise(vue):
+    @membre_requis
+    @wraps(vue)
+    def enveloppe(request, *args, **kwargs):
+        if not peut_modifier_clients(request):
+            return render(request, "terrain/refuse.html",
+                          {"message": "Dans cette entreprise, seuls les administrateurs modifient les clients."}, status=403)
+        return vue(request, *args, **kwargs)
+
+    return enveloppe

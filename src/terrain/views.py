@@ -12,7 +12,7 @@ from django.db.models import F, Min, Prefetch, Q
 from django.shortcuts import get_object_or_404, render
 
 from clients.models import Adresse, Client
-from core.acces import membre_requis, peut_ecrire
+from core.acces import membre_requis, peut_ecrire, peut_modifier_clients
 from core import telephone
 from terrain.argent import resume_client
 from tournee.models import Passage
@@ -58,7 +58,8 @@ def _recherche(entreprise, q):
 @membre_requis
 def accueil(request):
     clients, recherche = _recherche(request.entreprise, request.GET.get("q"))
-    contexte = {"clients": clients, "q": request.GET.get("q", ""), "recherche": recherche}
+    contexte = {"clients": clients, "q": request.GET.get("q", ""), "recherche": recherche,
+                "modifier_clients": peut_modifier_clients(request)}
     # HTMX : seulement la liste, pendant la frappe
     gabarit = "terrain/_resultats.html" if request.headers.get("HX-Request") else "terrain/accueil.html"
     return render(request, gabarit, contexte)
@@ -95,6 +96,7 @@ def fiche(request, pk):
         "cellulaire": telephone.afficher(client.cellulaire),
         "autre_telephone": telephone.afficher(client.telephone_autre),
         "ecriture": peut_ecrire(request),
+        "modifier_clients": peut_modifier_clients(request),
         "passages": Passage.objects.filter(adresse__client=client).select_related("operation", "adresse").order_by("-heure")[:10],
         "messages_client": client.messages.order_by("-cree_le")[:10],
         "demandes_client": client.demandes.order_by("statut", "-cree_le")[:10],

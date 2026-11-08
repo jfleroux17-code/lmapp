@@ -1,13 +1,18 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from terrain import argent, demandes, tournee, views
+from terrain import argent, clients, demandes, tournee, views
 
 app_name = "terrain"
 
 urlpatterns = [
     path("", views.accueil, name="accueil"),
     path("clients/<int:pk>/", views.fiche, name="fiche"),
+    path("clients/nouveau/", clients.nouveau, name="nouveau_client"),
+    path("clients/<int:pk>/modifier/", clients.modifier, name="modifier_client"),
+    path("clients/<int:client_pk>/adresses/nouvelle/", clients.adresse, name="nouvelle_adresse"),
+    path("clients/<int:client_pk>/adresses/<int:pk>/", clients.adresse, name="modifier_adresse"),
+    path("adresses/<int:pk>/position/", clients.position, name="position_adresse"),
     path("clients/<int:client_pk>/factures/nouvelle/", argent.nouvelle_facture, name="nouvelle_facture"),
     path("clients/<int:client_pk>/relance/", argent.relancer, name="relancer"),
     path("factures/", argent.factures, name="factures"),

@@ -85,7 +85,10 @@
       <summary class="flex min-h-12 cursor-pointer items-center font-semibold text-accent">+ Ajouter une ligne</summary>
       <form method="post" action="{% url 'terrain:ajouter_ligne' f.pk %}" class="mt-4" x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
         {% with form=form_ligne %}{% include "terrain/argent/_form_ligne.html" %}{% endwith %}
-        <button class="gros-bouton mt-5 border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">Ajouter</button>
+        <div class="mt-5 grid grid-cols-2 gap-3">
+          <button type="reset" class="gros-bouton border-2 border-bordure text-gray-300" @click="$el.closest('details').open = false">Annuler</button>
+          <button class="gros-bouton border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">Ajouter</button>
+        </div>
       </form>
     </details>
     {% if lignes %}
@@ -128,7 +131,10 @@
             <span>Envoyer un reçu au client</span>
           </label>
         {% endif %}
-        <button class="gros-bouton bg-ok text-nuit" :disabled="!mode" :class="{ 'opacity-60': envoi }">Enregistrer le paiement</button>
+        <div class="grid grid-cols-[1fr_2fr] gap-3">
+          <button type="reset" class="gros-bouton border-2 border-bordure text-gray-300" @click="mode = ''">Annuler</button>
+          <button class="gros-bouton bg-ok text-nuit" :disabled="!mode" :class="{ 'opacity-60': envoi }">Enregistrer le paiement</button>
+        </div>
       </form>
     </section>
   {% endif %}

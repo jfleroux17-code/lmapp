@@ -29,6 +29,7 @@
     }
   </script>
   {% endif %}
+  {% block tete %}{% endblock %}
   <title>{% block titre %}{{ request.entreprise.nom|default:"LMAPP" }}{% endblock %}</title>
 </head>
 <body class="min-h-full zone-sure">

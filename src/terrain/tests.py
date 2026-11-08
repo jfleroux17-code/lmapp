@@ -120,3 +120,112 @@ class TerrainTests(TestCase):
         r = self.client.get("/favicon.ico")
         self.assertEqual(r.status_code, 301)
         self.assertIn("icones/icone-192", r["Location"])
+
+
+@override_settings(ALLOWED_HOSTS=["*"])
+class ModifierClientsTests(TestCase):
+    """A12 (clients modifiables dans l'app), K9 (mode de l'entreprise), A13 (position), K10 (Annuler)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from clients.models import Adresse, Client, Secteur
+        from core.models import Membre, VilleDesservie
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai", domaine="essai.exemple.test", ville="Sainte-Adèle")
+        cls.autre = Entreprise.objects.create(nom="Autre", slug="autre", domaine="autre.exemple.test")
+        VilleDesservie.objects.create(entreprise=cls.ent, nom="Sainte-Adèle", centre=Point(-74.13, 45.95, srid=4326))
+        cls.secteur = Secteur.objects.create(entreprise=cls.ent, nom="Village")
+        Secteur.objects.create(entreprise=cls.autre, nom="Pas le mien")
+        cls.c = Client.objects.create(entreprise=cls.ent, nom="Tremblay", cellulaire="+14505550101")
+        cls.a = Adresse.objects.create(entreprise=cls.ent, client=cls.c, ligne1="1, rue A", ville="Sainte-Adèle")
+        U = get_user_model()
+        cls.patron = U.objects.create_user("patron", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.patron, entreprise=cls.ent, role="admin")
+        cls.operateur = U.objects.create_user("operateur", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.operateur, entreprise=cls.ent, role="operateur")
+        cls.lecteur = U.objects.create_user("lecteur", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.lecteur, entreprise=cls.ent, role="lecture")
+
+    def setUp(self):
+        self.client.defaults["HTTP_HOST"] = "essai.exemple.test"
+        self.client.force_login(self.operateur)
+
+    def test_nouveau_client_avec_son_adresse(self):
+        from clients.models import Client
+        page = self.client.get("/clients/nouveau/")
+        self.assertContains(page, 'inputmode="tel"')
+        self.assertContains(page, "Annuler")
+        self.assertEqual(page.context["formulaires"][1][1].initial["ville"], "Sainte-Adèle")
+        r = self.client.post("/clients/nouveau/", {"c-prenom": "Ginette", "c-nom": "Roy", "c-cellulaire": "450 555-0102",
+                                                   "c-courriel": " Ginette@Example.COM ", "c-canal_prefere": "texto", "c-statut": "actif",
+                                                   "a-ligne1": "8, rue des Essais", "a-ville": "Sainte-Adèle", "a-code_postal": "j8b3b3",
+                                                   "a-secteur": self.secteur.pk, "a-active": "on", "a-borne_fontaine": "on"})
+        c = Client.objects.get(nom="Roy")
+        self.assertRedirects(r, f"/clients/{c.pk}/", fetch_redirect_response=False)
+        self.assertEqual((c.cellulaire, c.courriel, c.entreprise), ("+14505550102", "ginette@example.com", self.ent))
+        adresse = c.adresses.get()
+        self.assertEqual((adresse.code_postal, adresse.secteur, adresse.borne_fontaine), ("J8B 3B3", self.secteur, True))
+
+    def test_erreurs_rien_d_enregistre(self):
+        from clients.models import Client
+        avant = Client.objects.count()
+        page = self.client.post("/clients/nouveau/", {"c-nom": "Roy", "c-cellulaire": "123", "c-canal_prefere": "texto",
+                                                      "c-statut": "actif", "a-ligne1": "", "a-ville": "Sainte-Adèle"})
+        self.assertEqual(page.status_code, 200)
+        self.assertEqual(Client.objects.count(), avant)  # tout ou rien
+        page = self.client.post("/clients/nouveau/", {"c-nom": "Roy", "c-canal_prefere": "texto", "c-statut": "actif",
+                                                      "a-ligne1": "", "a-ville": "Sainte-Adèle"})
+        self.assertEqual(Client.objects.count(), avant)  # client valide, adresse manquante : rien
+
+    def test_modifier_client_et_adresse(self):
+        page = self.client.get(f"/clients/{self.c.pk}/modifier/")
+        self.assertContains(page, 'value="450 555-0101"')  # lisible, pas en E.164
+        self.client.post(f"/clients/{self.c.pk}/modifier/", {"c-nom": "Tremblay-Roy", "c-cellulaire": "450-555-0101",
+                                                             "c-canal_prefere": "courriel", "c-statut": "recouvrement"})
+        self.c.refresh_from_db()
+        self.assertEqual((self.c.nom, self.c.cellulaire, self.c.statut), ("Tremblay-Roy", "+14505550101", "recouvrement"))
+        self.client.post(f"/clients/{self.c.pk}/adresses/{self.a.pk}/", {"a-ligne1": "1, rue A", "a-ville": "Sainte-Adèle",
+                                                                         "a-ou_mettre_neige": "À gauche", "a-active": "on"})
+        self.a.refresh_from_db()
+        self.assertEqual(self.a.ou_mettre_neige, "À gauche")
+        self.client.post(f"/clients/{self.c.pk}/adresses/nouvelle/", {"a-ligne1": "2, rue B", "a-ville": "Sainte-Adèle", "a-active": "on"})
+        self.assertEqual(self.c.adresses.count(), 2)
+
+    def test_secteur_d_une_autre_entreprise_refuse(self):
+        from clients.models import Secteur
+        etranger = Secteur.objects.get(nom="Pas le mien")
+        page = self.client.post(f"/clients/{self.c.pk}/adresses/{self.a.pk}/", {"a-ligne1": "1, rue A", "a-ville": "Sainte-Adèle",
+                                                                                "a-secteur": etranger.pk})
+        self.assertEqual(page.status_code, 200)
+        self.a.refresh_from_db()
+        self.assertIsNone(self.a.secteur)
+
+    def test_mode_equipe_et_lecture_seule(self):
+        self.assertContains(self.client.get(f"/clients/{self.c.pk}/"), "Modifier le client")
+        Entreprise.objects.filter(pk=self.ent.pk).update(mode="equipe")
+        self.assertNotContains(self.client.get(f"/clients/{self.c.pk}/"), "Modifier le client")
+        self.assertEqual(self.client.get(f"/clients/{self.c.pk}/modifier/").status_code, 403)
+        self.client.force_login(self.patron)
+        self.assertEqual(self.client.get(f"/clients/{self.c.pk}/modifier/").status_code, 200)
+        self.client.force_login(self.lecteur)
+        Entreprise.objects.filter(pk=self.ent.pk).update(mode="seul")
+        self.assertEqual(self.client.get("/clients/nouveau/").status_code, 403)
+
+    def test_autre_entreprise(self):
+        from clients.models import Client
+        etranger = Client.objects.create(entreprise=self.autre, nom="X")
+        self.assertEqual(self.client.get(f"/clients/{etranger.pk}/modifier/").status_code, 404)
+
+    def test_corriger_la_position(self):
+        page = self.client.get(f"/adresses/{self.a.pk}/position/")
+        self.assertContains(page, "vendor/leaflet-1.9.4/leaflet.")
+        self.assertContains(page, "L.map(")
+        self.assertEqual((page.context["lat"], page.context["zoom"]), (45.95, 14))  # pas de position : centre de la ville
+        self.client.post(f"/adresses/{self.a.pk}/position/", {"lat": "45.9512345", "lng": "-74.1312345", "source": "gps"})
+        self.a.refresh_from_db()
+        self.assertEqual((round(self.a.position.y, 5), self.a.position_source, self.a.position_precision), (45.95123, "gps", "adresse"))
+        self.assertEqual(self.client.get(f"/adresses/{self.a.pk}/position/").context["zoom"], 18)
+        self.client.post(f"/adresses/{self.a.pk}/position/", {"lat": "45.95", "lng": "-74.13"})
+        self.a.refresh_from_db()
+        self.assertEqual(self.a.position_source, "manuelle")
+        r = self.client.post(f"/adresses/{self.a.pk}/position/", {"lat": "abc", "lng": "-74"}, follow=True)
+        self.assertContains(r, "Position illisible")

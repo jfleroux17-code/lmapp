@@ -5,5 +5,6 @@
          autocomplete="off" autocorrect="off" enterkeyhint="search" aria-label="Rechercher un client"
          hx-get="{% url 'terrain:accueil' %}" hx-trigger="input changed delay:250ms, search" hx-target="#resultats" hx-push-url="true">
 </form>
+{% if modifier_clients %}<a href="{% url 'terrain:nouveau_client' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">+ Nouveau client</a>{% endif %}
 <div id="resultats">{% include "terrain/_resultats.html" %}</div>
 {% endblock %}

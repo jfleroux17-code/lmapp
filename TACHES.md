@@ -81,10 +81,10 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 
 Après son essai des écrans. Une étape à la fois, chacune en test, montrée à JF sur son iPhone avant la suivante.
 
-- [ ] **Mode de l'entreprise** (PRD K9) : champ dans `Entreprise`, « déneigeur seul » ou « équipe ». Seul : le propriétaire fait tout dans l'app. Équipe : seuls les administrateurs de l'entreprise modifient les clients, les opérateurs consultent. Louis en « déneigeur seul ».
-- [ ] **Bouton Annuler partout** (PRD K10) : sur chaque écran, ramène à l'écran précédent sans rien enregistrer. Rien ne s'enregistre sans un bouton Enregistrer.
-- [ ] **Modifier un client dans l'app** (PRD A12) : ajout et modification du client et de ses adresses (coordonnées, particularités du terrain, statut, notes) depuis la fiche, au cellulaire, sans l'administration. Gros champs, clavier adapté (téléphone, courriel, code postal).
-- [ ] **Corriger la position d'une adresse dans l'app** (PRD A13) : carte plein écran avec repère fixe au centre (on déplace la carte, pas le point), bouton « Je suis devant » (GPS du téléphone), Enregistrer ou Annuler. La position devient `manuelle` ou `gps`, jamais écrasée par le géocodage.
+- [ ] **Mode de l'entreprise** (PRD K9) : **en test le 8 novembre 2026**. champ dans `Entreprise`, « déneigeur seul » ou « équipe ». Seul : le propriétaire fait tout dans l'app. Équipe : seuls les administrateurs de l'entreprise modifient les clients, les opérateurs consultent. Louis en « déneigeur seul ».
+- [ ] **Bouton Annuler partout** (PRD K10) : **en test le 8 novembre 2026** (formulaires de saisie). sur chaque écran, ramène à l'écran précédent sans rien enregistrer. Rien ne s'enregistre sans un bouton Enregistrer.
+- [ ] **Modifier un client dans l'app** (PRD A12) : **en test le 8 novembre 2026** (ajout essayé dans le navigateur). ajout et modification du client et de ses adresses (coordonnées, particularités du terrain, statut, notes) depuis la fiche, au cellulaire, sans l'administration. Gros champs, clavier adapté (téléphone, courriel, code postal).
+- [ ] **Corriger la position d'une adresse dans l'app** (PRD A13) : **en test le 8 novembre 2026** (carte Leaflet, tuiles OpenStreetMap). carte plein écran avec repère fixe au centre (on déplace la carte, pas le point), bouton « Je suis devant » (GPS du téléphone), Enregistrer ou Annuler. La position devient `manuelle` ou `gps`, jamais écrasée par le géocodage.
 - [ ] **Revoir le visuel** : JF le trouve « très moyen ». Proposer à JF deux ou trois pistes (captures d'écran de la recherche et de la fiche) avant de tout changer. Garder les contraintes : gros boutons pour les gants, lisible dehors, thème sombre ou clair à décider avec JF.
 
 ### Possible sans attendre

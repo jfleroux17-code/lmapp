@@ -57,6 +57,13 @@ class Entreprise(Horodate):
         validators=[MinValueValidator(0), MaxValueValidator(100)],
     )
 
+    # Mode de l'entreprise (K9) : qui modifie les clients dans l'app
+    class Mode(models.TextChoices):
+        SEUL = "seul", "Déneigeur seul (le propriétaire fait tout)"
+        EQUIPE = "equipe", "Équipe (seuls les administrateurs modifient les clients)"
+
+    mode = models.CharField("mode", max_length=6, choices=Mode.choices, default=Mode.SEUL)
+
     # Numérotation des factures (C3) : séquentielle, sans trou, donnée à l'émission
     prochain_numero_facture = models.PositiveIntegerField(
         "numéro de la prochaine facture", default=1,
