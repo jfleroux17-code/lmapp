@@ -6,6 +6,8 @@ les règles (numéro séquentiel, taxes figées).
 """
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
+from django.urls import reverse
+from django.utils.html import format_html
 
 from facturation.models import Contrat, Facture, LigneFacture, Paiement, Saison, Service, Versement
 
@@ -84,21 +86,28 @@ class PaiementEnLigne(admin.TabularInline):
 
 @admin.register(Facture)
 class FactureAdmin(admin.ModelAdmin):
-    list_display = ["__str__", "client", "date_facture", "genre", "statut", "total", "solde_affiche"]
+    list_display = ["__str__", "client", "date_facture", "genre", "statut", "total", "solde_affiche", "lien_pdf"]
     list_filter = ["entreprise", "statut", "genre"]
     search_fields = ["numero", "client__nom", "client__prenom", "client__organisation"]
     autocomplete_fields = ["client", "adresse", "contrat"]
     inlines = [LigneEnLigne, PaiementEnLigne]
     actions = ["emettre", "recalculer"]
-    readonly_fields = ["numero", "statut", "sous_total", "tps", "tvq", "total", "solde_affiche", "inscrit_taxes",
+    readonly_fields = ["lien_pdf", "numero", "statut", "sous_total", "tps", "tvq", "total", "solde_affiche", "inscrit_taxes",
                        "taux_tps", "taux_tvq", "numero_tps", "numero_tvq", "emise_le", "annulee_le", "raison_annulation"]
     fieldsets = [
         (None, {"fields": ["entreprise", "client", "adresse", "contrat", "genre", "saison_origine"]}),
-        ("Facture", {"fields": [("numero", "statut"), ("date_facture", "date_echeance"), "note", "note_interne"]}),
+        ("Facture", {"fields": ["lien_pdf", ("numero", "statut"), ("date_facture", "date_echeance"), "note", "note_interne"]}),
         ("Montants", {"fields": [("sous_total", "tps", "tvq", "total"), "solde_affiche"]}),
         ("Taxes figées à l'émission", {"classes": ["collapse"], "fields": [
             "inscrit_taxes", ("taux_tps", "taux_tvq"), ("numero_tps", "numero_tvq"), ("emise_le", "annulee_le"), "raison_annulation"]}),
     ]
+
+    @admin.display(description="PDF")
+    def lien_pdf(self, obj):
+        if not obj.pk:
+            return "Après l'enregistrement."
+        # Même domaine que l'administration : l'entreprise vient du domaine, la facture doit en être
+        return format_html('<a href="{}" target="_blank">Voir le PDF</a>', reverse("facturation:pdf", args=[obj.pk]))
 
     @admin.display(description="solde")
     def solde_affiche(self, obj):

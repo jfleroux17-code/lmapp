@@ -168,7 +168,7 @@ class Command(BaseCommand):
             f = v1.facturer()
             f.emettre()
             if i == 0:
-                Paiement.objects.create(entreprise=ent, facture=f, montant=Decimal("100"), mode="comptant", note="Paiement partiel (essai)")
+                Paiement.objects.create(entreprise=ent, facture=f, date=f.date_facture, montant=Decimal("100"), mode="comptant", note="Paiement partiel (essai)")
         extra = Facture.objects.create(entreprise=ent, client=servis[0], adresse=servis[0].adresses.first())
         extra.lignes.create(service=services["Pelletage du balcon"], description="Pelletage du balcon", quantite=2, prix_unitaire=Decimal("25"))
         extra.recalculer()  # laissée en brouillon

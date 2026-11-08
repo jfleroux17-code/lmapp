@@ -1,0 +1,128 @@
+{% load argent %}<!DOCTYPE html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<title>{% if solde_ouverture %}Solde antérieur{% elif f.numero %}Facture {{ f.numero }}{% else %}Brouillon{% endif %}, {{ ent.nom }}</title>
+<style>
+  @page { size: letter; margin: 18mm 16mm 20mm;
+          @bottom-center { content: "{{ ent.nom_legal|default:ent.nom|escapejs }}  ·  page " counter(page) " de " counter(pages); font-family: "Liberation Sans", "DejaVu Sans", sans-serif; font-size: 8pt; color: #777; } }
+  body { font-family: "Liberation Sans", "DejaVu Sans", sans-serif; font-size: 10pt; color: #1a1a1a; line-height: 1.35; }
+  .entete { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #f5c400; padding-bottom: 8mm; }
+  .entreprise h1 { font-size: 18pt; margin: 0 0 1mm; }
+  .entreprise .legal { color: #555; margin-bottom: 2mm; }
+  .titre { text-align: right; }
+  .titre h2 { font-size: 20pt; margin: 0; letter-spacing: 1px; }
+  .titre table { margin-left: auto; margin-top: 2mm; }
+  .titre td { padding: 0.5mm 0 0.5mm 4mm; }
+  .titre td:first-child { color: #555; }
+  .parties { display: flex; gap: 10mm; margin: 8mm 0 6mm; }
+  .parties div { flex: 1; }
+  .etiquette { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px; color: #777; margin-bottom: 1mm; }
+  table.lignes { width: 100%; border-collapse: collapse; }
+  .lignes th { text-align: left; font-size: 8.5pt; text-transform: uppercase; color: #555; border-bottom: 1px solid #999; padding: 2mm 1.5mm; }
+  .lignes td { padding: 2mm 1.5mm; border-bottom: 1px solid #ddd; vertical-align: top; }
+  .nombre, .lignes th.nombre { text-align: right; white-space: nowrap; }
+  .lignes .col { width: 26mm; }
+  .totaux { width: 82mm; margin: 4mm 0 0 auto; border-collapse: collapse; }
+  .totaux td { padding: 1.2mm 1.5mm; }
+  .petit { font-size: 8pt; color: #666; }
+  .totaux .grand td { font-size: 12pt; font-weight: bold; border-top: 2px solid #1a1a1a; padding-top: 2mm; }
+  .totaux .solde td { font-size: 12pt; font-weight: bold; background: #fff6cc; }
+  .bloc { margin-top: 8mm; padding: 3mm 4mm; border-left: 3px solid #f5c400; background: #fafafa; }
+  .bloc p { margin: 0 0 1.5mm; }
+  .note { white-space: pre-line; }
+  .tampon { position: fixed; top: 95mm; left: 0; right: 0; text-align: center; font-size: 64pt; font-weight: bold;
+            color: rgba(200, 30, 30, 0.16); transform: rotate(-24deg); }
+  .payee { color: #1d7a36; font-weight: bold; }
+</style>
+</head>
+<body>
+{% if brouillon %}<div class="tampon">BROUILLON</div>{% elif annulee %}<div class="tampon">ANNULÉE</div>{% endif %}
+
+<div class="entete">
+  <div class="entreprise">
+    <h1>{{ ent.nom }}</h1>
+    {% if ent.nom_legal and ent.nom_legal != ent.nom %}<div class="legal">{{ ent.nom_legal }}</div>{% endif %}
+    {% if ent.adresse_ligne1 %}{{ ent.adresse_ligne1 }}<br>{% endif %}
+    {% if ent.adresse_ligne2 %}{{ ent.adresse_ligne2 }}<br>{% endif %}
+    {% if ent.ville %}{{ ent.ville }} {{ ent.province }}  {{ ent.code_postal }}<br>{% endif %}
+    {% if ent.telephone %}{{ telephone_affiche }}<br>{% endif %}
+    {% if ent.courriel %}{{ ent.courriel }}{% endif %}
+  </div>
+  <div class="titre">
+    <h2>{% if solde_ouverture %}SOLDE ANTÉRIEUR{% else %}FACTURE{% endif %}</h2>
+    <table>
+      {% if not solde_ouverture %}<tr><td>Numéro</td><td><strong>{% if f.numero %}{{ f.numero }}{% else %}à venir{% endif %}</strong></td></tr>{% endif %}
+      <tr><td>Date</td><td>{{ f.date_facture|date:"j F Y" }}</td></tr>
+      {% if f.date_echeance %}<tr><td>Échéance</td><td>{{ f.date_echeance|date:"j F Y" }}</td></tr>{% endif %}
+      {% if solde_ouverture and f.saison_origine %}<tr><td>Saison</td><td>{{ f.saison_origine }}</td></tr>{% endif %}
+    </table>
+  </div>
+</div>
+
+<div class="parties">
+  <div>
+    <div class="etiquette">Facturé à</div>
+    <strong>{{ client.nom_affiche }}</strong><br>
+    {% for l in facturation %}{{ l }}<br>{% endfor %}
+  </div>
+  {% if service %}
+  <div>
+    <div class="etiquette">Adresse du service</div>
+    {{ service.ligne1 }}<br>{% if service.ligne2 %}{{ service.ligne2 }}<br>{% endif %}{{ service.ville }}
+  </div>
+  {% endif %}
+  {% if f.contrat_id %}
+  <div>
+    <div class="etiquette">Contrat</div>
+    Saison {{ f.contrat.saison }}<br>{{ f.contrat.get_type_display }}
+  </div>
+  {% endif %}
+</div>
+
+<table class="lignes">
+  <thead><tr><th>Description</th>{% if not solde_ouverture %}<th class="nombre col">Quantité</th><th class="nombre col">Prix</th>{% endif %}<th class="nombre col">Montant</th></tr></thead>
+  <tbody>
+  {% for l in lignes %}
+    <tr>
+      <td>{{ l.description }}{% if inscrit and not l.taxable %} <span class="petit">(non taxable)</span>{% endif %}</td>
+      {% if not solde_ouverture %}<td class="nombre">{{ l.quantite|quantite }}</td>
+      <td class="nombre">{{ l.prix_unitaire|argent }}</td>{% endif %}
+      <td class="nombre">{{ l.montant|argent }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<table class="totaux">
+  {% if inscrit %}
+  <tr><td>Sous-total</td><td class="nombre">{{ f.sous_total|argent }}</td></tr>
+  <tr><td>TPS ({{ taux_tps|pourcent }})<br><span class="petit">n° {{ no_tps|default:"à inscrire" }}</span></td><td class="nombre">{{ f.tps|argent }}</td></tr>
+  <tr><td>TVQ ({{ taux_tvq|pourcent }})<br><span class="petit">n° {{ no_tvq|default:"à inscrire" }}</span></td><td class="nombre">{{ f.tvq|argent }}</td></tr>
+  {% endif %}
+  <tr class="grand"><td>Total</td><td class="nombre">{{ f.total|argent }}</td></tr>
+  {% for p in paiements %}
+  <tr><td class="petit">Reçu le {{ p.date|date:"j F Y" }} ({{ p.get_mode_display|lower }})</td><td class="nombre">-{{ p.montant|argent }}</td></tr>
+  {% endfor %}
+  {% if paiements %}
+  <tr class="solde"><td>Solde à payer</td><td class="nombre">{{ f.solde|argent }}</td></tr>
+  {% endif %}
+</table>
+{% if not brouillon and not annulee and f.payee %}<p class="nombre payee">Payée. Merci!</p>{% endif %}
+
+{% if annulee %}
+<div class="bloc"><p><strong>Facture annulée</strong> le {{ f.annulee_le|date:"j F Y" }}{% if f.raison_annulation %} : {{ f.raison_annulation }}{% endif %}.</p><p>Rien à payer.</p></div>
+{% elif not f.payee %}
+<div class="bloc">
+  <p><strong>Pour payer</strong></p>
+  {% if ent.interac_courriel or ent.interac_instructions %}
+    <p>Virement Interac{% if ent.interac_courriel %} à <strong>{{ ent.interac_courriel }}</strong>{% endif %}{% if not solde_ouverture and f.numero %}, en indiquant le numéro de facture {{ f.numero }}{% endif %}.</p>
+    {% if ent.interac_instructions %}<p class="note">{{ ent.interac_instructions }}</p>{% endif %}
+  {% endif %}
+  <p>Chèque à l'ordre de « {{ ent.nom_legal|default:ent.nom }} ». Comptant accepté.</p>
+</div>
+{% endif %}
+
+{% if f.note %}<div class="bloc"><p class="note">{{ f.note }}</p></div>{% endif %}
+</body>
+</html>

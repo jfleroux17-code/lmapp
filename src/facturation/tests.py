@@ -161,3 +161,87 @@ class AdminFacturationTests(TestCase):
                     "/admin/facturation/saison/", "/admin/facturation/service/", "/admin/core/entreprise/"]:
             self.assertEqual(self.client.get(url).status_code, 200, url)
         self.assertNotContains(self.client.get(f"/admin/facturation/facture/{f.pk}/change/"), 'name="lignes-0-prix_unitaire"')
+
+
+class FormatTests(TestCase):
+    def test_argent_et_pourcent_a_la_quebecoise(self):
+        from facturation.templatetags.argent import argent, pourcent, quantite
+
+        self.assertEqual(argent(D("1234.5")), "1 234,50 $")
+        self.assertEqual(argent(D("-100")), "-100,00 $")
+        self.assertEqual(argent(D("1234567.891")), "1 234 567,89 $")
+        self.assertEqual(pourcent(D("9.975")), "9,975 %")
+        self.assertEqual(pourcent(D("5.000")), "5 %")
+        self.assertEqual(quantite(D("2.50")), "2,5")
+
+
+@override_settings(ALLOWED_HOSTS=["*"])
+class PdfTests(TestCase):
+    HOTE = "essai.exemple.test"
+
+    @classmethod
+    def setUpTestData(cls):
+        from core.models import Membre
+
+        cls.ent = Entreprise.objects.create(nom="Entretiens Essai", nom_legal="Les Entretiens Essai inc.", slug="essai", domaine=cls.HOTE,
+                                            inscrit_taxes=True, numero_tps="123456789 RT0001", numero_tvq="1234567890 TQ0001",
+                                            prochain_numero_facture=57, interac_courriel="paiement@example.com")
+        cls.autre = Entreprise.objects.create(nom="Autre", slug="autre", domaine="autre.exemple.test")
+        U = get_user_model()
+        cls.louis = U.objects.create_user("louis", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="operateur")
+        cls.c = Client.objects.create(entreprise=cls.ent, prenom="Ginette", nom="Tremblay", facturation_ligne1="C.P. 12",
+                                      facturation_ville="Saint-Jérôme", facturation_province="QC", facturation_code_postal="J7Z 1A1")
+        cls.a = Adresse.objects.create(entreprise=cls.ent, client=cls.c, ligne1="8, rue des Essais", ville="Sainte-Adèle")
+        cls.f = Facture.objects.create(entreprise=cls.ent, client=cls.c, adresse=cls.a, date_facture=date(2026, 12, 1))
+        cls.f.lignes.create(description="Déneigement de l'entrée", quantite=1, prix_unitaire=D("1000"))
+        cls.f.emettre()
+        Paiement.objects.create(entreprise=cls.ent, facture=cls.f, date=date(2026, 12, 5), montant=D("150"), mode="interac")
+
+    def setUp(self):
+        self.client.defaults["HTTP_HOST"] = self.HOTE
+
+    def test_contenu_de_la_facture(self):
+        from facturation import pdf
+
+        h = pdf.html(self.f)
+        for attendu in ["Entretiens Essai", "Les Entretiens Essai inc.", "FACTURE", ">57<", "1 décembre 2026",
+                        "C.P. 12", "Saint-Jérôme QC J7Z 1A1", "8, rue des Essais",  # facturation ailleurs : adresse du service aussi
+                        "n° 123456789 RT0001", "n° 1234567890 TQ0001", "1 000,00 $", "50,00 $", "99,75 $",
+                        "1 149,75 $", "-150,00 $", "999,75 $", "paiement@example.com", "numéro de facture 57"]:
+            self.assertIn(attendu, h)
+        self.assertNotIn("BROUILLON", h)
+
+    def test_brouillon_annulee_et_solde(self):
+        from facturation import pdf
+
+        b = Facture.objects.create(entreprise=self.ent, client=self.c)
+        b.lignes.create(description="Abrasif", quantite=1, prix_unitaire=15)
+        self.assertIn("BROUILLON", pdf.html(b))
+        self.assertEqual(pdf.nom_fichier(b), f"brouillon-{b.pk}.pdf")
+        g = Facture.objects.create(entreprise=self.ent, client=self.c)
+        g.lignes.create(description="Bordage", quantite=1, prix_unitaire=40)
+        g.emettre()
+        g.annuler("Erreur de client")
+        h = pdf.html(g)
+        self.assertIn("ANNULÉE", h)
+        self.assertIn("Erreur de client", h)
+        self.assertNotIn("Pour payer", h)
+        s = Facture.solde_ouverture(self.c, D("380"), saison_origine="2025-2026")
+        h = pdf.html(s)
+        self.assertIn("SOLDE ANTÉRIEUR", h)
+        self.assertNotIn("TPS", h)
+        self.assertNotIn("Quantité", h)
+
+    def test_pdf_pour_un_membre_seulement(self):
+        url = f"/factures/{self.f.pk}/pdf/"
+        self.assertEqual(self.client.get(url).status_code, 302)  # pas connecté
+        self.client.force_login(self.louis)
+        r = self.client.get(url)
+        self.assertEqual(r["Content-Type"], "application/pdf")
+        self.assertTrue(r.content.startswith(b"%PDF"))
+        self.assertIn('filename="facture-57.pdf"', r["Content-Disposition"])
+        self.assertEqual(r["Cache-Control"], "private, no-store")
+        c2 = Client.objects.create(entreprise=self.autre, nom="Ailleurs")
+        f2 = Facture.objects.create(entreprise=self.autre, client=c2)
+        self.assertEqual(self.client.get(f"/factures/{f2.pk}/pdf/").status_code, 404)

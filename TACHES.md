@@ -86,7 +86,7 @@ Après son essai des écrans. Une étape à la fois, chacune en test, montrée �
 - [x] `/admin/` réservé aux IP de JF et HSTS, dans Caddy (7 novembre 2026). Pour l'instant : IP de la maison seulement.
 - [ ] Avant l'ouverture à toutes les IP, le reste : webhooks vérifiés par signature, balayage externe (PRD 6.1.1).
 - [x] Sauvegarde de la base (K3) toutes les 12 heures : en prod le 7 novembre 2026, test de restauration réussi.
-- [ ] Volet argent, étape 1 sur 5 : modèle (saisons, services, contrats et versements, factures, paiements, soldes d'ouverture) et administration. **En prod le 8 novembre 2026** (aucune facture encore; numérotation à 1 en attendant le numéro du carnet de Louis). Ensuite : PDF de la facture, écrans de Louis (facture au cellulaire, reçu comptant, Interac), comptes à recevoir, envois et relances (attendent Twilio et SMTP2GO).
+- [ ] Volet argent, étape 1 sur 5 : modèle (saisons, services, contrats et versements, factures, paiements, soldes d'ouverture) et administration. **En prod le 8 novembre 2026** (aucune facture encore; numérotation à 1 en attendant le numéro du carnet de Louis). Étape 2, PDF de la facture : **en test le 8 novembre 2026** (lien « Voir le PDF » dans l'administration de test). Ensuite : écrans de Louis (facture au cellulaire, reçu comptant, Interac), comptes à recevoir, envois et relances (attendent Twilio et SMTP2GO).
 - [ ] Test de restauration chaque mois (`sh outils/tester_restauration.sh`), prochain vers le 7 décembre 2026.
 
 ### En attente

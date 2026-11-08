@@ -156,4 +156,6 @@ LOGGING = {
     "disable_existing_loggers": False,
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": env("DJANGO_LOG_LEVEL", "INFO")},
+    # WeasyPrint et fontTools racontent chaque étape d'un PDF : seulement les problèmes
+    "loggers": {n: {"level": "WARNING"} for n in ("weasyprint", "fontTools")},
 }
