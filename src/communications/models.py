@@ -98,6 +98,7 @@ class Message(Horodate):
     envoye_le = models.DateTimeField(null=True, blank=True)
     erreur = models.CharField(max_length=300, blank=True)
     fournisseur_id = models.CharField("identifiant chez le fournisseur", max_length=64, blank=True)
+    segments = models.PositiveSmallIntegerField(default=0, help_text="Textos : segments facturés par Twilio.")
 
     class Meta:
         verbose_name = "message"
@@ -114,6 +115,15 @@ class Message(Horodate):
         indexes = [models.Index(fields=["entreprise", "-cree_le"], name="message_entreprise_date"),
                    models.Index(fields=["entreprise", "sens", "lu"], name="message_non_lus")]
 
+    def save(self, *args, **kwargs):
+        if self.canal == self.Canal.TEXTO and not self.segments:
+            from communications.segments import compter
+
+            self.segments = compter(self.contenu)
+            if kwargs.get("update_fields") is not None:
+                kwargs["update_fields"] = list(kwargs["update_fields"]) + ["segments"]
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.get_genre_display()} à {self.client or self.destinataire}"
 
@@ -128,6 +138,8 @@ class EtatBoite(models.Model):
     dernier_uid = models.BigIntegerField(default=0)
     lue_le = models.DateTimeField(null=True, blank=True)
     erreur = models.CharField(max_length=300, blank=True)
+    quota_utilise_ko = models.PositiveBigIntegerField("espace utilisé (Ko)", null=True, blank=True)
+    quota_max_ko = models.PositiveBigIntegerField("espace permis (Ko)", null=True, blank=True)
 
     class Meta:
         verbose_name = "état de la boîte courriel"

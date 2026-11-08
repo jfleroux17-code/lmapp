@@ -1,0 +1,11 @@
+{% extends "admin/index.html" %}
+{% block content %}
+{% if request.user.is_superuser %}
+<div class="module" style="margin-bottom: 20px;">
+  <table style="width: 100%;"><caption>Plateforme</caption>
+    <tr><th scope="row"><a href="{% url 'plateforme' %}">Usage par entreprise (courriels, textos, factures, espace)</a></th><td></td></tr>
+  </table>
+</div>
+{% endif %}
+{{ block.super }}
+{% endblock %}

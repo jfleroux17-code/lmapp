@@ -31,3 +31,9 @@ def pourcent(valeur):
 def quantite(valeur):
     texte = format(Decimal(valeur).normalize(), "f")
     return texte.replace(".", ",")
+
+
+@register.filter
+def dictget(d, cle):
+    """{{ ligne|dictget:"colonne" }} : valeur d'un dictionnaire par une clé variable."""
+    return d.get(cle) if hasattr(d, "get") else None

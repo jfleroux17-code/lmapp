@@ -11,6 +11,7 @@ if settings.LMAPP_ENV != "prod":
 admin.site.site_header = _titre
 admin.site.site_title = _titre
 admin.site.index_title = "Tableau de bord"
+admin.site.index_template = "admin/index_lmapp.html"  # ajoute le lien vers l'écran de la plateforme
 
 
 class MembreEnLigne(admin.TabularInline):

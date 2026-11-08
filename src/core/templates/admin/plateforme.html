@@ -1,0 +1,42 @@
+{% extends "admin/base_site.html" %}
+{% load argent %}
+{% block extrastyle %}{{ block.super }}
+<style>
+  .plateforme { overflow-x: auto; }
+  .plateforme table { border-collapse: collapse; font-size: 13px; }
+  .plateforme th, .plateforme td { padding: 6px 10px; white-space: nowrap; text-align: right; border-bottom: 1px solid var(--hairline-color); }
+  .plateforme th:first-child, .plateforme td:first-child { text-align: left; position: sticky; left: 0; background: var(--body-bg); }
+  .plateforme thead th { vertical-align: bottom; white-space: normal; max-width: 90px; }
+  .plateforme tfoot td { font-weight: bold; }
+  .plateforme .alerte { color: #d73a49; font-weight: bold; }
+  .navmois { margin: 10px 0 16px; display: flex; gap: 16px; align-items: center; }
+</style>
+{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Accueil</a> › Plateforme</div>{% endblock %}
+{% block content %}
+<div class="navmois">
+  <a href="?annee={{ precedent.year }}&mois={{ precedent.month }}">‹ Mois précédent</a>
+  <strong>{{ titre_mois|capfirst }}</strong>
+  {% if suivant %}<a href="?annee={{ suivant.year }}&mois={{ suivant.month }}">Mois suivant ›</a>{% endif %}
+  <a class="button" href="?annee={{ annee }}&mois={{ mois }}&format=csv">Exporter (CSV)</a>
+</div>
+<p>Usage du mois par entreprise de déneigement. Courriels et textos : ce qui est vraiment parti ou arrivé. Les textos sont facturés par Twilio au <strong>segment</strong> (160 caractères, ou 70 dès qu'il y a un caractère comme ê, ô ou un emoji). Clients, utilisateurs et espace : en date d'aujourd'hui.</p>
+<div class="plateforme">
+<table>
+  <thead><tr><th>Entreprise</th>{% for k, nom in colonnes %}<th>{{ nom }}</th>{% endfor %}</tr></thead>
+  <tbody>
+  {% for l in lignes %}
+    <tr>
+      <td><a href="{% url 'admin:core_entreprise_change' l.entreprise.pk %}">{{ l.entreprise.nom }}</a>{% if not l.entreprise.active %} (inactive){% endif %}</td>
+      {% for k, nom in colonnes %}
+        <td{% if k == "boite_utilisee_mo" and l.boite_pourcent and l.boite_pourcent >= 80 %} class="alerte" title="{{ l.boite_pourcent }} % du quota"{% endif %}>
+          {% with v=l|dictget:k %}{% if v is None %}–{% elif k == "derniere_connexion" %}{{ v|date:"j M Y" }}{% elif k|slice:":7" == "montant" %}{{ v|argent }}{% else %}{{ v }}{% endif %}{% endwith %}
+        </td>
+      {% endfor %}
+    </tr>
+  {% endfor %}
+  </tbody>
+  <tfoot><tr><td>Total</td>{% for k, nom in colonnes %}<td>{% with v=total|dictget:k %}{% if v is None %}{% elif k|slice:":7" == "montant" %}{{ v|argent }}{% else %}{{ v }}{% endif %}{% endwith %}</td>{% endfor %}</tr></tfoot>
+</table>
+</div>
+{% endblock %}

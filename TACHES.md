@@ -49,6 +49,9 @@ Mise à jour : 8 novembre 2026.
 - [x] Heures de COVE inconnues : la base est sauvegardée toutes les 12 heures (3 h 30 et 15 h 30), COVE emporte toujours une copie de moins de 12 heures.
 - [x] COVE inclut `/srv/lmapp/sauvegardes/` : sélection `/` au complet (vérifié le 7 novembre 2026, `sudo /opt/MXB/bin/ClientTool control.selection.list`). La copie brute de `/var/lib/docker` (base en marche) n'est pas fiable pour restaurer : toujours repartir des fichiers `.dump`.
 - [ ] Trancher les fonctionnalités V1 dans le catalogue du PRD (section 5), au besoin.
+- [ ] Offre aux autres déneigeurs (PRD section Q) : fixer les **tarifs d'usage** (prix par courriel, par segment de texto) en plus des 495 $ par année. Le tableau de bord `/admin/plateforme/` donne déjà les quantités par mois.
+- [ ] Site Internet (Q5) : choisir le **nom du produit** affiché aux déneigeurs (proposé : « Le Déneigeur », comme le domaine), l'adresse de contact, et dire ce qui est hébergé aujourd'hui à la racine de `ledeneigeur.com` (proxy Cloudflare vers 69.16.231.58) avant qu'on la remplace.
+- [ ] Contrat de service avec les déneigeurs (Q7) : Loi 25 (JF sous-traitant), LCAP, fin de contrat. Avec un juriste au besoin.
 
 ## Louis
 
@@ -99,12 +102,16 @@ Après son essai des écrans. Une étape à la fois, chacune en test, montrée �
 - [x] Relances graduées (C8) : **en prod le 8 novembre 2026** (rappel reçu par JF à son adresse Peripheriq, facture jointe; texto vers un numéro fictif bloqué comme prévu). Jalon de la phase 1 : la première vraie relance, quand Louis aura ses clients et que l'interrupteur sera allumé.
 - [x] Envoi des courriels et facture par courriel (E3, C4) : **en prod le 8 novembre 2026** (interrupteur de Louis éteint; adresse d'affaires et numéro de texto à mettre dans sa fiche le moment venu) (facture d'essai 1001 envoyée à JF, PDF joint, copie dans les envoyés : reçue en boîte de réception chez Gmail, et chez Peripheriq derrière Proofpoint après quelques minutes de retard).
 - [ ] Envoi des textos par Twilio (M1) : **en prod le 8 novembre 2026**, interrupteur éteint pour Louis (rien ne part), numéro de texto pas encore dans sa fiche. Garde-fous : interrupteur « envois réels activés » dans la fiche de l'entreprise (éteint par défaut, à allumer en prod seulement avec le « go » de JF), et en test seulement le cellulaire de JF. Ensuite : réception des textos (il faut ouvrir le 443 à Twilio), envoi des factures et relances.
+- [ ] Tableau de bord de la plateforme (Q1, `/admin/plateforme/`, superutilisateur seulement) : **en test le 8 novembre 2026**. Segments de textos comptés à l'envoi, quota de la boîte lu à chaque passage.
+- [ ] Site Internet de présentation (Q5) : site statique dans le dépôt, aperçu sur un sous-domaine réservé à JF, puis mise en ligne sur `ledeneigeur.com` avec son « go ».
+- [ ] Arrivée d'un déneigeur venant d'un logiciel concurrent (Q3) : correspondance des colonnes à l'import, modèles par logiciel à partir de vrais fichiers d'export.
+- [ ] Ajout d'un déneigeur en quelques minutes (Q4) et administration à `admin.ledeneigeur.com` (Q6), avant le 2e déneigeur.
+- [ ] Facturation des entreprises par l'app (Q2), quand les tarifs seront fixés.
 - [ ] Test de restauration chaque mois (`sh outils/tester_restauration.sh`), prochain vers le 7 décembre 2026.
 
 ### En attente
 
 - Prix et services de Louis (questions 4 et 5) : contrat saisonnier seulement (réglé le 8 novembre 2026), 2 versements par défaut, 3 au-delà de 1 200 $ par saison (seuil et dates en configuration). Le modèle accepte aussi « au passage », gardé pour plus tard. Reste la question 5 (services).
-- Textos et courriels : comptes Twilio, SMTP2GO et boîte IMAP.
 - Deuxième déneigeur (PRD section P) : déplacer `/admin/` vers une adresse neutre réservée à JF (proposé : `admin.ledeneigeur.com`), et documenter l'ajout d'un sous-domaine (Cloudflare, `Caddyfile`, `DJANGO_ALLOWED_HOSTS`, fiche `Entreprise`). Attend qu'il y ait un deuxième déneigeur.
 
 ## Fait

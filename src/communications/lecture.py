@@ -13,6 +13,7 @@ dans l'app.
 import hashlib
 import imaplib
 import logging
+import re
 import ssl
 import zlib
 from datetime import timedelta
@@ -128,17 +129,32 @@ def _effacer_vieux(i, entreprise, dossier, uidvalidite):
     return len(a_effacer)
 
 
+def _quota(i):
+    """(utilisé, permis) en Ko pour la boîte, ou (None, None) si le serveur ne le dit pas."""
+    try:
+        _, d = i.getquotaroot("INBOX")
+        for ligne in d[1] if len(d) > 1 else []:
+            m = re.search(rb"STORAGE (\d+) (\d+)", ligne if isinstance(ligne, bytes) else str(ligne).encode())
+            if m:
+                return int(m.group(1)), int(m.group(2))
+    except (imaplib.IMAP4.error, OSError, AttributeError, IndexError):
+        pass
+    return None, None
+
+
 def lire(entreprise):
     nouveaux = 0
     dossiers = [("INBOX", reception.traiter), (settings.IMAP_DOSSIER_ENVOYES, reception.traiter_envoye)]
     try:
         with imaplib.IMAP4_SSL(settings.IMAP_HOTE, settings.IMAP_PORT, ssl_context=ssl.create_default_context(), timeout=60) as i:
             i.login(settings.IMAP_UTILISATEUR, settings.IMAP_MOT_DE_PASSE)
+            utilise, permis = _quota(i)
             for dossier, traiter in dossiers:
                 n, uidvalidite = _lire_dossier(i, entreprise, dossier, traiter)
                 nouveaux += n
                 _effacer_vieux(i, entreprise, dossier, uidvalidite)
-                EtatBoite.objects.filter(entreprise=entreprise, dossier=dossier).update(lue_le=timezone.now(), erreur="")
+                EtatBoite.objects.filter(entreprise=entreprise, dossier=dossier).update(
+                    lue_le=timezone.now(), erreur="", quota_utilise_ko=utilise, quota_max_ko=permis)
     except (OSError, imaplib.IMAP4.error) as e:
         EtatBoite.objects.filter(entreprise=entreprise).update(erreur=str(e)[:300], lue_le=timezone.now())
         log.warning("lecture de la boîte impossible : %s", e)

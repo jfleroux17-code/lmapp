@@ -664,3 +664,25 @@ class ReceptionTests(TestCase):
         self.assertNotContains(self.client.get("/"), "✉")
         etranger = Message.objects.create(entreprise=self.autre, genre="recu", canal="courriel", sens="entrant", contenu="x")
         self.assertEqual(self.client.get(f"/messages/{etranger.pk}/").status_code, 404)
+
+
+class SegmentsTests(TestCase):
+    def test_gsm_et_unicode(self):
+        from communications.segments import compter
+        self.assertEqual(compter(""), 0)
+        self.assertEqual(compter("a" * 160), 1)
+        self.assertEqual(compter("a" * 161), 2)
+        self.assertEqual(compter("é" * 160), 1)  # é, è, à, ù sont dans GSM-7
+        self.assertEqual(compter("[" * 80), 1)  # extension : compte double
+        self.assertEqual(compter("[" * 81), 2)
+        self.assertEqual(compter("ê" + "a" * 69), 1)  # ê : tout le texto en UCS-2
+        self.assertEqual(compter("ê" + "a" * 70), 2)
+        self.assertEqual(compter("ô" * 134), 2)
+        self.assertEqual(compter("ô" * 135), 3)
+
+    def test_calcule_a_l_enregistrement(self):
+        ent = Entreprise.objects.create(nom="Essai", slug="essai", domaine=HOTE)
+        m = Message.objects.create(entreprise=ent, genre="manuel", canal="texto", destinataire="+1", contenu="Bonjour, c'est fête " + "a" * 60)
+        self.assertEqual(m.segments, 2)
+        c = Message.objects.create(entreprise=ent, genre="manuel", canal="courriel", destinataire="a@b.c", contenu="x" * 500)
+        self.assertEqual(c.segments, 0)
