@@ -20,6 +20,8 @@ class Command(BaseCommand):
         parser.add_argument("--entreprise", required=True, help="Identifiant (slug) de l'entreprise, ex. louis")
         parser.add_argument("--appliquer", action="store_true", help="Enregistrer pour vrai (sinon : essai à blanc)")
         parser.add_argument("--sauter-erreurs", action="store_true", help="Avec --appliquer : importer les lignes valides et laisser les lignes en erreur")
+        parser.add_argument("--depuis", help="Logiciel d'origine : correspondance des colonnes dans clients/correspondances/<logiciel>.json")
+        parser.add_argument("--correspondance", help="Fichier JSON {entête du fichier: colonne du gabarit} (prioritaire sur --depuis)")
 
     def handle(self, *args, **o):
         try:
@@ -31,12 +33,26 @@ class Command(BaseCommand):
         except FileNotFoundError:
             raise CommandError(f"Fichier introuvable : {o['fichier']} (est-il monté dans le conteneur?)")
 
-        a = importation.analyser(fichier, entreprise)
+        correspondance = None
+        try:
+            if o.get("correspondance"):
+                import json
+                with open(o["correspondance"], encoding="utf-8") as f:
+                    correspondance = json.load(f)
+            elif o.get("depuis"):
+                correspondance = importation.correspondance_du_logiciel(o["depuis"])
+            a = importation.analyser(fichier, entreprise, correspondance)
+        except (FileNotFoundError, ValueError) as e:
+            raise CommandError(str(e))
         w = self.stdout.write
         details = f", {fichier.encodage}, séparateur {fichier.separateur}" if fichier.format == "CSV" else ""
         w(f"Fichier : {o['fichier']} ({fichier.format}{details})")
         w(f"Entreprise : {entreprise} ({entreprise.slug})")
         w(f"Colonnes reconnues : {len(a.colonnes)} sur {len(importation.COLONNES)}")
+        for i, cle in sorted(a.colonnes.items()):
+            brute = fichier.entetes_brutes[i]
+            if importation._cle(brute) != cle:  # montrer seulement ce qui a été traduit
+                w(f"  « {brute} » va dans {cle}")
         if a.inconnues:
             w(self.style.WARNING(f"Colonnes ignorées (inconnues) : {', '.join(a.inconnues)}"))
         if a.manquantes:

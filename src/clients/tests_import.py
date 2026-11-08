@@ -149,7 +149,7 @@ class ImportationTests(TestCase):
         wb.save(chemin)
         a = self._analyser(chemin)
         self.assertEqual(a.lignes[0].client.cellulaire, "+14505550101")
-        self.assertEqual(a.lignes[0].statut, "a_creer")
+        self.assertEqual((a.lignes[0].statut, a.lignes[0].erreurs), ("a_creer", []))
 
     def test_gabarit_se_reimporte(self):
         # Le gabarit, avec ses deux lignes d'exemple, doit passer sans erreur
@@ -182,3 +182,35 @@ class ImportVillesTests(TestCase):
         a = importation.analyser(importation.lire(_csv("nom;adresse\nA;1 rue A\n")), self.ent)
         self.assertEqual(a.manquantes, [])
         self.assertEqual(a.lignes[0].adresse.ville, "Sainte-Adèle")
+
+
+class CorrespondanceTests(TestCase):
+    """PRD Q3 : fichiers exportés d'un autre logiciel (entêtes en anglais, noms différents)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from django.contrib.gis.geos import Point
+        from core.models import VilleDesservie
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai", domaine="essai.exemple.test", ville="Sainte-Adèle")
+        VilleDesservie.objects.create(entreprise=cls.ent, nom="Sainte-Adèle", centre=Point(-74.13, 45.95, srid=4326), par_defaut=True)
+
+    def test_entetes_anglais_reconnus(self):
+        chemin = _csv("First Name;Last Name;Mobile Phone;Email Address;Street Address;City;Postal Code;Balance Due\n"
+                      "Ginette;Tremblay;450-555-0101;g@example.com;8, rue des Essais;Sainte-Adèle;J8B1A1;120.00\n")
+        a = importation.analyser(importation.lire(chemin), self.ent)
+        self.assertEqual(a.inconnues, [])
+        self.assertEqual(sorted(a.colonnes.values()), sorted(["prenom", "nom", "cellulaire", "courriel", "adresse", "ville", "code_postal", "solde_du"]))
+
+    def test_correspondance_prioritaire(self):
+        chemin = _csv("Client;Tél. principal;Lieu;Code interne\nTremblay;450 555-0101;8, rue des Essais;X12\n")
+        a = importation.analyser(importation.lire(chemin), self.ent,
+                                 {"Tél. principal": "cellulaire", "Lieu": "adresse", "Code interne": ""})
+        self.assertEqual(sorted(a.colonnes.values()), ["adresse", "cellulaire", "nom"])
+        self.assertEqual(a.inconnues, [])  # « Code interne » ignorée exprès, pas signalée comme inconnue
+        self.assertEqual((a.lignes[0].statut, a.lignes[0].erreurs), ("a_creer", []))
+        with self.assertRaisesMessage(ValueError, "n'est pas une colonne du gabarit"):
+            importation.analyser(importation.lire(chemin), self.ent, {"Lieu": "adresse_civique_inventee"})
+
+    def test_logiciel_inconnu(self):
+        with self.assertRaisesMessage(FileNotFoundError, "Pas de correspondance pour"):
+            importation.correspondance_du_logiciel("logiciel inexistant")

@@ -74,7 +74,10 @@ class AdresseForm(forms.ModelForm):
         self.fields["secteur"].queryset = Secteur.objects.filter(entreprise=entreprise).order_by("ordre", "nom")
         self.fields["secteur"].empty_label = "Aucun secteur"
         if not self.instance.pk and not self.is_bound and entreprise is not None:
-            self.initial["ville"] = self.initial.get("ville") or entreprise.ville
+            from core.models import VilleDesservie
+
+            defaut = VilleDesservie.objects.filter(entreprise=entreprise, par_defaut=True).first()
+            self.initial["ville"] = self.initial.get("ville") or (defaut.nom if defaut else entreprise.ville)
 
 
 def _enregistrer(form, **attributs):

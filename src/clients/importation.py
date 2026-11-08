@@ -95,7 +95,37 @@ ALIAS = {
     "paiement": "mode_paiement", "mode_de_paiement": "mode_paiement",
     "prix": "prix_saison", "prix_de_la_saison": "prix_saison",
     "solde": "solde_du", "montant_du": "solde_du", "du": "solde_du",
+    "nom_complet": "nom", "client": "nom", "nom_du_client": "nom", "entreprise": "organisation", "compagnie": "organisation",
+    # Entêtes anglais courants (exports de logiciels canadiens et américains, PRD Q3)
+    "first_name": "prenom", "firstname": "prenom", "last_name": "nom", "lastname": "nom", "name": "nom", "full_name": "nom",
+    "customer": "nom", "customer_name": "nom", "client_name": "nom", "company": "organisation", "company_name": "organisation",
+    "mobile_phone": "cellulaire", "cell_phone": "cellulaire", "cellphone": "cellulaire", "mobile_number": "cellulaire",
+    "phone": "autre_telephone", "home_phone": "autre_telephone", "phone_number": "autre_telephone", "work_phone": "autre_telephone",
+    "email_address": "courriel", "e_mail": "courriel",
+    "address": "adresse", "street": "adresse", "street_address": "adresse", "address_1": "adresse", "address_line_1": "adresse",
+    "service_address": "adresse", "property_address": "adresse",
+    "address_2": "adresse_suite", "address_line_2": "adresse_suite", "unit": "adresse_suite", "apt": "adresse_suite",
+    "city": "ville", "town": "ville", "postal_code": "code_postal", "postal": "code_postal", "zip": "code_postal", "zip_code": "code_postal",
+    "route_order": "rang_tournee", "stop": "rang_tournee", "stop_order": "rang_tournee", "sequence": "rang_tournee",
+    "note": "notes", "comments": "notes", "instructions": "consignes", "special_instructions": "consignes",
+    "payment_method": "mode_paiement", "season_price": "prix_saison", "contract_price": "prix_saison", "price": "prix_saison",
+    "balance": "solde_du", "balance_due": "solde_du", "amount_owing": "solde_du", "outstanding": "solde_du",
 }
+
+# Correspondances par logiciel d'origine (PRD Q3) : clients/correspondances/<logiciel>.json, {"entête du fichier": "colonne"}.
+# Faites à partir d'un vrai fichier exporté par le déneigeur; une colonne à ignorer : "".
+DOSSIER_CORRESPONDANCES = Path(__file__).resolve().parent / "correspondances"
+
+
+def correspondance_du_logiciel(nom):
+    import json
+
+    chemin = DOSSIER_CORRESPONDANCES / f"{cle(nom)}.json"
+    if not chemin.exists():
+        connus = sorted(p.stem for p in DOSSIER_CORRESPONDANCES.glob("*.json"))
+        liste = ", ".join(connus) or "aucune pour l'instant"
+        raise FileNotFoundError(f"Pas de correspondance pour « {nom} ». Connues : {liste}.")
+    return json.loads(chemin.read_text(encoding="utf-8"))
 
 # ---------------------------------------------------------------------------
 # Normalisation des valeurs
@@ -359,12 +389,16 @@ def _messages(erreur):
     return list(erreur.messages)
 
 
-def analyser(fichier, entreprise):
-    # Correspondance des colonnes
+def analyser(fichier, entreprise, correspondance=None):
+    """`correspondance` : {entête du fichier: colonne du gabarit, ou "" pour l'ignorer}, prioritaire sur les alias."""
+    precise = {_cle(k): (_cle(v) if v else "") for k, v in (correspondance or {}).items()}
+    for k, v in precise.items():
+        if v and v not in PAR_CLE:
+            raise ValueError(f"Correspondance : « {v} » n'est pas une colonne du gabarit (entête « {k} »).")
     colonnes, inconnues = {}, []
     for i, brute in enumerate(fichier.entetes_brutes):
         k = _cle(brute)
-        k = ALIAS.get(k, k)
+        k = precise[k] if k in precise else ALIAS.get(k, k)
         if not k:
             continue
         if k in PAR_CLE and k not in colonnes.values():
