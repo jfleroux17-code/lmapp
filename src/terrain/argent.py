@@ -86,6 +86,7 @@ def facture(request, pk):
         "ecriture": peut_ecrire(request), "services": _services(request),
         "form_ligne": LigneForm(), "form_paiement": PaiementForm(initial={"montant": f.solde}),
         "modes": Paiement.Mode.choices, "aujourdhui": timezone.localdate(),
+        "envois": f.messages.order_by("-cree_le")[:5],
     }
     return render(request, "terrain/argent/facture.html", contexte)
 
@@ -230,3 +231,22 @@ def resume_client(client):
         "du": sum((f.solde_du for f in client.factures.a_recevoir()), ZERO),
         "factures_client": qs[:10],
     }
+
+
+@require_POST
+@ecriture_requise
+def envoyer_facture(request, pk):
+    """Envoi de la facture au client par courriel, PDF joint (C4). Le worker envoie; le statut paraît sur la facture."""
+    from communications.factures import envoyer_facture as envoyer
+
+    f = _facture(request, pk)
+    try:
+        m = envoyer(f)
+    except ValidationError as e:
+        messages.error(request, " ".join(e.messages))
+        return redirect("terrain:facture", pk=f.pk)
+    if m.statut == m.Statut.EN_FILE:
+        messages.success(request, f"Facture en route vers {m.destinataire}.")
+    else:
+        messages.error(request, f"{m.get_statut_display()} : {m.erreur}")
+    return redirect("terrain:facture", pk=f.pk)

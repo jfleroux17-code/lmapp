@@ -17,6 +17,7 @@ urlpatterns = [
     path("factures/<int:pk>/supprimer/", argent.supprimer_brouillon, name="supprimer_brouillon"),
     path("factures/<int:pk>/annuler/", argent.annuler, name="annuler"),
     path("factures/<int:pk>/paiement/", argent.paiement, name="paiement"),
+    path("factures/<int:pk>/courriel/", argent.envoyer_facture, name="envoyer_facture"),
     path("comptes/", argent.comptes, name="comptes"),
     path("tournee/", tournee.tournee, name="tournee"),
     path("tournee/demarrer/", tournee.demarrer, name="demarrer"),

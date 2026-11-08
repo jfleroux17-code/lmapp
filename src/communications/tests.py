@@ -1,4 +1,5 @@
 import base64
+from decimal import Decimal as D
 import io
 import json
 from unittest import mock
@@ -6,6 +7,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.contrib.gis.geos import Point
 from django.test import TestCase, override_settings
 
@@ -225,3 +227,140 @@ class EcransAvisTests(AvisTests.__bases__[0]):
         self.assertContains(r, "1 avis préparé.")
         r = self.client.post("/tournee/avis/", {"mode": "prochains"}, follow=True)
         self.assertContains(r, "Personne de plus à aviser")
+
+
+@override_settings(ALLOWED_HOSTS=["*"], LMAPP_ENV="test", LMAPP_DESTINATAIRES_TEST=["client@example.com"],
+                   SMTP_HOTE="smtp.exemple.test", IMAP_HOTE="imap.exemple.test", IMAP_UTILISATEUR="louis@exemple.test",
+                   IMAP_MOT_DE_PASSE="secret", COURRIEL_HELO="ld1.exemple.test")
+class CourrielTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        from facturation.models import Facture
+        cls.ent = Entreprise.objects.create(nom="Entretiens Essai", nom_legal="Les Entretiens Essai inc.", slug="essai", domaine=HOTE,
+                                            envois_actifs=True, courriel_reponse="louis@exemple.test", telephone="+14505550100",
+                                            interac_courriel="paiement@example.com", prochain_numero_facture=57,
+                                            signature_messages="Entretiens Essai, 450 555-0100")
+        cls.c = Client.objects.create(entreprise=cls.ent, prenom="Ginette", nom="Tremblay", courriel="client@example.com")
+        cls.f = Facture.objects.create(entreprise=cls.ent, client=cls.c)
+        cls.f.lignes.create(description="Déneigement", quantite=1, prix_unitaire=D("400.00"), taxable=False)
+        cls.f.recalculer()
+        cls.f.emettre()
+        U = get_user_model()
+        cls.louis = U.objects.create_user("louis", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="operateur")
+
+    def message(self, **kw):
+        d = dict(entreprise=self.ent, client=self.c, genre="manuel", canal="courriel", destinataire="client@example.com",
+                 sujet="Allo", contenu="Bonjour\n\nDeuxième paragraphe", statut="en_file")
+        d.update(kw)
+        return Message.objects.create(**d)
+
+    def test_garde_fous_du_courriel(self):
+        m = self.message(statut="prepare")
+        with mock.patch("communications.tasks.envoyer_message.defer"):
+            self.assertEqual(envoi.envoyer(m).statut, "en_file")
+            with override_settings(IMAP_UTILISATEUR="autre@exemple.test"):
+                self.assertEqual(envoi.envoyer(m).statut, "prepare")  # l'adresse de la fiche n'est pas le compte configuré
+                self.assertIn("compte courriel", m.erreur)
+            with override_settings(SMTP_HOTE=""):
+                self.assertEqual(envoi.envoyer(m).statut, "prepare")
+            autre = self.message(destinataire="inconnu@example.com", statut="prepare")
+            self.assertEqual(envoi.envoyer(autre).statut, "bloque")
+
+    def test_construction_avec_pdf_et_html(self):
+        from communications import courriel
+        m = self.message(facture=self.f)
+        with mock.patch("facturation.pdf.rendre", return_value=b"%PDF-1.7 essai"):
+            e = courriel.construire(m)
+        self.assertEqual(e["From"].addresses[0].addr_spec, "louis@exemple.test")
+        self.assertEqual(e["From"].addresses[0].display_name, "Entretiens Essai")
+        self.assertTrue(e["Message-ID"].endswith("@exemple.test>"))
+        types = [p.get_content_type() for p in e.walk()]
+        self.assertIn("text/plain", types)
+        self.assertIn("text/html", types)
+        piece = next(e.iter_attachments())
+        self.assertEqual(piece.get_filename(), "facture-57.pdf")
+        self.assertEqual(piece.get_content(), b"%PDF-1.7 essai")
+        html = e.get_body(("html",)).get_content()
+        self.assertIn("<p", html)
+        self.assertIn("Deuxième paragraphe", html)
+        self.assertIn("450 555-0100", html)  # téléphone lisible, pas en E.164
+
+    def test_envoi_smtp_et_copie_dans_les_envoyes(self):
+        from communications import courriel
+        m = self.message()
+        with mock.patch("communications.courriel.smtplib.SMTP_SSL") as smtp, mock.patch("communications.courriel.imaplib.IMAP4_SSL") as imap:
+            mid = courriel.envoyer_courriel(m)
+        self.assertEqual(smtp.call_args.kwargs["local_hostname"], "ld1.exemple.test")
+        smtp.return_value.login.assert_called_once_with("louis@exemple.test", "secret")
+        envoye = smtp.return_value.send_message.call_args.args[0]
+        self.assertEqual(envoye["Message-ID"], mid)
+        imap.return_value.__enter__.return_value.append.assert_called_once()
+        self.assertEqual(imap.return_value.__enter__.return_value.append.call_args.args[0], "INBOX.Sent")
+
+    def test_erreurs_smtp(self):
+        import smtplib
+        from communications import courriel, erreurs
+        m = self.message()
+        cas = [
+            ({"side_effect": OSError("réseau")}, None, erreurs.Indisponible),
+            ({}, ("login", smtplib.SMTPAuthenticationError(535, b"non")), erreurs.Refuse),
+            ({}, ("send_message", smtplib.SMTPRecipientsRefused({"client@example.com": (550, b"inconnu")})), erreurs.Refuse),
+            ({}, ("send_message", smtplib.SMTPRecipientsRefused({"client@example.com": (451, b"plus tard")})), erreurs.Indisponible),
+            ({}, ("send_message", smtplib.SMTPServerDisconnected("coupé")), erreurs.Incertain),
+        ]
+        for ouverture, methode, attendue in cas:
+            with mock.patch("communications.courriel.smtplib.SMTP_SSL", **ouverture) as smtp, \
+                 mock.patch("communications.courriel.imaplib.IMAP4_SSL") as imap, self.subTest(attendue=attendue, methode=methode):
+                if methode:
+                    getattr(smtp.return_value, methode[0]).side_effect = methode[1]
+                with self.assertRaises(attendue):
+                    courriel.envoyer_courriel(m)
+                imap.assert_not_called()  # pas de copie si le courriel n'est pas parti
+
+    def test_copie_impossible_n_empeche_pas_l_envoi(self):
+        from communications import courriel
+        with mock.patch("communications.courriel.smtplib.SMTP_SSL"), \
+             mock.patch("communications.courriel.imaplib.IMAP4_SSL", side_effect=OSError("imap en panne")):
+            self.assertTrue(courriel.envoyer_courriel(self.message()))
+
+    def test_tache_courriel(self):
+        from types import SimpleNamespace
+        from communications.tasks import envoyer_message
+        m = self.message()
+        with mock.patch("communications.courriel.envoyer_courriel", return_value="<1@exemple.test>") as c:
+            self.assertEqual(envoyer_message.func(SimpleNamespace(job=SimpleNamespace(attempts=0)), message_id=m.pk), "envoye")
+        c.assert_called_once()
+        m.refresh_from_db()
+        self.assertEqual(m.fournisseur_id, "<1@exemple.test>")
+
+    def test_envoi_de_la_facture(self):
+        from communications import factures
+        from facturation.models import Facture
+        with mock.patch("communications.tasks.envoyer_message.defer"):
+            m = factures.envoyer_facture(self.f)
+        self.assertEqual((m.statut, m.genre, m.facture, m.destinataire), ("en_file", "facture", self.f, "client@example.com"))
+        self.assertEqual(m.sujet, "Facture n° 57 : Entretiens Essai")
+        self.assertIn("Bonjour Ginette Tremblay", m.contenu)
+        self.assertIn("facture n° 57", m.contenu)
+        self.assertIn("400,00", m.contenu)
+        self.assertIn("Interac à paiement@example.com, en indiquant le numéro de facture 57", m.contenu)
+        self.assertTrue(m.contenu.endswith("Entretiens Essai, 450 555-0100"))
+        brouillon = Facture.objects.create(entreprise=self.ent, client=self.c)
+        with self.assertRaises(ValidationError):
+            factures.envoyer_facture(brouillon)
+        Client.objects.filter(pk=self.c.pk).update(courriel="")
+        self.f.client.refresh_from_db()
+        with self.assertRaisesMessage(ValidationError, "pas d'adresse courriel"):
+            factures.envoyer_facture(self.f)
+
+    def test_bouton_sur_la_facture(self):
+        self.client.defaults["HTTP_HOST"] = HOTE
+        self.client.force_login(self.louis)
+        page = self.client.get(f"/factures/{self.f.pk}/")
+        self.assertContains(page, "Envoyer par courriel")
+        with mock.patch("communications.tasks.envoyer_message.defer"):
+            r = self.client.post(f"/factures/{self.f.pk}/courriel/", follow=True)
+        self.assertContains(r, "Facture en route vers client@example.com")
+        self.assertContains(r, "Envoyer par courriel de nouveau")
+        self.assertContains(r, "En file")

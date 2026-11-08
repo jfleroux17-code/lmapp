@@ -5,7 +5,8 @@
     de l'entreprise (`envois_actifs`, éteint par défaut), ou numéro de texto d'affaires manquant;
   - Bloqué : hors prod, destinataire absent de LMAPP_DESTINATAIRES_TEST (garde-fou du test);
   - En file, puis Envoyé ou Échec.
-Courriels : pas de fournisseur pour l'instant (SMTP2GO), ils restent préparés.
+Courriels : serveur de courriel de l'entreprise (SMTP_HOTE, IMAP_UTILISATEUR dans .env); l'adresse
+d'envoi est celle de la fiche (`courriel_reponse`) et doit être ce compte.
 """
 from django.conf import settings
 from django.db import transaction
@@ -16,7 +17,7 @@ from communications.models import Message
 def fournisseur_configure(canal):
     if canal == Message.Canal.TEXTO:
         return bool(settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN)
-    return bool(getattr(settings, "SMTP2GO_API_KEY", ""))
+    return bool(settings.SMTP_HOTE and settings.IMAP_UTILISATEUR and settings.IMAP_MOT_DE_PASSE)
 
 
 def destinataire_permis(destinataire):
@@ -34,6 +35,11 @@ def _pourquoi_pas(message):
         return "Envois réels éteints dans la fiche de l'entreprise."
     if message.canal == Message.Canal.TEXTO and not ent.numero_texto:
         return "Numéro de texto d'affaires manquant dans la fiche de l'entreprise."
+    if message.canal == Message.Canal.COURRIEL:
+        if not ent.courriel_reponse:
+            return "Adresse courriel d'affaires manquante dans la fiche de l'entreprise."
+        if ent.courriel_reponse.lower() != settings.IMAP_UTILISATEUR.lower():
+            return "L'adresse courriel d'affaires de la fiche n'est pas le compte courriel configuré."
     return ""
 
 

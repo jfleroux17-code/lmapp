@@ -15,6 +15,7 @@ class Genre(models.TextChoices):
     PROXIMITE = "proximite", "Avis de proximité"
     PASSAGE_FAIT = "passage_fait", "Passage terminé"
     MANUEL = "manuel", "Message manuel"
+    FACTURE = "facture", "Facture"
 
 
 # Textes par défaut, sans nom de déneigeur (CLAUDE.md, règle 7) : la signature de
@@ -64,7 +65,10 @@ class Message(Horodate):
     genre = models.CharField(max_length=15, choices=Genre.choices)
     canal = models.CharField(max_length=10, choices=Canal.choices)
     destinataire = models.CharField(max_length=254)
+    sujet = models.CharField(max_length=200, blank=True, help_text="Courriels seulement.")
     contenu = models.TextField()
+    facture = models.ForeignKey("facturation.Facture", on_delete=models.SET_NULL, null=True, blank=True, related_name="messages",
+                                help_text="Courriel : PDF de la facture joint.")
     statut = models.CharField(max_length=10, choices=Statut.choices, default=Statut.PREPARE)
     envoye_le = models.DateTimeField(null=True, blank=True)
     erreur = models.CharField(max_length=300, blank=True)

@@ -56,6 +56,29 @@
 
 <a href="{% url 'facturation:pdf' f.pk %}" class="gros-bouton mb-4 border-2 border-bordure" target="_blank" rel="noopener">Voir le PDF</a>
 
+{% if f.statut == "emise" %}
+  {% if ecriture %}
+    {% if client.courriel %}
+      <form method="post" action="{% url 'terrain:envoyer_facture' f.pk %}" x-data="{ envoi: false }"
+            @submit="if (envoi || !confirm('Envoyer la facture à {{ client.courriel|escapejs }}?')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+        <button class="gros-bouton mb-4 border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">Envoyer par courriel{% if envois %} de nouveau{% endif %}</button>
+      </form>
+    {% else %}
+      <p class="mb-4 text-sm text-gray-400">Pas de courriel dans la fiche du client : impossible d'envoyer la facture.</p>
+    {% endif %}
+  {% endif %}
+  {% if envois %}
+    <div class="carte mb-4 divide-y divide-bordure">
+      {% for m in envois %}
+        <div class="flex items-start justify-between gap-3 p-3 text-sm">
+          <div class="min-w-0"><div class="truncate">{{ m.destinataire }}</div><div class="text-gray-400">{{ m.cree_le|date:"j F, H \h i" }}{% if m.erreur %} · {{ m.erreur }}{% endif %}</div></div>
+          <span class="pastille {% if m.statut == 'envoye' %}bg-ok/20 text-ok{% elif m.statut == 'echec' %}bg-danger/20 text-danger{% else %}bg-bordure text-gray-300{% endif %}">{% if m.statut == "prepare" %}Préparé{% elif m.statut == "bloque" %}Bloqué{% elif m.statut == "en_file" %}En file{% else %}{{ m.get_statut_display }}{% endif %}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endif %}
+
 {% if ecriture %}
   {% if f.modifiable %}
     <details class="carte mb-4 p-4">

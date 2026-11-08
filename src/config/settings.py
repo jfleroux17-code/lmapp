@@ -38,6 +38,17 @@ TWILIO_ACCOUNT_SID = env("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = env("TWILIO_AUTH_TOKEN", "")
 TWILIO_API = env("TWILIO_API", "https://api.twilio.com")
 
+# Courriel d'affaires (PRD E3, E5, C4) : serveur de JF, SMTP et IMAP en SSL. L'adresse d'envoi est
+# celle de l'entreprise (Entreprise.courriel_reponse) et doit être le compte IMAP_UTILISATEUR.
+SMTP_HOTE = env("SMTP_HOTE", "")
+SMTP_PORT = int(env("SMTP_PORT", "465"))
+IMAP_HOTE = env("IMAP_HOTE", "")
+IMAP_PORT = int(env("IMAP_PORT", "993"))
+IMAP_UTILISATEUR = env("IMAP_UTILISATEUR", "")
+IMAP_MOT_DE_PASSE = env("IMAP_MOT_DE_PASSE", "")
+IMAP_DOSSIER_ENVOYES = env("IMAP_DOSSIER_ENVOYES", "INBOX.Sent")
+COURRIEL_HELO = env("COURRIEL_HELO", "ld1.ledeneigeur.com")  # nom donné au serveur de courriel (pas l'IP du conteneur)
+
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env_bool("DJANGO_DEBUG", False)
 ALLOWED_HOSTS = env_liste("DJANGO_ALLOWED_HOSTS")

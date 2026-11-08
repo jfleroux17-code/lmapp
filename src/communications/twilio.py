@@ -10,17 +10,8 @@ from urllib.request import Request, urlopen
 
 from django.conf import settings
 
+from communications.erreurs import Incertain, Indisponible, Refuse  # noqa: F401 (utilisées aussi par les appelants)
 
-class Indisponible(Exception):
-    """Twilio injoignable ou surchargé, rien n'est parti : on peut réessayer."""
-
-
-class Refuse(Exception):
-    """Twilio refuse le message (numéro invalide, désabonné, solde épuisé...) : ne pas réessayer."""
-
-
-class Incertain(Exception):
-    """Pas de réponse après l'envoi de la demande : le texto est peut-être parti. Ne pas réessayer (doublon)."""
 
 
 def envoyer_texto(de, a, texte):
