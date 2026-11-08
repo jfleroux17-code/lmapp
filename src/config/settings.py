@@ -115,7 +115,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Langue et heure
 LANGUAGE_CODE = "fr-ca"
-LANGUAGES = [("fr", "Français"), ("en", "English")]
+# Français seulement, quelle que soit la langue du téléphone (dates des écrans et des PDF)
+LANGUAGES = [("fr-ca", "Français")]
 TIME_ZONE = "America/Toronto"
 USE_I18N = True
 USE_TZ = True

@@ -12,8 +12,9 @@ from django.db.models import F, Min, Prefetch, Q
 from django.shortcuts import get_object_or_404, render
 
 from clients.models import Adresse, Client
-from core.acces import membre_requis
+from core.acces import membre_requis, peut_ecrire
 from core import telephone
+from terrain.argent import resume_client
 
 MAX_RESULTATS = 50
 
@@ -92,6 +93,8 @@ def fiche(request, pk):
         "adresses": adresses,
         "cellulaire": telephone.afficher(client.cellulaire),
         "autre_telephone": telephone.afficher(client.telephone_autre),
+        "ecriture": peut_ecrire(request),
+        **resume_client(client),
     }
     return render(request, "terrain/fiche.html", contexte)
 

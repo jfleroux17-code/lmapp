@@ -1,0 +1,117 @@
+{% extends "terrain/base.html" %}
+{% load argent %}
+{% block titre %}{{ f }}{% endblock %}
+{% block contenu %}
+<a href="{% url 'terrain:fiche' client.pk %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ {{ client.nom_affiche }}</a>
+
+<div class="mb-4 flex items-start justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-bold leading-tight">{% if f.genre == "solde_ouverture" %}Solde antérieur{% elif f.numero %}Facture n° {{ f.numero }}{% else %}Brouillon{% endif %}</h1>
+    <p class="text-gray-400">{{ f.date_facture|date:"j F Y" }}{% if f.date_echeance and f.statut == "emise" and not f.payee %} · payable le {{ f.date_echeance|date:"j F" }}{% endif %}{% if f.saison_origine %} · saison {{ f.saison_origine }}{% endif %}</p>
+  </div>
+  {% if f.statut == "brouillon" %}<span class="pastille bg-accent/20 text-accent">Brouillon</span>
+  {% elif f.statut == "annulee" %}<span class="pastille bg-danger/20 text-danger">Annulée</span>
+  {% elif f.payee %}<span class="pastille bg-ok/20 text-ok">Payée</span>
+  {% else %}<span class="pastille bg-danger/20 text-danger">À payer</span>{% endif %}
+</div>
+
+<section class="carte mb-4 divide-y divide-bordure">
+  {% for l in lignes %}
+    <div class="flex items-center justify-between gap-3 p-4">
+      <div class="min-w-0">
+        <div class="font-semibold">{{ l.description }}</div>
+        {% if l.quantite != 1 %}<div class="text-sm text-gray-400">{{ l.quantite|quantite }} × {{ l.prix_unitaire|argent }}</div>{% endif %}
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="whitespace-nowrap">{{ l.montant|argent }}</span>
+        {% if f.modifiable and ecriture %}
+          <form method="post" action="{% url 'terrain:retirer_ligne' f.pk l.pk %}">{% csrf_token %}
+            <button class="flex h-12 w-12 items-center justify-center rounded-xl border border-bordure text-xl text-gray-400" aria-label="Retirer la ligne">×</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  {% empty %}
+    <p class="p-4 text-gray-400">Aucune ligne.</p>
+  {% endfor %}
+  <div class="space-y-1 p-4">
+    {% if f.tps or f.tvq %}
+      <div class="flex justify-between text-gray-300"><span>Sous-total</span><span>{{ f.sous_total|argent }}</span></div>
+      <div class="flex justify-between text-gray-300"><span>TPS</span><span>{{ f.tps|argent }}</span></div>
+      <div class="flex justify-between text-gray-300"><span>TVQ</span><span>{{ f.tvq|argent }}</span></div>
+    {% endif %}
+    <div class="flex justify-between pt-1 text-xl font-bold"><span>Total</span><span>{{ f.total|argent }}</span></div>
+    {% for p in paiements %}
+      <div class="flex justify-between text-sm text-ok"><span>{{ p.get_mode_display }}, {{ p.date|date:"j F" }}{% if p.reference %} ({{ p.reference }}){% endif %}</span><span>-{{ p.montant|argent }}</span></div>
+    {% endfor %}
+    {% if f.statut == "emise" and paiements %}
+      <div class="flex justify-between pt-1 text-xl font-bold {% if f.payee %}text-ok{% else %}text-accent{% endif %}"><span>Reste à payer</span><span>{{ f.solde|argent }}</span></div>
+    {% endif %}
+  </div>
+</section>
+
+{% if f.statut == "annulee" %}
+  <p class="carte mb-4 p-4 text-gray-300">Annulée le {{ f.annulee_le|date:"j F Y" }} : {{ f.raison_annulation }}</p>
+{% endif %}
+
+<a href="{% url 'facturation:pdf' f.pk %}" class="gros-bouton mb-4 border-2 border-bordure" target="_blank" rel="noopener">Voir le PDF</a>
+
+{% if ecriture %}
+  {% if f.modifiable %}
+    <details class="carte mb-4 p-4">
+      <summary class="flex min-h-12 cursor-pointer items-center font-semibold text-accent">+ Ajouter une ligne</summary>
+      <form method="post" action="{% url 'terrain:ajouter_ligne' f.pk %}" class="mt-4" x-data="{ envoi: false }" @submit="envoi = true">{% csrf_token %}
+        {% with form=form_ligne %}{% include "terrain/argent/_form_ligne.html" %}{% endwith %}
+        <button class="gros-bouton mt-5 border-2 border-accent text-accent" :disabled="envoi">Ajouter</button>
+      </form>
+    </details>
+    {% if lignes %}
+      <form method="post" action="{% url 'terrain:emettre' f.pk %}" x-data="{ envoi: false }"
+            @submit="if (!confirm('Émettre la facture? Elle recevra son numéro et ne pourra plus être modifiée.')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+        <button class="gros-bouton mb-3 bg-accent text-nuit" :disabled="envoi">Émettre la facture ({{ f.total|argent }})</button>
+      </form>
+    {% endif %}
+    <form method="post" action="{% url 'terrain:supprimer_brouillon' f.pk %}" @submit="if (!confirm('Supprimer ce brouillon?')) $event.preventDefault()">{% csrf_token %}
+      <button class="gros-bouton border-2 border-danger/60 text-danger">Supprimer le brouillon</button>
+    </form>
+
+  {% elif f.statut == "emise" and not f.payee %}
+    <section class="carte mb-4 p-4">
+      <h2 class="mb-3 text-lg font-bold">Paiement reçu</h2>
+      <form method="post" action="{% url 'terrain:paiement' f.pk %}" x-data="{ mode: '{% if client.mode_paiement and client.mode_paiement != 'carte' %}{{ client.mode_paiement }}{% endif %}', envoi: false }" @submit="envoi = true" class="space-y-4">{% csrf_token %}
+        <div class="grid grid-cols-2 gap-2">
+          {% for valeur, nom in modes %}
+            <label class="flex min-h-14 cursor-pointer items-center justify-center rounded-xl border-2 px-2 text-center font-semibold"
+                   :class="mode == '{{ valeur }}' ? 'border-accent text-accent' : 'border-bordure'">
+              <input type="radio" name="mode" value="{{ valeur }}" class="sr-only" x-model="mode" required>{{ nom }}
+            </label>
+          {% endfor %}
+        </div>
+        <label class="block">
+          <span class="mb-2 block text-gray-300">Montant reçu</span>
+          <input name="montant" class="champ text-right text-2xl font-bold" inputmode="decimal" value="{{ f.solde|quantite }}" required>
+        </label>
+        <label class="block" x-show="mode == 'interac' || mode == 'cheque'">
+          <span class="mb-2 block text-gray-300" x-text="mode == 'cheque' ? 'Numéro du chèque' : 'Référence du virement'"></span>
+          <input name="reference" class="champ" maxlength="100" autocomplete="off">
+        </label>
+        <details>
+          <summary class="flex min-h-12 cursor-pointer items-center text-gray-400">Reçu un autre jour?</summary>
+          <input type="date" name="date" class="champ mt-2" max="{{ aujourdhui|date:'Y-m-d' }}">
+        </details>
+        <button class="gros-bouton bg-ok text-nuit" :disabled="envoi || !mode">Enregistrer le paiement</button>
+      </form>
+    </section>
+  {% endif %}
+
+  {% if f.statut == "emise" and not paiements %}
+    <details class="mt-6 p-1">
+      <summary class="flex min-h-12 cursor-pointer items-center text-sm text-gray-500">Annuler cette facture</summary>
+      <form method="post" action="{% url 'terrain:annuler' f.pk %}" class="mt-3 space-y-3" @submit="if (!confirm('Annuler la facture? Son numéro reste utilisé.')) $event.preventDefault()">{% csrf_token %}
+        <input name="raison" class="champ" required maxlength="200" placeholder="Raison, ex. mauvais client">
+        <button class="gros-bouton border-2 border-danger/60 text-danger">Annuler la facture</button>
+      </form>
+    </details>
+  {% endif %}
+{% endif %}
+{% endblock %}

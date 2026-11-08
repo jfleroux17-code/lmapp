@@ -19,3 +19,23 @@ def membre_requis(vue):
         return vue(request, *args, **kwargs)
 
     return enveloppe
+
+
+def peut_ecrire(request):
+    """Rôles administrateur et opérateur (et superutilisateur) : oui; lecture seule : non (K2)."""
+    u = request.user
+    if u.is_superuser:
+        return True
+    return Membre.objects.filter(utilisateur=u, entreprise=request.entreprise).exclude(role=Membre.Role.LECTURE).exists()
+
+
+def ecriture_requise(vue):
+    """Pour les actions qui changent quelque chose (POST) : refusé au rôle lecture seule."""
+    @membre_requis
+    @wraps(vue)
+    def enveloppe(request, *args, **kwargs):
+        if not peut_ecrire(request):
+            return render(request, "terrain/refuse.html", {"message": "Ton compte est en lecture seule : tu peux consulter, pas modifier."}, status=403)
+        return vue(request, *args, **kwargs)
+
+    return enveloppe

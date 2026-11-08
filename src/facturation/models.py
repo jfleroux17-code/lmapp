@@ -161,8 +161,10 @@ class Versement(models.Model):
         c = self.contrat
         n = c.versements.count()
         with transaction.atomic():
+            # Datée du jour où on la crée (jamais dans le futur), payable à la date prévue
+            aujourdhui = timezone.localdate()
             f = Facture.objects.create(entreprise=c.entreprise, client=c.client, adresse=c.adresse, contrat=c,
-                                       date_facture=max(self.date_prevue, timezone.localdate()))
+                                       date_facture=aujourdhui, date_echeance=max(self.date_prevue, aujourdhui))
             desc = f"Déneigement, saison {c.saison}" + (f" : versement {self.rang} de {n}" if n > 1 else "")
             f.lignes.create(description=desc, quantite=1, prix_unitaire=self.montant)
             f.recalculer()

@@ -1,0 +1,15 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Factures{% endblock %}
+{% block contenu %}
+{% if brouillons %}
+  <h2 class="mb-2 text-lg font-bold">Brouillons à émettre</h2>
+  <div class="carte mb-6 divide-y divide-bordure">
+    {% for f in brouillons %}{% include "terrain/argent/_ligne_facture.html" with montrer_client=True %}{% endfor %}
+  </div>
+{% endif %}
+<h2 class="mb-2 text-lg font-bold">Factures récentes</h2>
+<div class="carte divide-y divide-bordure">
+  {% for f in recentes %}{% include "terrain/argent/_ligne_facture.html" with montrer_client=True %}
+  {% empty %}<p class="p-4 text-gray-400">Aucune facture. On en crée une depuis la fiche d'un client.</p>{% endfor %}
+</div>
+{% endblock %}

@@ -1,4 +1,5 @@
 {% extends "terrain/base.html" %}
+{% load argent %}
 {% block titre %}{{ client.nom_affiche }}{% endblock %}
 {% block contenu %}
 <a href="{% url 'terrain:accueil' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Clients</a>
@@ -50,6 +51,19 @@
 {% empty %}
   <p class="carte mb-4 p-4 text-gray-400">Aucune adresse de service.</p>
 {% endfor %}
+
+<section class="mb-4">
+  <div class="mb-2 flex items-end justify-between">
+    <h2 class="text-lg font-bold">Argent</h2>
+    {% if du %}<span class="text-lg font-bold text-danger">Doit {{ du|argent }}</span>{% else %}<span class="text-ok">Rien à payer</span>{% endif %}
+  </div>
+  {% if ecriture %}<a href="{% url 'terrain:nouvelle_facture' client.pk %}" class="gros-bouton mb-3 border-2 border-accent text-accent">+ Nouvelle facture</a>{% endif %}
+  {% if factures_client %}
+    <div class="carte divide-y divide-bordure">
+      {% for f in factures_client %}{% include "terrain/argent/_ligne_facture.html" %}{% endfor %}
+    </div>
+  {% endif %}
+</section>
 
 <section class="carte mb-4 divide-y divide-bordure">
   {% if client.mode_paiement %}<div class="flex justify-between gap-3 p-4"><span class="text-gray-400">Paiement</span><span class="font-semibold">{{ client.get_mode_paiement_display }}</span></div>{% endif %}

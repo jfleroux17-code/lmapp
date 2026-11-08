@@ -27,5 +27,5 @@
   .gros-bouton { @apply flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl px-5 text-lg font-semibold active:scale-[0.98] transition; }
   .champ { @apply min-h-14 w-full rounded-2xl border-2 border-bordure bg-carte px-5 text-lg text-neige placeholder:text-gray-500 focus:border-accent focus:outline-none; }
   .carte { @apply rounded-2xl border border-bordure bg-carte; }
-  .pastille { @apply inline-block rounded-full px-3 py-1 text-sm font-semibold; }
+  .pastille { @apply inline-block whitespace-nowrap rounded-full px-3 py-1 text-sm font-semibold; }
 }

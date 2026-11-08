@@ -130,6 +130,8 @@ class FacturationTests(TestCase):
         self.assertEqual((v1.rang, v1.date_prevue, v1.montant), (1, date(2026, 12, 1), D("225.00")))
         f = v1.facturer()
         self.assertEqual(f.lignes.get().description, "Déneigement, saison 2026-2027 : versement 1 de 2")
+        self.assertLessEqual(f.date_facture, date.today())  # jamais datée dans le futur
+        self.assertEqual(f.date_echeance, max(date(2026, 12, 1), f.date_facture))
         self.assertEqual(f.total, D("258.69"))  # 225 + 11,25 + 22,44 (22,44375 arrondi)
         self.assertIs(v1.facturer(), f)  # pas de deuxième facture
         with self.assertRaises(ValidationError):

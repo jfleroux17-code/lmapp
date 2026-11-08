@@ -1,0 +1,33 @@
+{% load argent %}
+{# Ligne de facture : un service du catalogue remplit la description et le prix (modifiables). #}
+<div x-data="{ service: '', description: '{{ form.description.value|default:''|escapejs }}', prix: '{{ form.prix.value|default:''|escapejs }}', quantite: '{{ form.quantite.value|default:1 }}' }" class="space-y-4">
+  {% if services %}
+    <div>
+      <span class="mb-2 block text-gray-300">Service</span>
+      <div class="grid grid-cols-2 gap-2">
+        {% for s in services %}
+          <button type="button" class="flex min-h-14 items-center justify-center rounded-xl border-2 px-2 text-center font-semibold"
+                  :class="service == '{{ s.pk }}' ? 'border-accent text-accent' : 'border-bordure'"
+                  @click="service = '{{ s.pk }}'; description = '{{ s.nom|escapejs }}'{% if s.prix_suggere is not None %}; prix = '{{ s.prix_suggere|stringformat:'s'|cut:'.00'|escapejs }}'{% endif %}">
+            {{ s.nom }}{% if s.prix_suggere is not None %}<span class="ml-1 text-sm text-gray-400">{{ s.prix_suggere|argent }}</span>{% endif %}
+          </button>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+  <input type="hidden" name="service" :value="service">
+  <label class="block">
+    <span class="mb-2 block text-gray-300">Description</span>
+    <input name="description" class="champ" x-model="description" maxlength="200" required placeholder="Ex. Déneigement de l'entrée">
+  </label>
+  <div class="grid grid-cols-3 gap-3">
+    <label class="block">
+      <span class="mb-2 block text-gray-300">Qté</span>
+      <input name="quantite" class="champ text-center" inputmode="decimal" x-model="quantite" required>
+    </label>
+    <label class="col-span-2 block">
+      <span class="mb-2 block text-gray-300">Prix (avant taxes)</span>
+      <input name="prix" class="champ text-right" inputmode="decimal" x-model="prix" required placeholder="0,00 $">
+    </label>
+  </div>
+</div>
