@@ -1,8 +1,8 @@
-# LMAPP : Plan de projet (PRD v1.4)
+# LMAPP : Plan de projet (PRD v1.5)
 
 **Application de gestion pour Louis Méthot Déneigement**
 Porteur du projet : Jean-François Leroux
-Date : 7 novembre 2026 (v1.4 : multi-entreprise précisé en section P, une installation, une fiche par déneigeur, administration à une adresse neutre; v1.3 : phase 0 et prochaines étapes mises à jour, DNS, jeton Cloudflare, ouverture au routeur et comptes administrateur faits, netplan par MAC; v1.2 : Caddy dans un projet `edge` séparé, environnement de test en marche, vrais certificats Let's Encrypt par validation DNS, DNS `louis` et `test` en place; v1.1 : dépôt Git et pile Docker en marche sur `ld1` (validée sur le réseau interne), test sur `test.ledeneigeur.com`, ouverture au routeur filtrée par IP source, état du DNS Cloudflare et du disque en 6.1.1; v1.0 : sous-domaine louis.ledeneigeur.com, MAC dynamique, pas de port public au départ, CLAUDE.md déposé sur ld1; v0.9 : Claude Code réellement installé et connecté sur `ld1` (2.1.319); v0.8 : serveur `ld1` installé et sécurisé, IP fixe 172.16.4.100, état du serveur en 6.1.1; v0.7 : domaine ledeneigeur.com et découpage par sous-domaine; v0.6 : iPhone 17 Pro Max confirmé, décision de bâtir, SMTP2GO et boîte IMAP, hébergement sans frais, section O, specs de la VM)
+Date : 8 novembre 2026 (v1.5 : Louis inscrit aux taxes, nom légal « Les Entretiens Paysagers L.M. », question 14 sur le nom affiché; v1.4 : multi-entreprise précisé en section P, une installation, une fiche par déneigeur, administration à une adresse neutre; v1.3 : phase 0 et prochaines étapes mises à jour, DNS, jeton Cloudflare, ouverture au routeur et comptes administrateur faits, netplan par MAC; v1.2 : Caddy dans un projet `edge` séparé, environnement de test en marche, vrais certificats Let's Encrypt par validation DNS, DNS `louis` et `test` en place; v1.1 : dépôt Git et pile Docker en marche sur `ld1` (validée sur le réseau interne), test sur `test.ledeneigeur.com`, ouverture au routeur filtrée par IP source, état du DNS Cloudflare et du disque en 6.1.1; v1.0 : sous-domaine louis.ledeneigeur.com, MAC dynamique, pas de port public au départ, CLAUDE.md déposé sur ld1; v0.9 : Claude Code réellement installé et connecté sur `ld1` (2.1.319); v0.8 : serveur `ld1` installé et sécurisé, IP fixe 172.16.4.100, état du serveur en 6.1.1; v0.7 : domaine ledeneigeur.com et découpage par sous-domaine; v0.6 : iPhone 17 Pro Max confirmé, décision de bâtir, SMTP2GO et boîte IMAP, hébergement sans frais, section O, specs de la VM)
 Statut : brouillon à valider avant tout développement
 
 ---
@@ -480,18 +480,19 @@ Livrable : automatisation des relances, rapports pour le comptable, demandes de 
 ## 10. Questions ouvertes (à régler avant la phase 1)
 
 1. ~~Louis a un iPhone ou un Android?~~ **Réglé le 7 novembre 2026 : iPhone 17 Pro Max.** Voir 6.5.
-2. **Louis est-il inscrit à la TPS et à la TVQ?** Décide du calcul des taxes sur les factures.
+2. ~~Louis est-il inscrit à la TPS et à la TVQ?~~ **Réglé le 8 novembre 2026 : oui, inscrit aux deux.** Les factures auront les taxes. Les numéros vont dans la fiche `Entreprise`, jamais dans le dépôt. Sa facture papier révèle aussi son nom légal : « Les Entretiens Paysagers L.M. » (logo « Entretiens LM »), à Sainte-Adèle. Le nom affiché aux clients reste à confirmer (question 14).
 3. **Combien de clients actifs, et combien d'anciens comptes en souffrance?** Pour dimensionner l'import et estimer les coûts de SMS.
 4. **Modèle de prix dominant** : contrat saisonnier payable en un ou plusieurs versements, ou facturation au passage? Les deux? Combien de versements, à quelles dates?
 5. **Services offerts** : entrée seulement, ou aussi bordage, pelletage manuel, abrasif, toitures?
-6. **Numéro de texto** : Louis accepte-t-il que les clients textent un nouveau numéro d'affaires plutôt que son cellulaire personnel? (C'est nécessaire pour la réception automatique.)
-7. **Courriel d'affaires et Interac** : réception par une boîte IMAP fournie par JF sur ledeneigeur.com (réglé le 7 novembre 2026, adresse proposée `info@ledeneigeur.com`). Reste à confirmer l'adresse exacte et l'endroit où la boîte est hébergée (MX), et à savoir si Louis a déjà une adresse d'affaires que les clients connaissent. A-t-il le dépôt automatique Interac, et sur quelle adresse? Si c'est une adresse différente, on peut rediriger les notifications Interac vers la boîte IMAP pour D5.
-8. **Carte de crédit** : y a-t-il réellement des clients qui veulent payer par carte? Sinon, on reporte Stripe.
+6. **Numéro de texto** : Louis accepte-t-il que les clients textent un nouveau numéro d'affaires plutôt que son cellulaire personnel? (C'est nécessaire pour la réception automatique.) Ses clients connaissent son 514-962-6273 (sur ses factures) : il pourrait rester pour les appels seulement.
+7. **Courriel d'affaires et Interac** : réception par une boîte IMAP fournie par JF sur ledeneigeur.com (réglé le 7 novembre 2026, adresse proposée `info@ledeneigeur.com`). Reste à confirmer l'adresse exacte et l'endroit où la boîte est hébergée (MX), Louis a déjà une adresse Gmail d'affaires que ses clients connaissent (sur ses factures, 8 novembre 2026). A-t-il le dépôt automatique Interac, et sur quelle adresse? Si c'est une adresse différente, on peut rediriger les notifications Interac vers la boîte IMAP pour D5.
+8. **Carte de crédit** : y a-t-il réellement des clients qui veulent payer par carte? Sinon, on reporte Stripe. Son carnet de factures a une case « carte débit » : a-t-il un terminal de paiement?
 9. ~~**Secteurs desservis**~~ **Réglé en partie le 7 novembre 2026 : Sainte-Adèle seulement, Louis travaille seul pour l'instant.** D'autres villes pourront s'ajouter si l'opération grossit (modèle `VilleDesservie`, sans changement de code). Reste : un seul véhicule ou plusieurs?
 10. **Comptabilité** : qui fait sa comptabilité, et dans quel logiciel? Pour savoir quel export préparer.
 11. ~~Nom de domaine~~ **Réglé le 7 novembre 2026 : `ledeneigeur.com` (principal) et `ledeneigeur.ca`, app de Louis sur `louis.ledeneigeur.com`.** Voir 6.1. Reste : l'adresse courriel exacte (question 7).
 12. **Clients commerciaux** (stationnements, immeubles à logements)? Ils ont souvent des exigences de facturation différentes.
 13. ~~Confirmation du choix bâtir plutôt qu'acheter~~ **Réglé le 7 novembre 2026 : on bâtit.** Voir section 4, point 4.
+14. **Nom affiché aux clients** : proposé, le nom légal « Les Entretiens Paysagers L.M. » sur les factures, et un nom que ses clients reconnaissent (ex. « Entretiens LM ») à l'écran et à la fin des textos (champs « nom légal », « nom commercial » et « signature des messages » de la fiche). À confirmer avec Louis.
 
 ## 11. Prochaines étapes
 
