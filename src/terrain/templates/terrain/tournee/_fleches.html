@@ -1,0 +1,9 @@
+{% url url_nom pk as url %}
+<form method="post" action="{{ url }}" hx-post="{{ url }}" hx-target="#ordre" hx-swap="innerHTML" hx-sync="#ordre:queue all">{% csrf_token %}
+  <input type="hidden" name="sens" value="haut">
+  <button aria-label="Monter {{ quoi }}" class="h-14 w-14 rounded-xl border-2 border-bordure text-xl active:bg-bordure {% if premier %}invisible{% endif %}">▲</button>
+</form>
+<form method="post" action="{{ url }}" hx-post="{{ url }}" hx-target="#ordre" hx-swap="innerHTML" hx-sync="#ordre:queue all">{% csrf_token %}
+  <input type="hidden" name="sens" value="bas">
+  <button aria-label="Descendre {{ quoi }}" class="h-14 w-14 rounded-xl border-2 border-bordure text-xl active:bg-bordure {% if dernier %}invisible{% endif %}">▼</button>
+</form>

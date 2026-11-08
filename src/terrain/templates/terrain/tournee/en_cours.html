@@ -112,6 +112,7 @@
     <p x-show="!arrets.length" class="p-4 text-gray-400">Aucun client actif avec une adresse.</p>
   </div>
 
+  <a href="{% url 'terrain:ordre' %}" class="gros-bouton mb-6 border-2 border-bordure">Ordre de la tournée</a>
   {% if ecriture %}
     <form method="post" action="{% url 'terrain:terminer' %}" @submit="if (enAttente) { $event.preventDefault(); message = ''; alert('Des passages attendent encore le réseau : terminer quand ils seront envoyés.') } else if (!confirm('Terminer l\'opération?')) { $event.preventDefault() }">{% csrf_token %}
       <button class="gros-bouton border-2 border-danger/60 text-danger">Terminer l'opération</button>

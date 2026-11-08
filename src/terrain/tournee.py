@@ -11,7 +11,7 @@ from django.utils.dateparse import parse_datetime
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from clients.models import Adresse, Client
+from clients.models import Adresse, Client, Secteur
 from core.acces import ecriture_requise, membre_requis, peut_ecrire
 from communications import avis
 from communications.models import Message
@@ -196,3 +196,67 @@ def liste_messages(request):
     """Les messages préparés ou envoyés, les plus récents d'abord."""
     qs = Message.objects.filter(entreprise=request.entreprise).select_related("client", "operation")[:100]
     return render(request, "terrain/messages.html", {"liste": qs})
+
+
+# Ordre de la tournée (F1) : boutons haut et bas plutôt que glisser (gants).
+
+def _contexte_ordre(request, bouge=None):
+    """Tous les secteurs (même vides, pour qu'un déplacement ne saute jamais un secteur invisible), puis « Sans secteur »."""
+    secteurs = list(Secteur.objects.filter(entreprise=request.entreprise).order_by("ordre", "nom"))
+    groupes = {s.pk: {"secteur": s, "arrets": [], "bouge": bouge == f"s{s.pk}",
+                      "premier": i == 0, "dernier": i == len(secteurs) - 1} for i, s in enumerate(secteurs)}
+    groupes[None] = {"secteur": None, "arrets": []}
+    for rang, a in enumerate(arrets(request.entreprise), start=1):
+        a.rang, a.bouge = rang, bouge == f"a{a.pk}"
+        groupes[a.secteur_id]["arrets"].append(a)
+    liste = [g for g in groupes.values() if g["secteur"] is not None or g["arrets"]]
+    return {"groupes": liste, "ecriture": peut_ecrire(request), "bouge": bouge,
+            "en_cours": Operation.en_cours_de(request.entreprise) is not None}
+
+
+def _reponse_ordre(request, bouge):
+    if request.headers.get("HX-Request"):
+        return render(request, "terrain/tournee/_ordre.html", _contexte_ordre(request, bouge))
+    return redirect(f"{reverse('terrain:ordre')}?bouge={bouge}#{bouge}")
+
+
+def _echanger(liste, objet, sens, champ):
+    """Monte ou descend `objet` d'une place dans `liste`, puis renumérote 10, 20, 30 (sans trou ni doublon)."""
+    i = liste.index(objet)
+    j = i - 1 if sens == "haut" else i + 1
+    if 0 <= j < len(liste):
+        liste[i], liste[j] = liste[j], liste[i]
+    changes = []
+    for n, o in enumerate(liste, start=1):
+        if getattr(o, champ) != n * 10:
+            setattr(o, champ, n * 10)
+            changes.append(o)
+    return changes
+
+
+@membre_requis
+def ordre(request):
+    bouge = request.GET.get("bouge", "")
+    return render(request, "terrain/tournee/ordre.html", _contexte_ordre(request, bouge))
+
+
+@require_POST
+@ecriture_requise
+def deplacer_arret(request, adresse_pk):
+    with transaction.atomic():
+        a = get_object_or_404(Adresse.objects.select_for_update(), pk=adresse_pk, entreprise=request.entreprise)
+        voisins = list(arrets(request.entreprise).filter(secteur=a.secteur_id).select_for_update(of=("self",)))
+        if a not in voisins:  # adresse inactive ou client pas servi : pas dans la tournée
+            return redirect("terrain:ordre")
+        Adresse.objects.bulk_update(_echanger(voisins, a, request.POST.get("sens"), "ordre_tournee"), ["ordre_tournee"])
+    return _reponse_ordre(request, f"a{a.pk}")
+
+
+@require_POST
+@ecriture_requise
+def deplacer_secteur(request, secteur_pk):
+    with transaction.atomic():
+        secteurs = list(Secteur.objects.select_for_update().filter(entreprise=request.entreprise).order_by("ordre", "nom"))
+        s = get_object_or_404(Secteur, pk=secteur_pk, entreprise=request.entreprise)
+        Secteur.objects.bulk_update(_echanger(secteurs, s, request.POST.get("sens"), "ordre"), ["ordre"])
+    return _reponse_ordre(request, f"s{s.pk}")

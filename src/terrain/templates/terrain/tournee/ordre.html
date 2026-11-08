@@ -1,0 +1,9 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Ordre de la tournée{% endblock %}
+{% block contenu %}
+<a href="{% url 'terrain:tournee' %}" class="mb-3 inline-block text-accent">‹ Tournée</a>
+<h1 class="mb-1 text-2xl font-bold">Ordre de la tournée</h1>
+<p class="mb-5 text-gray-400">{% if ecriture %}▲ et ▼ déplacent un arrêt d'une place dans son secteur, ou un secteur au complet.{% else %}Consultation seulement.{% endif %}</p>
+{% if en_cours %}<p class="carte mb-5 p-4 text-sm">Une opération est en cours : le nouvel ordre paraîtra à l'écran de tournée quand vous le rouvrirez.</p>{% endif %}
+<div id="ordre">{% include "terrain/tournee/_ordre.html" %}</div>
+{% endblock %}

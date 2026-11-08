@@ -205,3 +205,77 @@ class EcransTests(TourneeBase):
         self.assertNotContains(page, "Terminer l'opération")
         self.assertEqual(self.client.post("/tournee/synchro/", '{"passages": []}', content_type="application/json").status_code, 403)
         self.assertEqual(self.client.post(f"/tournee/passages/{self.a1.pk}/", {"statut": "fait"}).status_code, 403)
+
+
+@override_settings(ALLOWED_HOSTS=["*"])
+class OrdreTests(TourneeBase):
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        U = get_user_model()
+        cls.louis = U.objects.create_user("louis", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="operateur")
+        cls.lecteur = U.objects.create_user("lecteur", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.lecteur, entreprise=cls.ent, role="lecture")
+
+    def setUp(self):
+        self.client.defaults["HTTP_HOST"] = HOTE
+        self.client.force_login(self.louis)
+
+    def ordre(self):
+        return [a.pk for a in arrets(self.ent)]
+
+    def test_page_ordre(self):
+        page = self.client.get("/tournee/ordre/")
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Village")
+        self.assertContains(page, "Sans secteur")
+        self.assertContains(page, 'aria-label="Monter l\'arrêt"')
+
+    def test_monter_et_descendre_un_arret(self):
+        r = self.client.post(f"/tournee/ordre/arrets/{self.a2.pk}/", {"sens": "haut"})
+        self.assertRedirects(r, f"/tournee/ordre/?bouge=a{self.a2.pk}#a{self.a2.pk}", fetch_redirect_response=False)
+        self.assertEqual(self.ordre(), [self.a2.pk, self.a1.pk, self.a_mont.pk, self.a_sans_rang.pk])
+        self.client.post(f"/tournee/ordre/arrets/{self.a2.pk}/", {"sens": "bas"})
+        self.assertEqual(self.ordre(), [self.a1.pk, self.a2.pk, self.a_mont.pk, self.a_sans_rang.pk])
+
+    def test_au_bout_rien_ne_bouge_et_reste_dans_son_secteur(self):
+        self.client.post(f"/tournee/ordre/arrets/{self.a1.pk}/", {"sens": "haut"})
+        self.client.post(f"/tournee/ordre/arrets/{self.a2.pk}/", {"sens": "bas"})  # dernier du Village
+        self.assertEqual(self.ordre(), [self.a1.pk, self.a2.pk, self.a_mont.pk, self.a_sans_rang.pk])
+        self.a2.refresh_from_db()
+        self.assertEqual(self.a2.secteur.nom, "Village")
+
+    def test_renumerote_les_rangs_vides_ou_en_double(self):
+        Adresse.objects.filter(pk__in=[self.a1.pk, self.a2.pk]).update(ordre_tournee=None)
+        self.client.post(f"/tournee/ordre/arrets/{self.a2.pk}/", {"sens": "haut"})
+        rangs = dict(Adresse.objects.filter(secteur__nom="Village", active=True,
+                                            client__statut__in=["actif", "recouvrement"]).values_list("pk", "ordre_tournee"))
+        self.assertEqual(rangs, {self.a2.pk: 10, self.a1.pk: 20})
+
+    def test_sans_secteur(self):
+        autre = Adresse.objects.create(entreprise=self.ent, client=self.a_sans_rang.client, ligne1="9, rue Roy", ville="Sainte-Adèle")
+        self.client.post(f"/tournee/ordre/arrets/{autre.pk}/", {"sens": "haut"})
+        self.assertEqual(self.ordre()[-2:], [autre.pk, self.a_sans_rang.pk])
+
+    def test_monter_un_secteur(self):
+        mont = Secteur.objects.get(nom="Mont")
+        self.client.post(f"/tournee/ordre/secteurs/{mont.pk}/", {"sens": "haut"})
+        self.assertEqual(self.ordre(), [self.a_mont.pk, self.a1.pk, self.a2.pk, self.a_sans_rang.pk])
+
+    def test_htmx_renvoie_la_liste(self):
+        r = self.client.post(f"/tournee/ordre/arrets/{self.a2.pk}/", {"sens": "haut"}, HTTP_HX_REQUEST="true")
+        self.assertEqual(r.status_code, 200)
+        self.assertTemplateUsed(r, "terrain/tournee/_ordre.html")
+        self.assertTemplateNotUsed(r, "terrain/base.html")
+        self.assertContains(r, "bg-accent/10")
+
+    def test_autre_entreprise_et_lecture_seule(self):
+        etranger = Adresse.objects.create(entreprise=self.autre, client=Client.objects.create(entreprise=self.autre, nom="X"),
+                                          ligne1="1, rue X", ville="Ailleurs")
+        self.assertEqual(self.client.post(f"/tournee/ordre/arrets/{etranger.pk}/", {"sens": "haut"}).status_code, 404)
+        self.client.force_login(self.lecteur)
+        page = self.client.get("/tournee/ordre/")
+        self.assertNotContains(page, "Monter")
+        self.assertEqual(self.client.post(f"/tournee/ordre/arrets/{self.a2.pk}/", {"sens": "haut"}).status_code, 403)
+        self.assertEqual(self.ordre(), [self.a1.pk, self.a2.pk, self.a_mont.pk, self.a_sans_rang.pk])

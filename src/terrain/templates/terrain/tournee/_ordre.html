@@ -1,0 +1,28 @@
+{% for g in groupes %}
+  <div class="mb-2 mt-5 flex items-center justify-between gap-3"{% if g.secteur %} id="s{{ g.secteur.pk }}"{% endif %}>
+    <h2 class="text-lg font-bold">{% if g.secteur %}{{ g.secteur.nom }}{% else %}Sans secteur{% endif %}</h2>
+    {% if ecriture and g.secteur %}
+      <div class="flex gap-2">
+        {% include "terrain/tournee/_fleches.html" with url_nom="terrain:deplacer_secteur" pk=g.secteur.pk premier=g.premier dernier=g.dernier quoi="le secteur" %}
+      </div>
+    {% endif %}
+  </div>
+  <div class="carte divide-y divide-bordure {% if g.bouge %}ring-2 ring-accent{% endif %}">
+    {% for a in g.arrets %}
+      <div id="a{{ a.pk }}" class="flex min-h-16 items-center justify-between gap-3 p-3 {% if a.bouge %}bg-accent/10{% endif %}">
+        <div class="min-w-0">
+          <div class="truncate font-semibold">{{ a.rang }}. {{ a.client.nom_affiche }}</div>
+          <div class="truncate text-sm text-gray-400">{{ a.ligne1 }}</div>
+        </div>
+        {% if ecriture %}
+          <div class="flex shrink-0 gap-2">
+            {% include "terrain/tournee/_fleches.html" with url_nom="terrain:deplacer_arret" pk=a.pk premier=forloop.first dernier=forloop.last quoi="l'arrêt" %}
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+    {% if not g.arrets %}<p class="p-4 text-gray-400">Aucun arrêt dans ce secteur.</p>{% endif %}
+  </div>
+{% empty %}
+  <p class="carte p-4 text-gray-400">Aucun client actif avec une adresse.</p>
+{% endfor %}

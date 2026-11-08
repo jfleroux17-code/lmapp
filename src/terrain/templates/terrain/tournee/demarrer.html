@@ -14,6 +14,7 @@
     {% endfor %}
   </form>
 {% endif %}
+<a href="{% url 'terrain:ordre' %}" class="gros-bouton mb-6 border-2 border-bordure">Ordre de la tournée</a>
 {% if dernieres %}
   <h2 class="mb-2 text-lg font-bold">Dernières opérations</h2>
   <div class="carte divide-y divide-bordure">

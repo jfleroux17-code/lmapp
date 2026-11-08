@@ -64,7 +64,7 @@ def arrets(entreprise):
     return (Adresse.objects.filter(entreprise=entreprise, active=True,
                                    client__statut__in=[Client.Statut.ACTIF, Client.Statut.RECOUVREMENT])
             .select_related("client", "secteur")
-            .order_by(models.F("secteur__ordre").asc(nulls_last=True), models.F("ordre_tournee").asc(nulls_last=True), "ligne1"))
+            .order_by(models.F("secteur__ordre").asc(nulls_last=True), "secteur__nom", models.F("ordre_tournee").asc(nulls_last=True), "ligne1"))
 
 
 class Passage(Horodate):
