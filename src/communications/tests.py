@@ -749,3 +749,77 @@ class RecuTests(TestCase):
         r = self.client.post(f"/factures/{self.f.pk}/paiement/", {"mode": "comptant", "montant": "150", "recu": "1"}, follow=True)
         self.assertContains(r, "Reçu pas envoyé : Envois réels éteints")
         self.assertIsNone(self.f.paiements.get().recu_envoye_le)
+
+
+@override_settings(ALLOWED_HOSTS=["*"], TWILIO_AUTH_TOKEN="jeton-secret")
+class WebhooksTwilioTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai", domaine=HOTE, numero_texto="+14503001166", signature_messages="Essai")
+        cls.c = Client.objects.create(entreprise=cls.ent, nom="Tremblay", cellulaire="+14505550101")
+
+    def envoyer(self, chemin, donnees, signature=None):
+        import hmac as _hmac
+        url = f"https://{HOTE}{chemin}"
+        brut = url + "".join(f"{k}{donnees[k]}" for k in sorted(donnees))
+        sig = signature or base64.b64encode(_hmac.new(b"jeton-secret", brut.encode(), hashlib.sha1).digest()).decode()
+        return self.client.post(chemin, donnees, HTTP_HOST=HOTE, HTTP_X_TWILIO_SIGNATURE=sig, secure=True)
+
+    def texto(self, corps, de="+14505550101", sid="SM1"):
+        return self.envoyer("/webhooks/twilio/textos/", {"MessageSid": sid, "From": de, "To": "+14503001166", "Body": corps, "NumMedia": "0"})
+
+    def test_texto_recu_rattache_au_client(self):
+        r = self.texto("Vous passez quand?")
+        self.assertEqual((r.status_code, r["Content-Type"]), (200, "text/xml"))
+        m = Message.objects.get()
+        self.assertEqual((m.client, m.canal, m.sens, m.lu, m.contenu, m.expediteur), (self.c, "texto", "entrant", False, "Vous passez quand?", "+14505550101"))
+        self.texto("Vous passez quand?")  # Twilio réessaie le même : une seule fois
+        self.assertEqual(Message.objects.count(), 1)
+        self.texto("Allo", de="+14505550199", sid="SM2")
+        self.assertIsNone(Message.objects.get(fournisseur_id="SM2").client)  # inconnu : gardé quand même
+
+    def test_signature_obligatoire(self):
+        r = self.envoyer("/webhooks/twilio/textos/", {"MessageSid": "SM9", "From": "+14505550101", "To": "+14503001166", "Body": "x"},
+                         signature="fausse")
+        self.assertEqual(r.status_code, 403)
+        r = self.client.post("/webhooks/twilio/textos/", {"Body": "x"}, HTTP_HOST=HOTE, secure=True)
+        self.assertEqual(r.status_code, 403)
+        self.assertFalse(Message.objects.exists())
+
+    def test_arret_et_reprise(self):
+        r = self.texto("ARRÊT")
+        self.c.refresh_from_db()
+        self.assertIsNotNone(self.c.desabonne_le)
+        self.assertIn("vous ne recevrez plus de messages promotionnels", r.content.decode())
+        r = self.texto("STOP", sid="SM3")
+        self.assertNotIn("<Message>", r.content.decode())  # Twilio répond lui-même au STOP anglais
+        self.texto("Commencer", sid="SM4")
+        self.c.refresh_from_db()
+        self.assertIsNone(self.c.desabonne_le)
+
+    def test_numero_sans_entreprise(self):
+        r = self.envoyer("/webhooks/twilio/textos/", {"MessageSid": "SM5", "From": "+14505550101", "To": "+14505559999", "Body": "x"})
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(Message.objects.exists())
+
+    def test_suivi_de_livraison(self):
+        m = Message.objects.create(entreprise=self.ent, client=self.c, genre="manuel", canal="texto", destinataire="+14505550101",
+                                   contenu="x", statut="envoye", fournisseur_id="SM77")
+        self.assertEqual(self.envoyer("/webhooks/twilio/statut/", {"MessageSid": "SM77", "MessageStatus": "delivered"}).status_code, 204)
+        m.refresh_from_db()
+        self.assertEqual(m.statut, "envoye")
+        self.envoyer("/webhooks/twilio/statut/", {"MessageSid": "SM77", "MessageStatus": "undelivered", "ErrorCode": "30003"})
+        m.refresh_from_db()
+        self.assertEqual((m.statut, m.erreur), ("echec", "Non livré par l'opérateur (Twilio 30003)."))
+
+    def test_url_de_suivi_seulement_si_configuree(self):
+        reponse = mock.MagicMock()
+        reponse.__enter__.return_value = io.BytesIO(b'{"sid": "SM1"}')
+        with override_settings(TWILIO_ACCOUNT_SID="AC", TWILIO_URL_STATUT=""), mock.patch("communications.twilio.urlopen", return_value=reponse) as u:
+            twilio.envoyer_texto("+1", "+2", "x")
+        self.assertNotIn("StatusCallback", parse_qs(u.call_args.args[0].data.decode()))
+        reponse.__enter__.return_value = io.BytesIO(b'{"sid": "SM1"}')
+        with override_settings(TWILIO_ACCOUNT_SID="AC", TWILIO_URL_STATUT="https://louis.exemple.test/webhooks/twilio/statut/"), \
+             mock.patch("communications.twilio.urlopen", return_value=reponse) as u:
+            twilio.envoyer_texto("+1", "+2", "x")
+        self.assertEqual(parse_qs(u.call_args.args[0].data.decode())["StatusCallback"], ["https://louis.exemple.test/webhooks/twilio/statut/"])

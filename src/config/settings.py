@@ -37,6 +37,8 @@ LMAPP_DESTINATAIRES_TEST = env_liste("LMAPP_DESTINATAIRES_TEST", "")
 TWILIO_ACCOUNT_SID = env("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = env("TWILIO_AUTH_TOKEN", "")
 TWILIO_API = env("TWILIO_API", "https://api.twilio.com")
+# Suivi de livraison : URL publique de /webhooks/twilio/statut/, seulement quand Twilio peut joindre ld1 (443 ouvert)
+TWILIO_URL_STATUT = env("TWILIO_URL_STATUT", "")
 
 # Courriel d'affaires (PRD E3, E5, C4) : serveur de JF, SMTP et IMAP en SSL. L'adresse d'envoi est
 # celle de l'entreprise (Entreprise.courriel_reponse) et doit être le compte IMAP_UTILISATEUR.

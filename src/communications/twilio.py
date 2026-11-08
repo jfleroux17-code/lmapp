@@ -19,7 +19,8 @@ def envoyer_texto(de, a, texte):
     sid, jeton = settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN
     cle = base64.b64encode(f"{sid}:{jeton}".encode()).decode()
     req = Request(f"{settings.TWILIO_API}/2010-04-01/Accounts/{sid}/Messages.json",
-                  data=urlencode({"From": de, "To": a, "Body": texte}).encode(),
+                  data=urlencode({"From": de, "To": a, "Body": texte,
+                                  **({"StatusCallback": settings.TWILIO_URL_STATUT} if settings.TWILIO_URL_STATUT else {})}).encode(),
                   headers={"Authorization": f"Basic {cle}", "User-Agent": "LMAPP"})
     try:
         with urlopen(req, timeout=20) as r:
