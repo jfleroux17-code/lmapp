@@ -19,6 +19,7 @@ from django.utils import timezone
 
 from clients.models import Adresse, Client, Secteur
 from core.models import Entreprise, VilleDesservie
+from facturation.models import Contrat, Facture, Paiement, Saison, Service
 
 ENTREPRISE = {
     "slug": "essai",
@@ -28,6 +29,11 @@ ENTREPRISE = {
     "courriel": "info@example.com",
     "ville": "Sainte-Adèle",
     "signature_messages": "Déneigement Essai",
+    # Numéros de taxes fictifs (format seulement), numérotation à partir de 1001
+    "inscrit_taxes": True,
+    "numero_tps": "123456789 RT0001",
+    "numero_tvq": "1234567890 TQ0001",
+    "prochain_numero_facture": 1001,
     "interac_courriel": "paiement@example.com",
     "interac_instructions": "Virement Interac à paiement@example.com (dépôt automatique, aucune question). Indiquez votre numéro de facture.",
 }
@@ -81,7 +87,12 @@ class Command(BaseCommand):
             if options["reinitialiser"]:
                 ancienne = Entreprise.objects.filter(slug=ENTREPRISE["slug"]).first()
                 if ancienne is not None:
-                    # Ordre imposé par les clés protégées : adresses, clients, secteurs, puis l'entreprise
+                    # Ordre imposé par les clés protégées : l'argent, puis adresses, clients, secteurs, l'entreprise
+                    Paiement.objects.filter(entreprise=ancienne).delete()
+                    Facture.objects.filter(entreprise=ancienne).delete()
+                    Contrat.objects.filter(entreprise=ancienne).delete()
+                    Service.objects.filter(entreprise=ancienne).delete()
+                    Saison.objects.filter(entreprise=ancienne).delete()
                     Adresse.objects.filter(entreprise=ancienne).delete()
                     Client.objects.filter(entreprise=ancienne).delete()
                     Secteur.objects.filter(entreprise=ancienne).delete()
@@ -135,7 +146,33 @@ class Command(BaseCommand):
                 borne_fontaine=True, obstacles="Bordure de béton à droite", consignes="Stationnement de 12 places, passer avant 7 h.",
             )
 
+            factures = self._argent(ent)
+
         self.stdout.write(self.style.SUCCESS(
             f"« {ent} » créée : ville desservie {nom_ville}, {len(secteurs)} secteurs, {Client.objects.filter(entreprise=ent).count()} clients, "
-            f"{Adresse.objects.filter(entreprise=ent).count()} adresses."
+            f"{Adresse.objects.filter(entreprise=ent).count()} adresses, {factures}."
         ))
+
+    def _argent(self, ent):
+        """Saison, services, contrats à versements, factures, un paiement et un solde d'ouverture (fictifs)."""
+        saison = Saison.objects.create(entreprise=ent, nom="2026-2027", debut=date(2026, 11, 1), fin=date(2027, 4, 15))
+        services = {nom: Service.objects.create(entreprise=ent, nom=nom, prix_suggere=prix, ordre=o)
+                    for o, (nom, prix) in enumerate([("Entrée", None), ("Bordage de la rue", Decimal("40")),
+                                                     ("Pelletage du balcon", Decimal("25")), ("Abrasif", Decimal("15"))])}
+        servis = Client.objects.filter(entreprise=ent, statut__in=["actif", "recouvrement"]).order_by("pk")
+        for i, c in enumerate(servis[:4]):
+            contrat = Contrat.objects.create(entreprise=ent, client=c, adresse=c.adresses.first(), saison=saison,
+                                             prix=Decimal("450") + 50 * i, prix_texte="Prix de la saison, plus taxes, en 2 versements")
+            contrat.services.add(services["Entrée"])
+            v1, _ = contrat.creer_echeancier([date(2026, 11, 15), date(2027, 1, 15)])
+            f = v1.facturer()
+            f.emettre()
+            if i == 0:
+                Paiement.objects.create(entreprise=ent, facture=f, montant=Decimal("100"), mode="comptant", note="Paiement partiel (essai)")
+        extra = Facture.objects.create(entreprise=ent, client=servis[0], adresse=servis[0].adresses.first())
+        extra.lignes.create(service=services["Pelletage du balcon"], description="Pelletage du balcon", quantite=2, prix_unitaire=Decimal("25"))
+        extra.recalculer()  # laissée en brouillon
+        recouvrement = Client.objects.filter(entreprise=ent, statut="recouvrement").first()
+        if recouvrement:
+            Facture.solde_ouverture(recouvrement, Decimal("380"), saison_origine="2025-2026", note="Solde fictif (essai)")
+        return f"saison {saison}, {Facture.objects.filter(entreprise=ent).count()} factures (dont un brouillon et un solde d'ouverture)"

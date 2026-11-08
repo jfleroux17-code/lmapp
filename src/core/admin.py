@@ -41,7 +41,7 @@ class EntrepriseAdmin(admin.ModelAdmin):
     fieldsets = [
         (None, {"fields": ["nom", "nom_legal", "slug", "domaine", "active"]}),
         ("Coordonnées", {"fields": ["telephone", "courriel", "adresse_ligne1", "adresse_ligne2", "ville", "province", "code_postal"]}),
-        ("Taxes", {"fields": ["inscrit_taxes", "numero_tps", "numero_tvq", "taux_tps", "taux_tvq"]}),
+        ("Taxes et factures", {"fields": ["inscrit_taxes", "numero_tps", "numero_tvq", "taux_tps", "taux_tvq", "prochain_numero_facture"]}),
         ("Communications", {"fields": ["numero_texto", "courriel_reponse", "signature_messages"]}),
         ("Paiement Interac", {"fields": ["interac_courriel", "interac_instructions"]}),
     ]

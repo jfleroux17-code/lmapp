@@ -395,7 +395,7 @@ Décision : **V1 en app web installée sur l'écran d'accueil, mode « télépho
 - `Contrat` (client, adresse, saison, type, prix, services, échéancier de versements)
 - `Facture` (numéro, client, contrat ou passage, lignes, taxes, total, statut, PDF)
 - `Paiement` (facture, mode, montant, date, référence, reçu envoyé)
-- `SoldeOuverture` (client, montant, saison d'origine, note)
+- `SoldeOuverture` (client, montant, saison d'origine, note). **Fait autrement (8 novembre 2026)** : une `Facture` de genre « solde d'ouverture », sans taxes ni numéro de la série, pour que paiements, comptes à recevoir et relances la traitent comme les autres. `Saison`, `Service` (catalogue B4), `Contrat` et `Versement` (échéancier B3), `Facture`, `LigneFacture` et `Paiement` sont en place dans l'app `facturation`.
 - `Operation` (date, type, statut, opérateur)
 - `Passage` (opération, adresse, statut fait ou sauté, heure, note, photo)
 - `Message` (client, direction entrant ou sortant, canal texto ou courriel, contenu, statut, coût, lien vers passage ou facture)

@@ -50,6 +50,7 @@ Mise à jour : 8 novembre 2026.
 Questions de la section 10 du PRD, les plus importantes d'abord.
 
 - [x] **Taxes** : inscrit à la TPS et à la TVQ, numéros reçus (8 novembre 2026). Les factures auront les taxes.
+- [ ] **Numéro de facture** : quel est le dernier numéro utilisé dans son carnet papier? La numérotation de l'app continuera à partir du suivant (sinon elle commence à 1).
 - [ ] **Nom affiché** : ses factures portent « Les Entretiens Paysagers L.M. » (logo « Entretiens LM »). Proposé : nom légal sur les factures, et un nom que ses clients reconnaissent (ex. « Entretiens LM ») à l'écran et à la fin des textos. À confirmer.
 - [ ] **Prix** : contrat saisonnier, au passage, ou les deux? Combien de versements, à quelles dates?
 - [ ] **Clients** : combien d'actifs? Combien d'anciens clients lui doivent de l'argent, et à peu près combien en tout?
@@ -73,13 +74,14 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - [x] `/admin/` réservé aux IP de JF et HSTS, dans Caddy (7 novembre 2026). Pour l'instant : IP de la maison seulement.
 - [ ] Avant l'ouverture à toutes les IP, le reste : webhooks vérifiés par signature, balayage externe (PRD 6.1.1).
 - [x] Sauvegarde de la base (K3) toutes les 12 heures : en prod le 7 novembre 2026, test de restauration réussi.
+- [ ] Volet argent, étape 1 sur 5 : modèle (saisons, services, contrats et versements, factures, paiements, soldes d'ouverture) et administration. **En test le 8 novembre 2026**, prod à venir. Ensuite : PDF de la facture, écrans de Louis (facture au cellulaire, reçu comptant, Interac), comptes à recevoir, envois et relances (attendent Twilio et SMTP2GO).
 - [ ] Test de restauration chaque mois (`sh outils/tester_restauration.sh`), prochain vers le 7 décembre 2026.
 
 ### En attente
 
-- `Saison`, `Contrat`, `SoldeOuverture`, `Facture`, `Paiement` : réponses de Louis sur les taxes et les prix.
+- Prix et services de Louis (questions 4 et 5) : le modèle accepte saisonnier et au passage, 1 à 4 versements; ses réponses fixeront les valeurs par défaut.
 - Textos et courriels : comptes Twilio, SMTP2GO et boîte IMAP.
-- Import des prix et des soldes dus : modèles `Contrat` et `SoldeOuverture`.
+- Import des prix et des soldes dus : modèles `Contrat` et `Facture` (genre solde d'ouverture) prêts; colonnes à ajouter au gabarit d'import quand on aura son fichier.
 - Deuxième déneigeur (PRD section P) : déplacer `/admin/` vers une adresse neutre réservée à JF (proposé : `admin.ledeneigeur.com`), et documenter l'ajout d'un sous-domaine (Cloudflare, `Caddyfile`, `DJANGO_ALLOWED_HOSTS`, fiche `Entreprise`). Attend qu'il y ait un deuxième déneigeur.
 
 ## Fait

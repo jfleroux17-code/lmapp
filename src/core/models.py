@@ -57,6 +57,12 @@ class Entreprise(Horodate):
         validators=[MinValueValidator(0), MaxValueValidator(100)],
     )
 
+    # Numérotation des factures (C3) : séquentielle, sans trou, donnée à l'émission
+    prochain_numero_facture = models.PositiveIntegerField(
+        "numéro de la prochaine facture", default=1,
+        help_text="Pour continuer la numérotation du carnet papier, mettre ici le numéro qui suit le dernier utilisé.",
+    )
+
     # Communications (PRD E1, M2). Les clés API restent dans .env, jamais ici.
     numero_texto = models.CharField(
         "numéro de texto d'affaires", max_length=16, blank=True,

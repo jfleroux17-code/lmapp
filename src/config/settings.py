@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "procrastinate.contrib.django",
     "core",
     "clients",
+    "facturation",
     "terrain",
 ]
 
