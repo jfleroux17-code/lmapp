@@ -2,7 +2,7 @@
 
 **Application de gestion pour Louis Méthot Déneigement**
 Porteur du projet : Jean-François Leroux
-Date : 8 novembre 2026 (v1.8 : offre aux autres déneigeurs décidée par JF, section Q : tableau de bord de la plateforme, frais de base de 495 $ par année plus l'usage, arrivée de déneigeurs qui utilisent un logiciel concurrent, site Internet; boîtes courriel de 2 Go; v1.7 : contrat saisonnier seulement, versements de Louis, 2 par défaut, 3 possibles au-delà de 1 200 $; v1.6 : demandes de JF après son essai : bouton Annuler partout, visuel à revoir, clients modifiables dans l'app, correction de position au cellulaire, mode déneigeur seul ou équipe (A12, A13, K9, K10); v1.5 : Louis inscrit aux taxes, nom légal « Les Entretiens Paysagers L.M. », question 14 sur le nom affiché; v1.4 : multi-entreprise précisé en section P, une installation, une fiche par déneigeur, administration à une adresse neutre; v1.3 : phase 0 et prochaines étapes mises à jour, DNS, jeton Cloudflare, ouverture au routeur et comptes administrateur faits, netplan par MAC; v1.2 : Caddy dans un projet `edge` séparé, environnement de test en marche, vrais certificats Let's Encrypt par validation DNS, DNS `louis` et `test` en place; v1.1 : dépôt Git et pile Docker en marche sur `ld1` (validée sur le réseau interne), test sur `test.ledeneigeur.com`, ouverture au routeur filtrée par IP source, état du DNS Cloudflare et du disque en 6.1.1; v1.0 : sous-domaine louis.ledeneigeur.com, MAC dynamique, pas de port public au départ, CLAUDE.md déposé sur ld1; v0.9 : Claude Code réellement installé et connecté sur `ld1` (2.1.319); v0.8 : serveur `ld1` installé et sécurisé, IP fixe 172.16.4.100, état du serveur en 6.1.1; v0.7 : domaine ledeneigeur.com et découpage par sous-domaine; v0.6 : iPhone 17 Pro Max confirmé, décision de bâtir, SMTP2GO et boîte IMAP, hébergement sans frais, section O, specs de la VM)
+Date : 8 novembre 2026 (v1.9 : module voix avec Twilio et l'IA, section R, demandé par JF; v1.8 : offre aux autres déneigeurs décidée par JF, section Q : tableau de bord de la plateforme, frais de base de 495 $ par année plus l'usage, arrivée de déneigeurs qui utilisent un logiciel concurrent, site Internet; boîtes courriel de 2 Go; v1.7 : contrat saisonnier seulement, versements de Louis, 2 par défaut, 3 possibles au-delà de 1 200 $; v1.6 : demandes de JF après son essai : bouton Annuler partout, visuel à revoir, clients modifiables dans l'app, correction de position au cellulaire, mode déneigeur seul ou équipe (A12, A13, K9, K10); v1.5 : Louis inscrit aux taxes, nom légal « Les Entretiens Paysagers L.M. », question 14 sur le nom affiché; v1.4 : multi-entreprise précisé en section P, une installation, une fiche par déneigeur, administration à une adresse neutre; v1.3 : phase 0 et prochaines étapes mises à jour, DNS, jeton Cloudflare, ouverture au routeur et comptes administrateur faits, netplan par MAC; v1.2 : Caddy dans un projet `edge` séparé, environnement de test en marche, vrais certificats Let's Encrypt par validation DNS, DNS `louis` et `test` en place; v1.1 : dépôt Git et pile Docker en marche sur `ld1` (validée sur le réseau interne), test sur `test.ledeneigeur.com`, ouverture au routeur filtrée par IP source, état du DNS Cloudflare et du disque en 6.1.1; v1.0 : sous-domaine louis.ledeneigeur.com, MAC dynamique, pas de port public au départ, CLAUDE.md déposé sur ld1; v0.9 : Claude Code réellement installé et connecté sur `ld1` (2.1.319); v0.8 : serveur `ld1` installé et sécurisé, IP fixe 172.16.4.100, état du serveur en 6.1.1; v0.7 : domaine ledeneigeur.com et découpage par sous-domaine; v0.6 : iPhone 17 Pro Max confirmé, décision de bâtir, SMTP2GO et boîte IMAP, hébergement sans frais, section O, specs de la VM)
 Statut : brouillon à valider avant tout développement
 
 ---
@@ -151,7 +151,7 @@ Légende : **V1** = version de base, **V2** = saison suivante ou dès que V1 rou
 | E9 | Gabarits de messages (début de tempête, passage terminé, facture, rappel, fin de saison) modifiables | V1 |
 | E10 | Envoi groupé : à tous les clients, à un secteur, aux clients d'une route | V1 |
 | E11 | Gestion du désabonnement : un client qui texte ARRÊT ou STOP n'est plus sollicité pour le commercial, mais reçoit encore les avis de service | V1 |
-| E12 | Avis par appel vocal automatisé pour les clients sans cellulaire | Plus tard |
+| E12 | Avis par appel vocal automatisé pour les clients sans cellulaire | Plus tard (voir aussi la section R pour les appels reçus) |
 | E13 | Journal d'envoi : livré, échoué, coût par message | V2 |
 | E14 | Pièces jointes (photo d'un dommage, du passage) dans les textos et courriels | V2 |
 
@@ -263,6 +263,39 @@ Objectif : pendant une tempête, Louis conduit. Les clients textent « vous pass
 | O9 | Création automatique d'une demande de service (H1) à partir d'un message classé « plainte » ou « demande de service » | Plus tard |
 
 Technologie : API Claude (Anthropic) appelée par le worker en arrière-plan, avec le dossier du client (statut, solde, prochains passages, gabarits approuvés) fourni en contexte et des consignes strictes en français québécois. Coût estimé : quelques dollars par mois au volume de Louis. Garde-fous : jamais d'engagement sur une heure précise, jamais de prix ni de rabais, jamais de réponse sur un dossier en recouvrement sans Louis, limite du nombre de réponses automatiques par client par jour.
+
+### R. Module voix : appels reçus sur le numéro Twilio, traités avec l'IA (demandé par JF, 8 novembre 2026)
+
+Objectif : le numéro d'affaires (Twilio, ex. 450-300-1166 pour Louis) reçoit aussi les **appels**. Un assistant vocal répond quand le déneigeur ne peut pas (en tempête, il conduit), comprend la raison de l'appel, recueille ce qu'il faut et le dépose dans l'app comme une demande à traiter, sans jamais prendre d'engagement à la place du déneigeur. Module **optionnel par entreprise**, facturé à l'usage (minutes d'appel, dans le tableau de bord Q1).
+
+**Types d'appels de départ** (liste à faire évoluer avec les vrais appels) :
+
+| Type | Ce que l'assistant fait | Ce qu'il ne fait jamais |
+|---|---|---|
+| Nouveau client qui veut un prix | Recueille nom, adresse, services voulus, cellulaire et courriel; crée un prospect; dit que le déneigeur rappellera avec une proposition | Donner un prix ou un rabais |
+| Client insatisfait, plainte | Écoute, recueille les faits (date, adresse, ce qui ne va pas), dossier de plainte (H), avis immédiat au déneigeur | Promettre un remboursement, un geste, une heure |
+| Modifier son contrat | Note la demande (services, versements, adresse) pour le déneigeur | Modifier le contrat lui-même |
+| Oublié dans la dernière tournée | Vérifie le passage de son adresse dans l'opération (F5); si aucun passage « fait », demande urgente et texto au déneigeur | Promettre une heure de passage |
+| Facture perdue | Si l'appelant est reconnu (numéro du dossier) et confirme son adresse : renvoie la facture ou le solde par courriel ou texto | Lire un solde ou envoyer un document à un appelant non reconnu |
+| Reporter un versement, difficultés financières | Écoute avec tact, note la demande et la date souhaitée, dossier pour le déneigeur | Accepter ou refuser le report |
+| « Vous passez quand? » | Si une opération est en cours : dit qu'elle est en cours et où en est la tournée, sans heure précise | Donner une heure |
+| Autre, ou le client demande un humain | Message vocal transcrit pour le déneigeur, ou transfert à son cellulaire s'il l'a permis | Insister |
+
+**Déroulement d'un appel** : annonce au début (« assistant automatisé; l'appel est transcrit pour le déneigeur »), avec le choix de laisser plutôt un message ou d'être transféré; appelant reconnu par son numéro (E.164, même rattachement que les textos E4), sinon traité comme inconnu; raison de l'appel comprise par l'IA (mêmes catégories que O1); questions de suivi courtes; résumé répété à l'appelant pour confirmer; texto de récapitulation à l'appelant s'il a un cellulaire; demande créée dans l'app (H1, H2) avec la transcription, et avis au déneigeur (texto ou notification), immédiat pour une plainte, un oubli ou un dommage.
+
+**Technologie, par étapes** :
+
+| Code | Étape | Technologie |
+|---|---|---|
+| R1 | Messagerie vocale intelligente : message enregistré, transcrit, classé par l'IA, déposé comme demande dans la fiche, texto au déneigeur | Twilio Voice (`<Record>`, transcription), API Claude pour classer et résumer |
+| R2 | Assistant qui pose les questions de suivi selon le type d'appel, tour par tour | Twilio `<Gather input="speech">` en français canadien, API Claude pour comprendre et choisir la question suivante, synthèse vocale de Twilio |
+| R3 | Actions sûres faites pendant l'appel pour un appelant reconnu : renvoi de facture, état de la tournée | Comme R2, avec les fonctions de l'app (mêmes règles que O3) |
+| R4 | Conversation naturelle (sans « après le bip ») | Twilio ConversationRelay (voix en flux continu vers l'app), quand R2 aura fait ses preuves |
+| R5 | Transfert au cellulaire du déneigeur selon ses heures et son choix, avec résumé chuchoté avant de prendre l'appel | Twilio `<Dial>` |
+
+**Garde-fous** (mêmes principes que la section O) : aucun engagement (prix, rabais, heure, modification de contrat, report de versement), escalade au déneigeur pour tout ce qui demande un jugement; aucune information du dossier à un appelant non reconnu; annonce claire de l'assistant automatisé et de la transcription (Loi 25), possibilité de refuser; enregistrements et transcriptions conservés 90 jours (à confirmer), puis effacés, le résumé restant dans la demande; journal de chaque appel (type, durée, ce que l'assistant a fait) pour ajuster les consignes; mention dans la politique de confidentialité et le contrat de service (Q7).
+
+**Préalables** : webhooks Twilio joignables depuis Internet (le 443 est aujourd'hui limité à `_SLAPP` au routeur; ouverture avec vérification de la signature `X-Twilio-Signature`, comme pour la réception des textos); modèle des demandes (H1, H2) et classification (O1), partagés avec les textos et courriels; clé de l'API Claude dans `.env`. Coûts à mesurer sur de vrais appels (minutes Twilio, reconnaissance vocale, API Claude), puis intégrés aux frais d'usage (Q2).
 
 ### P. Hors de la portée du projet (pour être clair)
 - Opérations d'été (tonte, aménagement).

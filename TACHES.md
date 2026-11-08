@@ -51,6 +51,7 @@ Mise à jour : 8 novembre 2026.
 - [ ] Trancher les fonctionnalités V1 dans le catalogue du PRD (section 5), au besoin.
 - [ ] Offre aux autres déneigeurs (PRD section Q) : fixer les **tarifs d'usage** (prix par courriel, par segment de texto) en plus des 495 $ par année. Le tableau de bord `/admin/plateforme/` donne déjà les quantités par mois.
 - [ ] Site Internet (Q5) : choisir le **nom du produit** affiché aux déneigeurs (proposé : « Le Déneigeur », comme le domaine), l'adresse de contact, et dire ce qui est hébergé aujourd'hui à la racine de `ledeneigeur.com` (proxy Cloudflare vers 69.16.231.58) avant qu'on la remplace.
+- [ ] Module voix (PRD section R) : confirmer les types d'appels et l'ordre des étapes (R1 messagerie vocale intelligente d'abord), la durée de conservation des enregistrements (90 jours proposé), et si le transfert au cellulaire de Louis est voulu. Préalable commun avec la réception des textos : ouvrir le 443 aux webhooks de Twilio (décision réseau). Clé de l'API Claude à créer pour l'IA.
 - [ ] Contrat de service avec les déneigeurs (Q7) : Loi 25 (JF sous-traitant), LCAP, fin de contrat. Avec un juriste au besoin.
 
 ## Louis
