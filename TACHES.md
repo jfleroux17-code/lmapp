@@ -52,7 +52,8 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - [x] **Taxes** : inscrit à la TPS et à la TVQ, numéros reçus (8 novembre 2026). Les factures auront les taxes.
 - [ ] **Numéro de facture** : quel est le dernier numéro utilisé dans son carnet papier? La numérotation de l'app continuera à partir du suivant (sinon elle commence à 1).
 - [ ] **Nom affiché** : ses factures portent « Les Entretiens Paysagers L.M. » (logo « Entretiens LM »). Proposé : nom légal sur les factures, et un nom que ses clients reconnaissent (ex. « Entretiens LM ») à l'écran et à la fin des textos. À confirmer.
-- [ ] **Prix** : contrat saisonnier, au passage, ou les deux? Combien de versements, à quelles dates?
+- [x] **Versements** (8 novembre 2026) : contrat saisonnier en 2 versements égaux, le 1er novembre et entre la mi-janvier et la fin de janvier; 3e versement possible pour les contrats de plus de 1 200 $ par saison.
+- [ ] **Reste sur les prix** : facture-t-il aussi au passage? Date exacte du 2e versement (fixe ou au cas par cas)? Dates d'un échéancier en 3 versements? (Louis rappelle JF le 9 novembre.)
 - [ ] **Clients** : combien d'actifs? Combien d'anciens clients lui doivent de l'argent, et à peu près combien en tout?
 - [ ] **Sa liste de clients** dans le gabarit, ou en photos de ses papiers (noms, adresses, cellulaires, prix entendus, montants dus).
 - [ ] **Services** : entrée seulement, ou aussi bordage de la ville, pelletage, abrasif, toitures?
