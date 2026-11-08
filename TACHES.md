@@ -110,7 +110,7 @@ Après son essai des écrans. Une étape à la fois, chacune en test, montrée �
 - [x] Tableau de bord de la plateforme (Q1, `/admin/plateforme/`, superutilisateur seulement) : **en prod le 8 novembre 2026** (boîte de Louis : 0,2 Mo sur 2 Go). Segments de textos comptés à l'envoi, quota de la boîte lu à chaque passage.
 - [ ] Site Internet de présentation (Q5) : site statique dans le dépôt, aperçu sur un sous-domaine réservé à JF, puis mise en ligne sur `ledeneigeur.com` avec son « go ».
 - [ ] Arrivée d'un déneigeur venant d'un logiciel concurrent (Q3) : ~~correspondance des colonnes à l'import~~ (fait le 8 novembre 2026 : entêtes anglais reconnus, `--depuis <logiciel>`, `--correspondance`). Reste : un fichier de correspondance par logiciel, à faire avec un vrai export en main.
-- [ ] Ajout d'un déneigeur en quelques minutes (Q4) et administration à `admin.ledeneigeur.com` (Q6), avant le 2e déneigeur.
+- [ ] Ajout d'un déneigeur en quelques minutes (Q4) : ~~commande~~ `ajouter_deneigeur` faite le 8 novembre 2026 (en test). Reste avant le 2e déneigeur : l'administration à `admin.ledeneigeur.com` (Q6, demande un enregistrement DNS et un bloc Caddy : « go » de JF).
 - [ ] Facturation des entreprises par l'app (Q2), quand les tarifs seront fixés.
 - [ ] Test de restauration chaque mois (`sh outils/tester_restauration.sh`), prochain vers le 7 décembre 2026.
 

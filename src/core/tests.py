@@ -126,3 +126,34 @@ class PlateformeTests(TestCase):
         csv = self.client.get("/admin/plateforme/?format=csv")
         self.assertEqual(csv["Content-Type"], "text/csv; charset=utf-8")
         self.assertIn("Louis;louis;2;1;1;2", csv.content.decode("utf-8-sig"))
+
+
+class AjouterDeneigeurTests(TestCase):
+    def appeler(self, *args):
+        from io import StringIO
+        from django.core.management import call_command
+        sortie = StringIO()
+        call_command("ajouter_deneigeur", *args, stdout=sortie)
+        return sortie.getvalue()
+
+    def test_essai_a_blanc_puis_creation(self):
+        from core.models import Membre, VilleDesservie
+        base = ["martin", "--nom", "Déneigement Martin", "--ville", "Saint-Sauveur", "--utilisateur", "martin"]
+        self.assertIn("ESSAI À BLANC", self.appeler(*base))
+        self.assertFalse(Entreprise.objects.filter(slug="martin").exists())
+        sortie = self.appeler(*base, "--appliquer")
+        e = Entreprise.objects.get(slug="martin")
+        self.assertEqual((e.domaine, e.courriel_reponse, e.envois_actifs, e.mode), ("martin.ledeneigeur.com", "martin@ledeneigeur.com", False, "seul"))
+        self.assertTrue(VilleDesservie.objects.get(entreprise=e).par_defaut)
+        m = Membre.objects.get(entreprise=e)
+        self.assertEqual((m.utilisateur.username, m.role, m.utilisateur.has_usable_password()), ("martin", "admin", False))
+        self.assertIn("reverse_proxy lmapp-prod-app:8000", sortie)
+        self.assertIn("changepassword martin", sortie)
+
+    def test_refus(self):
+        from django.core.management.base import CommandError
+        with self.assertRaisesMessage(CommandError, "minuscules"):
+            self.appeler("Martin Gagné", "--nom", "x", "--ville", "x", "--utilisateur", "x")
+        Entreprise.objects.create(nom="Louis", slug="louis", domaine="louis.ledeneigeur.com")
+        with self.assertRaisesMessage(CommandError, "existe déjà"):
+            self.appeler("louis", "--nom", "x", "--ville", "x", "--utilisateur", "x", "--appliquer")
