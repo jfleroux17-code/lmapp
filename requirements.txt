@@ -6,3 +6,7 @@ gunicorn==26.2.0
 whitenoise==6.12.0
 weasyprint==70.0
 openpyxl==3.1.5
+# Notifications sur le cellulaire de Louis (Web Push, PRD E8) : chiffrement aes128gcm et signature VAPID
+cryptography==50.0.2
+http-ece==1.2.1
+py-vapid==1.9.6

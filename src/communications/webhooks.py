@@ -67,6 +67,9 @@ def texto_recu(request):
     medias = int(request.POST.get("NumMedia", "0") or 0)
     if medias:
         corps += f"\n\n[{medias} photo{'s' if medias > 1 else ''} ou pièce{'s' if medias > 1 else ''} jointe{'s' if medias > 1 else ''} : à voir dans la console Twilio]"
+    from core.tasks import notifier_plus_tard
+
+    notifier_plus_tard(ent.pk, f"Texto de {client.nom_affiche if client else telephone.afficher(de)}", corps[:150] or "(texto vide)", "/messages/?vue=recus")
     Message.objects.create(entreprise=ent, client=client, genre=Genre.RECU, canal=Message.Canal.TEXTO, sens=Message.Sens.ENTRANT,
                            statut=Message.Statut.RECU, lu=False, expediteur=de, destinataire=a, contenu=corps or "(texto vide)",
                            message_id_externe=f"twilio:{sid}" if sid else "", envoye_le=timezone.now(), fournisseur_id=sid)

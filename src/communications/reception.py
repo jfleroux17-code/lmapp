@@ -108,6 +108,10 @@ def traiter(entreprise, octets):
         destinataire=", ".join(a for _, a in getaddresses([str(msg.get("To", ""))]))[:254], sujet=sujet,
         contenu=contenu or "(message vide)", reponse_a=origine, message_id_externe=mid, envoye_le=date,
     )
+    from core.tasks import notifier_plus_tard
+    from facturation.templatetags.argent import argent
+
+    v = None
     if avis_interac:  # D5 : virement à confirmer (écran Virements), pas un message à lire
         v = interac.creer(entreprise, m, sujet, corps)
         if v is None:  # montant illisible : Louis le voit comme un message ordinaire
@@ -116,6 +120,12 @@ def traiter(entreprise, octets):
         elif v.client_id and not m.client_id:
             Message.objects.filter(pk=m.pk).update(client=v.client)
             m.client = v.client
+    if v is not None:  # E8
+        envoyeur = v.envoyeur or "quelqu'un"
+        notifier_plus_tard(entreprise.pk, f"Virement Interac : {argent(v.montant)}", f"De {envoyeur} : à confirmer.", "/virements/")
+    else:
+        qui = m.client.nom_affiche if m.client else expediteur
+        notifier_plus_tard(entreprise.pk, f"Courriel de {qui}", sujet or contenu[:120], f"/messages/{m.pk}/")
     return m
 
 

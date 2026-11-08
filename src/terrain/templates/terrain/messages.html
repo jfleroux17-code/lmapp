@@ -3,6 +3,51 @@
 {% block contenu %}
 <div class="mb-3 flex items-center justify-between gap-3"><h1 class="text-2xl font-bold">Messages</h1><a href="{% url 'terrain:demandes' %}" class="flex min-h-12 items-center text-accent">Demandes ›</a></div>
 <a href="{% url 'terrain:envoi_groupe' %}" class="gros-bouton mb-4 border-2 border-bordure">Écrire à plusieurs clients</a>
+{% if cle_vapid %}
+<script>
+  // E8 : notifications sur ce cellulaire (Web Push). iPhone : seulement une fois l'app ajoutée à l'écran d'accueil.
+  window.notifications = (cle, adresse, jeton) => ({
+    etat: "inconnu", abonnement: null,
+    async init() {
+      const ios = /iPhone|iPad/.test(navigator.userAgent), installee = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+        this.etat = ios && !installee ? "installer" : "impossible"; return;
+      }
+      const reg = await navigator.serviceWorker.ready;
+      this.abonnement = await reg.pushManager.getSubscription();
+      this.etat = this.abonnement ? "actif" : (Notification.permission === "denied" ? "bloque" : "inactif");
+    },
+    cleBinaire() {
+      const b = atob((cle + "=".repeat((4 - cle.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
+      return Uint8Array.from(b, (c) => c.charCodeAt(0));
+    },
+    async envoyer(methode, abonnement) {
+      await fetch(adresse, { method: methode, headers: { "Content-Type": "application/json", "X-CSRFToken": jeton }, body: JSON.stringify(abonnement) });
+    },
+    async activer() {
+      if (await Notification.requestPermission() !== "granted") { this.etat = "bloque"; return; }
+      const reg = await navigator.serviceWorker.ready;
+      this.abonnement = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: this.cleBinaire() });
+      await this.envoyer("POST", this.abonnement.toJSON());
+      this.etat = "actif";
+    },
+    async desactiver() {
+      if (this.abonnement) { await this.envoyer("DELETE", this.abonnement.toJSON()); await this.abonnement.unsubscribe(); }
+      this.abonnement = null; this.etat = "inactif";
+    },
+  });
+</script>
+<div class="carte mb-4 p-4" x-data="notifications('{{ cle_vapid }}', '{% url 'terrain:abonnement_notifications' %}', '{{ csrf_token }}')" x-show="etat !== 'inconnu'" x-cloak>
+  <div class="mb-2 font-semibold">Notifications sur ce cellulaire</div>
+  <p class="mb-3 text-sm text-gray-400" x-show="etat === 'actif'">Activées : un avis quand un client écrit ou qu'un virement Interac arrive.</p>
+  <p class="mb-3 text-sm text-gray-400" x-show="etat === 'inactif'">Être averti quand un client écrit ou qu'un virement Interac arrive.</p>
+  <p class="text-sm text-gray-400" x-show="etat === 'installer'">Sur iPhone : touchez Partager, puis « Sur l'écran d'accueil », et ouvrez l'app de là pour activer les notifications.</p>
+  <p class="text-sm text-gray-400" x-show="etat === 'bloque'">Refusées : à permettre dans les réglages du téléphone (Notifications), puis revenir ici.</p>
+  <p class="text-sm text-gray-400" x-show="etat === 'impossible'">Ce navigateur ne reçoit pas de notifications.</p>
+  <button type="button" class="gros-bouton border-2 border-accent text-accent" x-show="etat === 'inactif'" @click="activer()">Activer les notifications</button>
+  <button type="button" class="gros-bouton border-2 border-bordure text-gray-300" x-show="etat === 'actif'" @click="desactiver()">Désactiver</button>
+</div>
+{% endif %}
 <div class="mb-4 grid grid-cols-2 gap-2">
   <a href="?vue=recus" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if vue == 'recus' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Reçus{% if non_lus %} ({{ non_lus }}){% endif %}</a>
   <a href="?vue=envoyes" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if vue == 'envoyes' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Envoyés</a>

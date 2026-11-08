@@ -160,3 +160,32 @@ def service_worker(request):
     r["Cache-Control"] = "no-cache"
     r["Service-Worker-Allowed"] = "/"
     return r
+
+
+@membre_requis
+def abonner_notifications(request):
+    """E8 : le cellulaire s'abonne (POST JSON du navigateur : endpoint et clés) ou se désabonne (DELETE)."""
+    import json
+
+    from django.http import HttpResponseBadRequest, JsonResponse
+
+    from core.models import AbonnementNotification
+
+    try:
+        d = json.loads(request.body or b"{}")
+        endpoint = d["endpoint"]
+    except (ValueError, KeyError):
+        return HttpResponseBadRequest("Abonnement illisible.")
+    if request.method == "DELETE":
+        AbonnementNotification.objects.filter(endpoint=endpoint, utilisateur=request.user).delete()
+        return JsonResponse({"ok": True})
+    if request.method != "POST" or not endpoint.startswith("https://"):
+        return HttpResponseBadRequest("Abonnement illisible.")
+    try:
+        cles = d["keys"]
+        AbonnementNotification.objects.update_or_create(endpoint=endpoint[:1000], defaults={
+            "utilisateur": request.user, "entreprise": request.entreprise, "p256dh": cles["p256dh"][:200], "auth": cles["auth"][:100],
+            "appareil": request.headers.get("User-Agent", "")[:200]})
+    except (KeyError, TypeError):
+        return HttpResponseBadRequest("Abonnement illisible.")
+    return JsonResponse({"ok": True})

@@ -217,3 +217,23 @@ class EchecConnexion(models.Model):
 
     def __str__(self):
         return f"{self.moment:%Y-%m-%d %H:%M} {self.nom_utilisateur} ({self.ip})"
+
+
+class AbonnementNotification(models.Model):
+    """Un cellulaire (ou navigateur) qui reçoit les notifications de l'app (PRD E8, Web Push).
+    Sur iPhone : seulement si l'app est ajoutée à l'écran d'accueil."""
+    utilisateur = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="abonnements_notification")
+    entreprise = models.ForeignKey(Entreprise, on_delete=models.CASCADE, related_name="abonnements_notification")
+    endpoint = models.URLField(max_length=1000, unique=True)
+    p256dh = models.CharField(max_length=200)
+    auth = models.CharField(max_length=100)
+    appareil = models.CharField(max_length=200, blank=True)
+    cree_le = models.DateTimeField(auto_now_add=True)
+    dernier_envoi = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "abonnement aux notifications"
+        verbose_name_plural = "abonnements aux notifications"
+
+    def __str__(self):
+        return f"{self.utilisateur} ({self.appareil[:40]})"

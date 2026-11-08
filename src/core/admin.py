@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.gis.geos import Point
 
-from core.models import EchecConnexion, Entreprise, Membre, VilleDesservie
+from core.models import AbonnementNotification, EchecConnexion, Entreprise, Membre, VilleDesservie
 
 _titre = "LMAPP : administration"
 if settings.LMAPP_ENV != "prod":
@@ -92,3 +92,10 @@ class EchecConnexionAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+@admin.register(AbonnementNotification)
+class AbonnementNotificationAdmin(admin.ModelAdmin):
+    list_display = ["utilisateur", "entreprise", "appareil", "cree_le", "dernier_envoi"]
+    list_filter = ["entreprise"]
+    readonly_fields = ["endpoint", "p256dh", "auth", "appareil", "cree_le", "dernier_envoi"]

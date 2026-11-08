@@ -51,4 +51,5 @@ urlpatterns = [
     path("manifest.webmanifest", views.manifeste, name="manifeste"),
     path("favicon.ico", views.favicon, name="favicon"),
     path("sw.js", views.service_worker, name="service_worker"),
+    path("notifications/abonnement/", views.abonner_notifications, name="abonnement_notifications"),
 ]

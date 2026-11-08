@@ -170,3 +170,97 @@ class AdminNeutreTests(TestCase):
             self.assertEqual(self.client.get("/admin/plateforme/", HTTP_HOST="louis.exemple.test").status_code, 404)
             self.assertEqual(self.client.get("/admin/", HTTP_HOST="admin.exemple.test").status_code, 200)
             self.assertEqual(self.client.get("/sante/", HTTP_HOST="louis.exemple.test").status_code, 200)
+
+
+class NotificationsTests(TestCase):
+    """E8 : Web Push. Chiffrement vérifié en le déchiffrant comme le ferait le téléphone."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from core.models import Membre
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai", domaine="essai.exemple.test")
+        U = get_user_model()
+        cls.louis = U.objects.create_user("louis", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="operateur")
+        cls.lecteur = U.objects.create_user("lecteur", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.lecteur, entreprise=cls.ent, role="lecture")
+
+    def setUp(self):
+        from core.notifications import nouvelles_cles
+        self.prive, self.public = nouvelles_cles()
+
+    def _telephone(self):
+        """Clés d'un faux téléphone abonné."""
+        import base64, os
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+        cle = ec.generate_private_key(ec.SECP256R1())
+        b = lambda o: base64.urlsafe_b64encode(o).decode().rstrip("=")  # noqa: E731
+        pub = cle.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)
+        return cle, os.urandom(16), b(pub)
+
+    def test_chiffrement_et_envoi(self):
+        import json
+        from unittest import mock
+        import http_ece
+        from core import notifications
+        from core.models import AbonnementNotification
+        cle_tel, auth, p256dh = self._telephone()
+        import base64
+        a = AbonnementNotification.objects.create(utilisateur=self.louis, entreprise=self.ent, endpoint="https://push.exemple.test/abc",
+                                                  p256dh=p256dh, auth=base64.urlsafe_b64encode(auth).decode().rstrip("="))
+        with override_settings(VAPID_CLE_PRIVEE=self.prive, VAPID_CLE_PUBLIQUE=self.public), \
+             mock.patch("core.notifications.urlopen") as u:
+            self.assertTrue(notifications.envoyer(a, "Courriel de Tremblay", "Je paie demain", "/messages/1/"))
+        req = u.call_args.args[0]
+        self.assertEqual((req.full_url, req.get_header("Content-encoding"), req.get_header("Ttl")), ("https://push.exemple.test/abc", "aes128gcm", "86400"))
+        self.assertTrue(req.get_header("Authorization").startswith("vapid t="))
+        clair = http_ece.decrypt(req.data, private_key=cle_tel, auth_secret=auth, version="aes128gcm")
+        self.assertEqual(json.loads(clair), {"titre": "Courriel de Tremblay", "corps": "Je paie demain", "url": "/messages/1/"})
+        a.refresh_from_db()
+        self.assertIsNotNone(a.dernier_envoi)
+
+    def test_abonnement_expire_efface(self):
+        import io
+        from unittest import mock
+        from urllib.error import HTTPError
+        from core import notifications
+        from core.models import AbonnementNotification
+        _, _, p256dh = self._telephone()
+        a = AbonnementNotification.objects.create(utilisateur=self.louis, entreprise=self.ent, endpoint="https://push.exemple.test/x",
+                                                  p256dh=p256dh, auth="AAAAAAAAAAAAAAAAAAAAAA")
+        with override_settings(VAPID_CLE_PRIVEE=self.prive, VAPID_CLE_PUBLIQUE=self.public), \
+             mock.patch("core.notifications.urlopen", side_effect=HTTPError("u", 410, "Gone", {}, io.BytesIO(b""))):
+            self.assertFalse(notifications.envoyer(a, "t", "c"))
+        self.assertFalse(AbonnementNotification.objects.exists())
+
+    def test_tache_pas_pour_la_lecture_seule(self):
+        from unittest import mock
+        from core.models import AbonnementNotification
+        from core.tasks import notifier
+        _, _, p256dh = self._telephone()
+        AbonnementNotification.objects.create(utilisateur=self.louis, entreprise=self.ent, endpoint="https://push.exemple.test/1", p256dh=p256dh, auth="AA")
+        AbonnementNotification.objects.create(utilisateur=self.lecteur, entreprise=self.ent, endpoint="https://push.exemple.test/2", p256dh=p256dh, auth="AA")
+        with override_settings(VAPID_CLE_PRIVEE=self.prive, VAPID_CLE_PUBLIQUE=self.public), \
+             mock.patch("core.notifications.envoyer", return_value=True) as e:
+            self.assertEqual(notifier.func(self.ent.pk, "t", "c"), 1)
+        self.assertEqual(e.call_args.args[0].endpoint, "https://push.exemple.test/1")
+        with override_settings(VAPID_CLE_PRIVEE=""):
+            self.assertEqual(notifier.func(self.ent.pk, "t", "c"), 0)
+
+    @override_settings(ALLOWED_HOSTS=["*"])
+    def test_abonnement_par_le_navigateur(self):
+        import json
+        from core.models import AbonnementNotification
+        self.client.defaults["HTTP_HOST"] = "essai.exemple.test"
+        self.client.force_login(self.louis)
+        corps = {"endpoint": "https://web.push.apple.com/abc", "keys": {"p256dh": "BXYZ", "auth": "AUTH"}}
+        r = self.client.post("/notifications/abonnement/", json.dumps(corps), content_type="application/json")
+        self.assertEqual(r.status_code, 200)
+        a = AbonnementNotification.objects.get()
+        self.assertEqual((a.utilisateur, a.entreprise, a.auth), (self.louis, self.ent, "AUTH"))
+        self.assertEqual(self.client.post("/notifications/abonnement/", "{}", content_type="application/json").status_code, 400)
+        self.client.generic("DELETE", "/notifications/abonnement/", json.dumps({"endpoint": "https://web.push.apple.com/abc"}), content_type="application/json")
+        self.assertFalse(AbonnementNotification.objects.exists())
+        with override_settings(VAPID_CLE_PUBLIQUE="CLE"):
+            self.assertContains(self.client.get("/messages/"), "Notifications sur ce cellulaire")

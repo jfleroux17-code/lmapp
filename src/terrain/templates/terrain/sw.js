@@ -44,3 +44,20 @@ self.addEventListener("fetch", (e) => {
       { headers: { "Content-Type": "text/html; charset=utf-8" } }))));
   }
 });
+
+// Notifications (E8) : un client a écrit, un virement Interac est arrivé
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { corps: e.data ? e.data.text() : "" }; }
+  e.waitUntil(self.registration.showNotification(d.titre || "Le Déneigeur", {
+    body: d.corps || "", data: { url: d.url || "/" }, icon: "/static/icones/icone-192.png", badge: "/static/icones/icone-192.png",
+  }));
+});
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || "/";
+  e.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then((fenetres) => {
+    for (const f of fenetres) { if ("focus" in f) { f.navigate(url); return f.focus(); } }
+    return clients.openWindow(url);
+  }));
+});

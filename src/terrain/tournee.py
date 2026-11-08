@@ -216,7 +216,9 @@ def liste_messages(request):
         liste = recus.order_by("lu", "-cree_le")[:100]
     else:
         vue, liste = "envoyes", base.filter(sens=Message.Sens.SORTANT)[:100]
-    return render(request, "terrain/messages.html", {"liste": liste, "vue": vue})
+    from django.conf import settings
+
+    return render(request, "terrain/messages.html", {"liste": liste, "vue": vue, "cle_vapid": settings.VAPID_CLE_PUBLIQUE})
 
 
 @membre_requis

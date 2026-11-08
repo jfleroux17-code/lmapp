@@ -33,6 +33,11 @@ LMAPP_ENV = env("LMAPP_ENV", "test")
 # Hors prod, les seuls destinataires permis d'un envoi réel (cellulaires +1..., courriels de JF), séparés par des virgules
 LMAPP_DESTINATAIRES_TEST = env_liste("LMAPP_DESTINATAIRES_TEST", "")
 
+# Notifications sur le cellulaire (Web Push, PRD E8) : clés produites par `manage.py cles_vapid`
+VAPID_CLE_PRIVEE = env("VAPID_CLE_PRIVEE", "")
+VAPID_CLE_PUBLIQUE = env("VAPID_CLE_PUBLIQUE", "")
+VAPID_SUJET = env("VAPID_SUJET", "https://ledeneigeur.com")
+
 # Twilio (textos, PRD M1). Le numéro d'envoi est celui de l'entreprise (Entreprise.numero_texto).
 TWILIO_ACCOUNT_SID = env("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = env("TWILIO_AUTH_TOKEN", "")
