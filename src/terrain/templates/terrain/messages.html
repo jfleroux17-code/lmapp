@@ -2,6 +2,7 @@
 {% block titre %}Messages{% endblock %}
 {% block contenu %}
 <div class="mb-3 flex items-center justify-between gap-3"><h1 class="text-2xl font-bold">Messages</h1><a href="{% url 'terrain:demandes' %}" class="flex min-h-12 items-center text-accent">Demandes ›</a></div>
+<a href="{% url 'terrain:envoi_groupe' %}" class="gros-bouton mb-4 border-2 border-bordure">Écrire à plusieurs clients</a>
 <div class="mb-4 grid grid-cols-2 gap-2">
   <a href="?vue=recus" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if vue == 'recus' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Reçus{% if non_lus %} ({{ non_lus }}){% endif %}</a>
   <a href="?vue=envoyes" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if vue == 'envoyes' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Envoyés</a>

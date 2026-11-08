@@ -229,3 +229,34 @@ class ModifierClientsTests(TestCase):
         self.assertEqual(self.a.position_source, "manuelle")
         r = self.client.post(f"/adresses/{self.a.pk}/position/", {"lat": "abc", "lng": "-74"}, follow=True)
         self.assertContains(r, "Position illisible")
+
+
+@override_settings(ALLOWED_HOSTS=["*"], LMAPP_ENV="test", LMAPP_DESTINATAIRES_TEST=["+14505550101", "t@example.com"],
+                   TWILIO_ACCOUNT_SID="AC", TWILIO_AUTH_TOKEN="x", SMTP_HOTE="smtp", IMAP_UTILISATEUR="louis@exemple.test", IMAP_MOT_DE_PASSE="x")
+class EcrireTests(TestCase):
+    """E2, E3 : écrire à un client depuis sa fiche."""
+
+    def test_texto_et_courriel(self):
+        from unittest import mock
+        from clients.models import Client
+        from communications.models import Message
+        from core.models import Membre
+        ent = Entreprise.objects.create(nom="Essai", slug="essai", domaine="essai.exemple.test", envois_actifs=True,
+                                        numero_texto="+14503001166", courriel_reponse="louis@exemple.test", signature_messages="Essai, 450 555-0100")
+        c = Client.objects.create(entreprise=ent, nom="Tremblay", cellulaire="+14505550101", courriel="t@example.com", canal_prefere="courriel")
+        u = get_user_model().objects.create_user("operateur", password="x" * 12)
+        Membre.objects.create(utilisateur=u, entreprise=ent, role="operateur")
+        Entreprise.objects.filter(pk=ent.pk).update(mode="equipe")  # opérateur d'une équipe : peut écrire, pas modifier
+        self.client.defaults["HTTP_HOST"] = "essai.exemple.test"
+        self.client.force_login(u)
+        page = self.client.get(f"/clients/{c.pk}/ecrire/")
+        self.assertEqual(page.context["choisi"], "courriel")
+        with mock.patch("communications.tasks.envoyer_message.defer"):
+            r = self.client.post(f"/clients/{c.pk}/ecrire/", {"canal": "texto", "texte": "On passe vers 8 h."}, follow=True)
+            self.assertContains(r, "Message en route vers +14505550101.")
+            self.client.post(f"/clients/{c.pk}/ecrire/", {"canal": "courriel", "texte": "Bonjour", "sujet": "Votre entrée"})
+        t, m = Message.objects.order_by("pk")
+        self.assertEqual((t.canal, t.contenu), ("texto", "On passe vers 8 h.\n\nEssai, 450 555-0100"))
+        self.assertEqual((m.canal, m.sujet, m.statut), ("courriel", "Votre entrée", "en_file"))
+        r = self.client.post(f"/clients/{c.pk}/ecrire/", {"canal": "texto", "texte": ""}, follow=True)
+        self.assertEqual(Message.objects.count(), 2)

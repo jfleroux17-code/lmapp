@@ -311,3 +311,33 @@ def a_collecter(request):
     return render(request, "terrain/tournee/a_collecter.html", {
         "lignes": lignes, "total": sum((l["du"] for l in lignes), 0), "operation": op,
     })
+
+
+@ecriture_requise
+def envoi_groupe(request):
+    """E10 : écrire à tous les clients servis ou à un secteur. Aperçu (nombre de destinataires), puis envoi."""
+    from communications import groupes
+
+    ent = request.entreprise
+    secteurs = list(Secteur.objects.filter(entreprise=ent).order_by("ordre", "nom"))
+    secteur = next((s for s in secteurs if str(s.pk) == request.POST.get("secteur")), None)
+    commercial = request.POST.get("sorte") == "commercial"
+    texte, sujet = request.POST.get("texte", "").strip(), request.POST.get("sujet", "").strip()[:200]
+    contexte = {"secteurs": secteurs, "secteur": secteur, "commercial": commercial, "texte": texte, "sujet": sujet}
+    if request.method == "POST":
+        joignables, sans_contact = groupes.destinataires(ent, secteur, commercial)
+        contexte.update({"apercu": True, "nombre": len(joignables), "sans_contact": sans_contact,
+                         "textos": sum(1 for _, c in joignables if c == Message.Canal.TEXTO),
+                         "courriels": sum(1 for _, c in joignables if c == Message.Canal.COURRIEL)})
+        if not texte:
+            messages.error(request, "Écrire le message.")
+            contexte["apercu"] = False
+        elif request.POST.get("action") == "envoyer":
+            envoyes = groupes.envoyer(ent, texte, secteur, commercial, sujet)
+            partis = sum(1 for m in envoyes if m.statut == Message.Statut.EN_FILE)
+            if partis:
+                messages.success(request, f"{partis} message{'s' if partis > 1 else ''} en route.")
+            if len(envoyes) - partis:
+                messages.error(request, f"{len(envoyes) - partis} pas envoyé{'s' if len(envoyes) - partis > 1 else ''} : {next(m.erreur for m in envoyes if m.statut != Message.Statut.EN_FILE)}")
+            return redirect(f"{reverse('terrain:messages')}?vue=envoyes")
+    return render(request, "terrain/envoi_groupe.html", contexte)

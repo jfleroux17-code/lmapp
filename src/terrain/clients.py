@@ -10,7 +10,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
 from clients.models import Adresse, Client, Secteur
-from core.acces import modification_clients_requise
+from core.acces import ecriture_requise, modification_clients_requise
 from core.telephone import afficher
 
 CHAMP = "champ"
@@ -167,3 +167,37 @@ def position(request, pk):
         ville = VilleDesservie.pour(a.entreprise_id, a.ville) or VilleDesservie.objects.filter(entreprise=a.entreprise_id).first()
         centre, zoom = ((ville.centre.y, ville.centre.x) if ville and ville.centre else (45.95, -74.13)), 14
     return render(request, "terrain/clients/position.html", {"a": a, "lat": centre[0], "lng": centre[1], "zoom": zoom})
+
+
+@ecriture_requise
+def ecrire(request, pk):
+    """Écrire à un client (E2, E3) : texto ou courriel, depuis le numéro et l'adresse d'affaires; signature ajoutée."""
+    from communications import envoi
+    from communications.models import Genre, Message
+
+    client = get_object_or_404(Client, pk=pk, entreprise=request.entreprise)
+    ent = request.entreprise
+    canaux = [(Message.Canal.TEXTO, f"Texto au {afficher(client.cellulaire)}")] if client.cellulaire else []
+    if client.courriel:
+        canaux.append((Message.Canal.COURRIEL, f"Courriel à {client.courriel}"))
+    if request.method == "POST":
+        canal, texte = request.POST.get("canal"), request.POST.get("texte", "").strip()
+        sujet = request.POST.get("sujet", "").strip()[:200]
+        if canal not in dict(canaux) or not texte:
+            messages.error(request, "Choisir le texto ou le courriel, et écrire le message.")
+        else:
+            courriel = canal == Message.Canal.COURRIEL
+            m = Message.objects.create(entreprise=ent, client=client, genre=Genre.MANUEL, canal=canal,
+                                       destinataire=client.courriel if courriel else client.cellulaire,
+                                       sujet=(sujet or f"Message de {ent.nom}") if courriel else "",
+                                       contenu=f"{texte}\n\n{ent.signature_messages or ent.nom}")
+            envoi.envoyer(m)
+            if m.statut == Message.Statut.EN_FILE:
+                messages.success(request, f"Message en route vers {m.destinataire}.")
+            else:
+                messages.error(request, f"Message pas envoyé : {m.erreur}")
+            return redirect("terrain:fiche", pk=client.pk)
+    return render(request, "terrain/clients/ecrire.html", {
+        "client": client, "canaux": canaux, "signature": ent.signature_messages or ent.nom,
+        "choisi": request.POST.get("canal") or (client.canal_prefere if client.canal_prefere in dict(canaux) else (canaux[0][0] if canaux else "")),
+    })

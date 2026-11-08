@@ -22,6 +22,8 @@ class Genre(models.TextChoices):
     RECU = "recu", "Message reçu"
     INTERAC = "interac", "Avis de virement Interac"
     RECU_PAIEMENT = "recu_paiement", "Reçu de paiement"
+    GROUPE_SERVICE = "groupe_service", "Avis à plusieurs clients"
+    GROUPE_COMMERCIAL = "groupe_comm", "Message commercial"
 
 
 RELANCES = [Genre.RELANCE_1, Genre.RELANCE_2, Genre.RELANCE_3]

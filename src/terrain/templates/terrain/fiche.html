@@ -8,7 +8,7 @@
   <h1 class="text-2xl font-bold leading-tight">{{ client.nom_affiche }}</h1>
   {% include "terrain/_statut.html" %}
 </div>
-{% if modifier_clients %}<a href="{% url 'terrain:modifier_client' client.pk %}" class="mb-4 -mt-2 inline-flex min-h-12 items-center text-accent">Modifier le client</a>{% endif %}
+{% if modifier_clients or ecriture %}<div class="mb-4 -mt-2 flex flex-wrap gap-x-6">{% if modifier_clients %}<a href="{% url 'terrain:modifier_client' client.pk %}" class="inline-flex min-h-12 items-center text-accent">Modifier le client</a>{% endif %}{% if ecriture and client.cellulaire or ecriture and client.courriel %}<a href="{% url 'terrain:ecrire' client.pk %}" class="inline-flex min-h-12 items-center text-accent">Écrire un texto ou un courriel</a>{% endif %}</div>{% endif %}
 
 {% if client.statut == "liste_noire" %}
   <p class="mb-4 rounded-2xl border border-danger bg-danger/10 p-4 font-semibold text-danger">Liste noire : ne pas servir.</p>

@@ -1,0 +1,39 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Écrire à plusieurs clients{% endblock %}
+{% block contenu %}
+<h1 class="mb-1 text-2xl font-bold">Écrire à plusieurs clients</h1>
+<p class="mb-4 text-gray-400">Chaque client reçoit un seul message, par texto ou par courriel selon sa préférence.</p>
+<form method="post" class="space-y-4" x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+  <label class="block"><span class="mb-2 block text-gray-300">À qui</span>
+    <select name="secteur" class="min-h-14 w-full rounded-xl border-2 border-bordure bg-nuit px-3 text-lg">
+      <option value="">Tous les clients servis</option>
+      {% for s in secteurs %}<option value="{{ s.pk }}" {% if secteur == s %}selected{% endif %}>Secteur {{ s.nom }}</option>{% endfor %}
+    </select>
+  </label>
+  <fieldset class="space-y-2"><legend class="mb-2 text-gray-300">Sorte de message</legend>
+    <label class="flex min-h-12 cursor-pointer items-start gap-3"><input type="radio" name="sorte" value="service" class="mt-1 h-6 w-6 accent-[#f5c400]" {% if not commercial %}checked{% endif %}>
+      <span>Avis de service <span class="block text-sm text-gray-500">Tempête, fin de saison, changement d'horaire : à tous.</span></span></label>
+    <label class="flex min-h-12 cursor-pointer items-start gap-3"><input type="radio" name="sorte" value="commercial" class="mt-1 h-6 w-6 accent-[#f5c400]" {% if commercial %}checked{% endif %}>
+      <span>Message commercial <span class="block text-sm text-gray-500">Renouvellement, offre : seulement aux clients qui l'ont accepté (loi anti-pourriel).</span></span></label>
+  </fieldset>
+  <label class="block"><span class="mb-2 block text-gray-300">Objet (courriels)</span><input name="sujet" class="champ" maxlength="200" value="{{ sujet }}"></label>
+  <label class="block"><span class="mb-2 block text-gray-300">Message</span><textarea name="texte" rows="5" class="champ" required>{{ texte }}</textarea></label>
+  {% if apercu %}
+    <div class="carte p-4">
+      <p class="text-lg font-bold">{{ nombre }} client{{ nombre|pluralize }} : {{ textos }} texto{{ textos|pluralize }}, {{ courriels }} courriel{{ courriels|pluralize }}.</p>
+      {% if sans_contact %}<p class="text-sm text-gray-400">{{ sans_contact }} sans cellulaire ni courriel : rien ne leur part.</p>{% endif %}
+      {% if commercial %}<p class="text-sm text-gray-400">« Pour ne plus recevoir ces messages, répondez ARRÊT. » est ajouté à la fin.</p>{% endif %}
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <a href="{% url 'terrain:messages' %}" class="gros-bouton border-2 border-bordure text-gray-300">Annuler</a>
+      <button name="action" value="envoyer" class="gros-bouton bg-accent text-nuit" :class="{ 'opacity-60': envoi }" {% if not nombre %}disabled{% endif %}>Envoyer à {{ nombre }}</button>
+    </div>
+    <button name="action" value="apercu" class="gros-bouton border-2 border-bordure">Recompter</button>
+  {% else %}
+    <div class="grid grid-cols-2 gap-3">
+      <a href="{% url 'terrain:messages' %}" class="gros-bouton border-2 border-bordure text-gray-300">Annuler</a>
+      <button name="action" value="apercu" class="gros-bouton border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">Voir combien</button>
+    </div>
+  {% endif %}
+</form>
+{% endblock %}

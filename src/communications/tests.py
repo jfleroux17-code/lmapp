@@ -823,3 +823,55 @@ class WebhooksTwilioTests(TestCase):
              mock.patch("communications.twilio.urlopen", return_value=reponse) as u:
             twilio.envoyer_texto("+1", "+2", "x")
         self.assertEqual(parse_qs(u.call_args.args[0].data.decode())["StatusCallback"], ["https://louis.exemple.test/webhooks/twilio/statut/"])
+
+
+@override_settings(ALLOWED_HOSTS=["*"], LMAPP_ENV="prod", TWILIO_ACCOUNT_SID="AC", TWILIO_AUTH_TOKEN="x",
+                   SMTP_HOTE="smtp", IMAP_UTILISATEUR="louis@exemple.test", IMAP_MOT_DE_PASSE="x")
+class EnvoiGroupeTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai", domaine=HOTE, envois_actifs=True, numero_texto="+14503001166",
+                                            courriel_reponse="louis@exemple.test", signature_messages="Essai")
+        cls.village = Secteur.objects.create(entreprise=cls.ent, nom="Village")
+        mont = Secteur.objects.create(entreprise=cls.ent, nom="Mont")
+
+        def client(nom, secteur, **kw):
+            c = Client.objects.create(entreprise=cls.ent, nom=nom, **kw)
+            Adresse.objects.create(entreprise=cls.ent, client=c, secteur=secteur, ligne1=f"1, rue {nom}", ville="Sainte-Adèle")
+            return c
+        cls.a = client("A", cls.village, cellulaire="+14505550101", consentement_commercial=True, consentement_date="2026-10-01")
+        cls.b = client("B", cls.village, courriel="b@example.com", canal_prefere="courriel")
+        cls.d = client("D", mont, cellulaire="+14505550103", consentement_commercial=True, consentement_date="2026-10-01",
+                       desabonne_le="2026-11-01T00:00:00Z")
+        client("Sans contact", mont)
+        client("Inactif", mont, cellulaire="+14505550105", statut="inactif")
+        U = get_user_model()
+        cls.louis = U.objects.create_user("louis", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="operateur")
+
+    def setUp(self):
+        mock.patch("communications.tasks.envoyer_message.defer").start()
+        self.addCleanup(mock.patch.stopall)
+        self.client.defaults["HTTP_HOST"] = HOTE
+        self.client.force_login(self.louis)
+
+    def test_avis_de_service_a_tous_et_commercial_aux_consentants(self):
+        from communications import groupes
+        joignables, sans = groupes.destinataires(self.ent)
+        self.assertEqual(([c.nom for c, _ in joignables], sans), (["A", "B", "D"], 1))  # désabonné compris pour le service
+        self.assertEqual([c.nom for c, _ in groupes.destinataires(self.ent, commercial=True)[0]], ["A"])
+        self.assertEqual([c.nom for c, _ in groupes.destinataires(self.ent, secteur=self.village)[0]], ["A", "B"])
+        ms = groupes.envoyer(self.ent, "Offre de renouvellement", commercial=True)
+        self.assertEqual(len(ms), 1)
+        self.assertTrue(ms[0].contenu.endswith("répondez ARRÊT."))
+        self.assertEqual(ms[0].genre, "groupe_comm")
+
+    def test_apercu_puis_envoi(self):
+        page = self.client.post("/messages/groupe/", {"secteur": self.village.pk, "sorte": "service", "texte": "Tempête cette nuit", "action": "apercu"})
+        self.assertContains(page, "2 clients : 1 texto, 1 courriel.")
+        self.assertFalse(Message.objects.exists())  # l'aperçu n'envoie rien
+        r = self.client.post("/messages/groupe/", {"secteur": self.village.pk, "sorte": "service", "texte": "Tempête cette nuit",
+                                                   "sujet": "Tempête", "action": "envoyer"}, follow=True)
+        self.assertContains(r, "2 messages en route.")
+        self.assertEqual(sorted(Message.objects.values_list("canal", "genre")), [("courriel", "groupe_service"), ("texto", "groupe_service")])
+        self.assertEqual(Message.objects.get(canal="courriel").sujet, "Tempête")
