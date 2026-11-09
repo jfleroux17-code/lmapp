@@ -62,3 +62,11 @@ def modification_clients_requise(vue):
         return vue(request, *args, **kwargs)
 
     return enveloppe
+
+
+def est_responsable(request):
+    """G6 : JF (superutilisateur) ou un administrateur de l'entreprise du domaine."""
+    u = request.user
+    if not u.is_authenticated:
+        return False
+    return u.is_superuser or Membre.objects.filter(utilisateur=u, entreprise=request.entreprise, role=Membre.Role.ADMINISTRATEUR).exists()

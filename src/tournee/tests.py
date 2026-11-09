@@ -372,3 +372,33 @@ class PhotoPassageTests(TestCase):
         Operation.objects.create(entreprise=self.ent, type="neige", debut=timezone.now())
         r = self.client.post("/tournee/photos/", {"adresse": self.a.pk, "photo": SimpleUploadedFile("p.jpg", b"<svg>")}, HTTP_HOST="pp.exemple.test")
         self.assertEqual(r.status_code, 400)
+
+
+@override_settings(ALLOWED_HOSTS=["*"])
+class CarteDirectTests(TestCase):
+    """G6 : position du cellulaire pendant l'opération, pour les administrateurs seulement."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from django.contrib.gis.geos import Point
+        from django.utils import timezone
+        from tournee.models import PositionGPS
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai-cd", domaine="cd.exemple.test")
+        U = get_user_model()
+        cls.admin = U.objects.create_user("admin-cd", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.admin, entreprise=cls.ent, role="admin")
+        cls.op_ = U.objects.create_user("oper-cd", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.op_, entreprise=cls.ent, role="operateur")
+        op = Operation.objects.create(entreprise=cls.ent, type="neige", debut=timezone.now())
+        PositionGPS.objects.create(operation=op, position=Point(-74.13, 45.95, srid=4326), precision_m=12)
+
+    def test_admin_voit_la_position(self):
+        self.client.force_login(self.admin)
+        h = {"HTTP_HOST": "cd.exemple.test"}
+        self.assertEqual(self.client.get("/tournee/carte/", **h).status_code, 200)
+        d = self.client.get("/tournee/carte/donnees/", **h).json()
+        self.assertEqual((round(d["dernier"]["lat"], 2), d["dernier"]["precision"], len(d["trace"])), (45.95, 12, 1))
+
+    def test_operateur_refuse(self):
+        self.client.force_login(self.op_)
+        self.assertEqual(self.client.get("/tournee/carte/donnees/", HTTP_HOST="cd.exemple.test").status_code, 403)

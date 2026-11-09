@@ -94,7 +94,10 @@ def tournee(request):
     for x in donnees["arrets"]:
         x["photos"] = nb_photos.get(x["id"], 0)
     secteurs = sorted({(a.secteur.ordre, a.secteur.pk, a.secteur.nom) for a in arrets(request.entreprise) if a.secteur})
+    from core.acces import est_responsable
+
     return render(request, "terrain/tournee/en_cours.html", {"op": op, "donnees": donnees, "ecriture": donnees["ecriture"], "meteo": _meteo(request),
+                                                             "responsable": est_responsable(request),
                                                              "secteurs": [(pk, nom) for _, pk, nom in secteurs]})
 
 
@@ -428,3 +431,49 @@ def retirer_photo_passage(request, pk):
     p.delete()
     messages.success(request, "Photo retirée.")
     return redirect("terrain:fiche", pk=client_id)
+
+
+# Carte en direct (G6) : position du cellulaire pendant l'opération, pour JF et les administrateurs de l'entreprise
+
+def _responsable_requis(vue):
+    from functools import wraps
+
+    from django.http import HttpResponseForbidden
+
+    from core.acces import est_responsable
+
+    @membre_requis
+    @wraps(vue)
+    def enveloppe(request, *args, **kwargs):
+        if not est_responsable(request):
+            return HttpResponseForbidden("Réservé aux administrateurs.")
+        return vue(request, *args, **kwargs)
+    return enveloppe
+
+
+@_responsable_requis
+def carte(request):
+    return render(request, "terrain/tournee/carte.html", {"op": Operation.en_cours_de(request.entreprise)})
+
+
+@_responsable_requis
+def carte_donnees(request):
+    """Dernière position et trace des 3 dernières heures de l'opération en cours (JSON, rafraîchi aux 30 secondes)."""
+    from datetime import timedelta
+
+    op = Operation.en_cours_de(request.entreprise)
+    if op is None:
+        return JsonResponse({"operation": None})
+    pts = list(op.positions.filter(moment__gte=timezone.now() - timedelta(hours=3)).order_by("moment")
+               .values_list("position", "moment", "precision_m"))
+    dernier = pts[-1] if pts else None
+    faits = op.passages.filter(statut=Passage.Statut.FAIT).count()
+    r = JsonResponse({
+        "operation": {"type": op.get_type_display(), "debut": timezone.localtime(op.debut).strftime("%H h %M"), "faits": faits},
+        "trace": [[p.y, p.x] for p, _, _ in pts],
+        "dernier": {"lat": dernier[0].y, "lng": dernier[0].x, "precision": dernier[2],
+                    "il_y_a_min": int((timezone.now() - dernier[1]).total_seconds() // 60),
+                    "heure": timezone.localtime(dernier[1]).strftime("%H h %M")} if dernier else None,
+    })
+    r["Cache-Control"] = "no-store"
+    return r

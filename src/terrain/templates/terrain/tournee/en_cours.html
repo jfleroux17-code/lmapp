@@ -126,6 +126,7 @@
     <a href="{% url 'terrain:ordre' %}" class="gros-bouton border-2 border-bordure px-2">Ordre</a>
     <a href="{% url 'terrain:balises' %}" class="gros-bouton border-2 border-bordure px-2">Balises</a>
   </div>
+  {% if responsable %}<a href="{% url 'terrain:carte_direct' %}" class="mb-6 block text-center text-sm text-gray-400">Carte en direct (position du cellulaire) ›</a>{% endif %}
   {% if ecriture %}
     <form method="post" action="{% url 'terrain:terminer' %}" @submit="if (enAttente) { $event.preventDefault(); message = ''; alert('Des passages attendent encore le réseau : terminer quand ils seront envoyés.') } else if (!confirm('Terminer l\'opération?')) { $event.preventDefault() }">{% csrf_token %}
       <button class="gros-bouton border-2 border-danger/60 text-danger">Terminer l'opération</button>

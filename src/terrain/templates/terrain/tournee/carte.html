@@ -1,0 +1,41 @@
+{% extends "terrain/base.html" %}
+{% load static %}
+{% block titre %}Carte en direct{% endblock %}
+{% block tete %}<link rel="stylesheet" href="{% static 'vendor/leaflet-1.9.4/leaflet.css' %}">{% endblock %}
+{% block contenu %}
+<a href="{% url 'terrain:tournee' %}" class="mb-2 inline-flex min-h-12 items-center text-accent">‹ Tournée</a>
+<h1 class="text-xl font-bold">Carte en direct</h1>
+<p id="etat" class="mb-2 min-h-6 text-sm text-gray-400" role="status">{% if not op %}Aucune opération en cours.{% else %}Chargement…{% endif %}</p>
+<div class="relative -mx-4 overflow-hidden" style="height: calc(100dvh - 15rem); min-height: 18rem;"><div id="carte" class="absolute inset-0"></div></div>
+<p class="mt-2 text-sm text-gray-500">Position envoyée par l'écran de tournée ouvert, quand « Activer la position » est allumé. Rafraîchie aux 30 secondes.</p>
+<script src="{% static 'vendor/leaflet-1.9.4/leaflet.js' %}"></script>
+<script>
+  (function () {
+    const carte = L.map("carte").setView([45.95, -74.13], 13);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; contributeurs d'OpenStreetMap" }).addTo(carte);
+    const trace = L.polyline([], { color: "#f5c400", weight: 4 }).addTo(carte);
+    const point = L.circleMarker([0, 0], { radius: 10, color: "#000", weight: 3, fillColor: "#3fb950", fillOpacity: 1 });
+    const zone = L.circle([0, 0], { radius: 0, color: "#3fb950", weight: 1, fillOpacity: 0.1 });
+    const etat = document.getElementById("etat");
+    let centre = false;
+    async function lire() {
+      try {
+        const r = await fetch("{% url 'terrain:carte_donnees' %}", { credentials: "same-origin" });
+        const d = await r.json();
+        if (!d.operation) { etat.textContent = "Aucune opération en cours."; return; }
+        trace.setLatLngs(d.trace);
+        if (d.dernier) {
+          const p = [d.dernier.lat, d.dernier.lng];
+          point.setLatLng(p).addTo(carte); zone.setLatLng(p).setRadius(d.dernier.precision || 0).addTo(carte);
+          if (!centre) { carte.setView(p, 15); centre = true; }
+          etat.textContent = d.operation.type + " depuis " + d.operation.debut + " · " + d.operation.faits + " fait(s) · dernière position à "
+            + d.dernier.heure + (d.dernier.il_y_a_min >= 5 ? " (il y a " + d.dernier.il_y_a_min + " min : écran fermé ou pas de réseau?)" : "");
+        } else {
+          etat.textContent = d.operation.type + " depuis " + d.operation.debut + " · aucune position reçue (position pas activée sur le cellulaire).";
+        }
+      } catch (e) { etat.textContent = "Pas de réseau : nouvel essai dans 30 secondes."; }
+    }
+    {% if op %}lire(); setInterval(lire, 30000);{% endif %}
+  })();
+</script>
+{% endblock %}
