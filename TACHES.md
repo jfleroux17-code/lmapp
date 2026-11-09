@@ -31,7 +31,7 @@ Mise à jour : 8 novembre 2026.
 - [x] Premier courriel d'essai à JF (8 novembre 2026) : SPF, DKIM et DMARC « pass », mais arrivé dans les pourriels (domaine neuf, DNS inverse générique). IP sur aucune liste noire vérifiée.
 - [ ] JF : dans Gmail, « non-spam », ajouter `louis@ledeneigeur.com` aux contacts et répondre au courriel d'essai. Facultatif : Google Postmaster Tools pour `ledeneigeur.com` (valeur TXT à donner à Claude Code).
 - [x] Twilio : compte payant, numéro 450-300-1166, `TWILIO_ACCOUNT_SID` et `TWILIO_AUTH_TOKEN` dans les deux `.env` (8 novembre 2026). Premier texto d'essai livré au cellulaire de JF, depuis le test.
-- [ ] **JF : deuxième numéro Twilio, réservé à la plateforme** (alertes de la surveillance, plus tard la facturation des déneigeurs) : acheter un numéro canadien local dans la console Twilio (même compte, environ 1,15 $ US par mois), sans webhook à configurer, et donner le numéro à Claude Code. Il ira dans `LMAPP_ALERTES_TEXTO_DE` du `.env` de la prod. D'ici là, les alertes partent du 450-300-1166 de Louis.
+- [x] **JF : deuxième numéro Twilio, réservé à la plateforme** : +1 450 234-7550, acheté le 9 novembre 2026. Mis dans `LMAPP_ALERTES_TEXTO_DE` de la prod par Claude Code, texto d'essai parti (`surveiller --essai-texto`).
 - [x] ~~SMTP2GO~~ : abandonné le 8 novembre 2026 (décision de JF), remplacé par le serveur de courriel de JF.
 - [x] ~~Boîte IMAP `info@`~~ : remplacée par `louis@ledeneigeur.com` (une boîte par déneigeur), en place.
 - [ ] Stripe : seulement si des clients veulent payer par carte (question 8 de Louis).
