@@ -146,7 +146,11 @@ Gestes d'écriture : en plus, pas le rôle lecture seule.
 Failed » : c'est le **proxy transparent du fournisseur cellulaire**, pas ld1 ni le Mikrotik. **Faux positifs à ignorer**
 dans le balayage « après » s'il est fait du cellulaire. Rien d'exposé.
 
-**Balayage « après »**, attendu du même réseau cellulaire : `443/tcp open` (Caddy, TLS 1.2 et 1.3), 22 toujours
+**Balayage « après » : fait, conforme** (JF, 9 novembre 2026, 0 h 08, réseau cellulaire, `nmap 7.80 -Pn -p 22,80,443,5000,5432,8000`) :
+`443/tcp open`; 22, 5000, 5432 et 8000 filtrés (le 22 reste dans `_SLAPP`); 80 « open » : même faux positif du proxy
+du fournisseur cellulaire qu'au balayage « avant » (ld1 ne publie pas le 80, le Mikrotik ne le redirige pas).
+
+Attendu (pour mémoire), du même réseau cellulaire : `443/tcp open` (Caddy, TLS 1.2 et 1.3), 22 toujours
 filtré (resté dans `_SLAPP`), 5000 et 5432 filtrés, et les mêmes faux positifs 21, 80, 554, 1723 du fournisseur.
 
 À faire **depuis l'extérieur de ld1**, deux fois :
