@@ -39,7 +39,7 @@ Mise à jour : 8 novembre 2026.
 
 - [ ] Netplan par MAC (décision du 7 novembre 2026), configuré par JF avec de l'aide. Instantané avant, `sudo netplan try` depuis la console Hyper-V. Si la MAC reste dynamique dans Hyper-V, la VM peut perdre son réseau quand elle est déplacée ou réimportée.
 - [ ] Redémarrer ld1 à un moment tranquille (services signalés par apt).
-- [ ] Vérification externe de `https://louis.ledeneigeur.com/sante/` (ex. UptimeRobot, gratuit, aux 5 minutes) : la surveillance de ld1 ne peut pas signaler ld1 éteint ni le routeur en panne.
+- [x] Vérification externe de `https://louis.ledeneigeur.com/sante/` : UptimeRobot configuré par JF le 9 novembre 2026 (sondes vues dans les journaux de Caddy, réponse 200).
 - [x] `sudo ufw status verbose` (7 novembre 2026) : refus par défaut en entrée; SSH depuis `172.16.4.0/24`; 80 et 443 ouverts à tous (ufw ne s'en mêle pas pour le 443 de toute façon, Docker le contourne; rien n'écoute sur le 80). Port 5000 : `BackupFP` (COVE), sur toutes les interfaces, mais bloqué par ufw (aucune règle) : rien à faire.
 - [ ] `sudo ss -tlnp 'sport = :36789'` : processus inconnu sur un port local (127.0.0.1 seulement, donc pas joignable de l'extérieur).
 - [ ] Donner l'IP publique du bureau pour l'accès à `/admin/` (seule celle de la maison est permise). Elle ira dans `edge/.env`, jamais dans Git.
