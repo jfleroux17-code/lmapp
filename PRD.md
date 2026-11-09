@@ -505,6 +505,8 @@ Jalon : une tempête complète gérée dans l'app.
 
 ### Phase 3 : Consolidation et premier assistant IA (janvier et février)
 Fonctionnalités : A3, A4, A11, B5, B6, C9 à C12, D5, D7, E13, E14, F7, G6, H1 à H3, I1, J2, J3, J5, K4, O1, O2, O6.
+
+**Fait le 9 novembre 2026** (en prod, essayé en test d'abord) : A3, A11, B5, B6, C10, C12, D7, E13, F7, H1 à H3, I1, J2, J3, K4, G6, plus la surveillance (6.7). Reste de la phase : A4 (déjà possible : plusieurs adresses par payeur), C9 (relances automatiques : décision de JF et de Louis, elles enverraient sans intervention), E14, J5 (fait pour JF dans Q1), O1, O2, O6 (modèle d'IA à choisir).
 Livrable : automatisation des relances, rapports pour le comptable, demandes de service, et l'assistant qui classe les messages entrants et propose des brouillons que Louis approuve en une tape. Le reste de la saison sert à mesurer la qualité des brouillons.
 
 ### Phase 4 : Préparation de la saison suivante (printemps et été 2027)
