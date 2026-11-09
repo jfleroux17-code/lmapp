@@ -39,6 +39,7 @@ Mise à jour : 8 novembre 2026.
 
 - [ ] Netplan par MAC (décision du 7 novembre 2026), configuré par JF avec de l'aide. Instantané avant, `sudo netplan try` depuis la console Hyper-V. Si la MAC reste dynamique dans Hyper-V, la VM peut perdre son réseau quand elle est déplacée ou réimportée.
 - [ ] Redémarrer ld1 à un moment tranquille (services signalés par apt).
+- [ ] Vérification externe de `https://louis.ledeneigeur.com/sante/` (ex. UptimeRobot, gratuit, aux 5 minutes) : la surveillance de ld1 ne peut pas signaler ld1 éteint ni le routeur en panne.
 - [x] `sudo ufw status verbose` (7 novembre 2026) : refus par défaut en entrée; SSH depuis `172.16.4.0/24`; 80 et 443 ouverts à tous (ufw ne s'en mêle pas pour le 443 de toute façon, Docker le contourne; rien n'écoute sur le 80). Port 5000 : `BackupFP` (COVE), sur toutes les interfaces, mais bloqué par ufw (aucune règle) : rien à faire.
 - [ ] `sudo ss -tlnp 'sport = :36789'` : processus inconnu sur un port local (127.0.0.1 seulement, donc pas joignable de l'extérieur).
 - [ ] Donner l'IP publique du bureau pour l'accès à `/admin/` (seule celle de la maison est permise). Elle ira dans `edge/.env`, jamais dans Git.
@@ -120,6 +121,7 @@ Après son essai des écrans. Une étape à la fois, chacune en test, montrée �
 - [x] État de compte PDF par client (C10) et export pour le comptable en CSV (C12) : **en prod le 8 novembre 2026**. Format propre à QuickBooks, Sage ou Acomba : quand Louis dira quel logiciel son comptable utilise (question « Comptabilité »).
 - [x] Journal des actions (K4) : **en prod le 8 novembre 2026** (administration, « Journal des actions »; gardé 2 ans).
 - [x] Photo du passage (F7) : **en prod le 8 novembre 2026** (bouton « + Photo » à l'arrêt, heure et position, avant ou après; réseau requis).
+- [x] Surveillance (PRD 6.7) : **en prod le 9 novembre 2026** (service `surveillance`, alertes à JF par texto pour les pannes graves, par courriel pour le reste; essai réel réussi).
 - [x] Tableau de bord de la plateforme (Q1, `/admin/plateforme/`, superutilisateur seulement) : **en prod le 8 novembre 2026** (boîte de Louis : 0,2 Mo sur 2 Go). Segments de textos comptés à l'envoi, quota de la boîte lu à chaque passage.
 - [ ] Site Internet de présentation (Q5) : archive `/srv/lmapp/site.zip` prête le 8 novembre 2026 (liens relatifs, captures au visuel C). Reste pour JF : la déposer dans `public_html`, créer `info@ledeneigeur.com`, valider les durées de conservation de la politique et retirer l'avis « Ébauche ».
 - [ ] Arrivée d'un déneigeur venant d'un logiciel concurrent (Q3) : ~~correspondance des colonnes à l'import~~ (fait le 8 novembre 2026 : entêtes anglais reconnus, `--depuis <logiciel>`, `--correspondance`). Reste : un fichier de correspondance par logiciel, à faire avec un vrai export en main.
