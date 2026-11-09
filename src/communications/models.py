@@ -24,6 +24,7 @@ class Genre(models.TextChoices):
     RECU_PAIEMENT = "recu_paiement", "Reçu de paiement"
     GROUPE_SERVICE = "groupe_service", "Avis à plusieurs clients"
     GROUPE_COMMERCIAL = "groupe_comm", "Message commercial"
+    CONTRAT = "contrat", "Contrat"
     APPEL = "appel", "Appel noté"
 
 
@@ -100,6 +101,8 @@ class Message(Horodate):
     contenu = models.TextField()
     facture = models.ForeignKey("facturation.Facture", on_delete=models.SET_NULL, null=True, blank=True, related_name="messages",
                                 help_text="Courriel : PDF de la facture joint.")
+    contrat = models.ForeignKey("facturation.Contrat", on_delete=models.SET_NULL, null=True, blank=True, related_name="messages",
+                                help_text="Courriel : PDF du contrat joint (B6).")
     factures_jointes = models.ManyToManyField("facturation.Facture", blank=True, related_name="relances",
                                               help_text="Relance par courriel : PDF de chaque facture jointe.")
     statut = models.CharField(max_length=10, choices=Statut.choices, default=Statut.PREPARE)

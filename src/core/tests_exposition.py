@@ -23,6 +23,7 @@ CHEMINS_PUBLICS = {
     "terrain:service_worker": "service worker (aucune donnée)",
     "facturation:publique": "facture vue par le client, par lien secret de 192 bits (L1)",
     "facturation:publique_pdf": "PDF de la même facture, même lien secret",
+    "facturation:contrat_public": "contrat de la saison en PDF, par lien secret de 192 bits (B6)",
     "twilio_texto": "webhook de Twilio : signature X-Twilio-Signature obligatoire, sinon 403",
     "twilio_statut": "webhook de Twilio : signature X-Twilio-Signature obligatoire, sinon 403",
 }

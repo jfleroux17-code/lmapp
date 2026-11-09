@@ -1,0 +1,78 @@
+{% load argent %}<!DOCTYPE html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<title>Contrat de déneigement, saison {{ c.saison.nom }}, {{ ent.nom }}</title>
+{% include "facturation/_style_pdf.html" %}
+</head>
+<body>
+<div class="entete">
+  <div class="entreprise">
+    <h1>{{ ent.nom }}</h1>
+    {% if ent.nom_legal and ent.nom_legal != ent.nom %}<div class="legal">{{ ent.nom_legal }}</div>{% endif %}
+    {% if ent.adresse_ligne1 %}{{ ent.adresse_ligne1 }}<br>{% endif %}
+    {% if ent.ville %}{{ ent.ville }} {{ ent.province }}  {{ ent.code_postal }}<br>{% endif %}
+    {% if ent.telephone %}{{ telephone_affiche }}<br>{% endif %}
+    {% if ent.courriel %}{{ ent.courriel }}{% endif %}
+  </div>
+  <div class="titre">
+    <h2>CONTRAT</h2>
+    <table>
+      <tr><td>Saison</td><td><strong>{{ c.saison.nom }}</strong></td></tr>
+      <tr><td>Du</td><td>{{ c.saison.debut|date:"j F Y" }}</td></tr>
+      <tr><td>Au</td><td>{{ c.saison.fin|date:"j F Y" }}</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="parties">
+  <div>
+    <div class="etiquette">Client</div>
+    <strong>{{ client.nom_affiche }}</strong>
+  </div>
+  {% if adresse %}
+  <div>
+    <div class="etiquette">Adresse du service</div>
+    {{ adresse.ligne1 }}<br>{% if adresse.ligne2 %}{{ adresse.ligne2 }}<br>{% endif %}{{ adresse.ville }}{% if adresse.code_postal %} {{ adresse.code_postal }}{% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<table class="lignes">
+  <thead><tr><th>Entente</th><th class="nombre col">Prix</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>{{ c.get_type_display }}{% if au_passage %} : prix d'un passage{% else %} : déneigement pour la saison{% endif %}
+        {% if services %}<br><span class="petit">Compris : {% for s in services %}{{ s.nom|lower }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}
+        {% if c.prix_texte %}<br><span class="petit">{{ c.prix_texte }}</span>{% endif %}</td>
+      <td class="nombre">{{ c.prix|argent }}</td>
+    </tr>
+  </tbody>
+</table>
+<table class="totaux">
+  {% if inscrit %}
+  <tr><td>TPS ({{ ent.taux_tps|pourcent }})</td><td class="nombre">{{ tps|argent }}</td></tr>
+  <tr><td>TVQ ({{ ent.taux_tvq|pourcent }})</td><td class="nombre">{{ tvq|argent }}</td></tr>
+  {% endif %}
+  <tr class="grand"><td>{% if au_passage %}Par passage{% else %}Total de la saison{% endif %}</td><td class="nombre">{{ total|argent }}</td></tr>
+</table>
+
+{% if versements %}
+<div class="bloc">
+  <p><strong>Versements</strong> (une facture pour chacun)</p>
+  {% for x in versements %}<p>{{ x.v.rang }}. Le {{ x.v.date_prevue|date:"j F Y" }} : {{ x.total|argent }}{% if inscrit %} (taxes comprises){% endif %}</p>{% endfor %}
+</div>
+{% endif %}
+
+{% if ent.interac_courriel or ent.interac_instructions %}
+<div class="bloc">
+  <p><strong>Pour payer</strong></p>
+  <p>Virement Interac{% if ent.interac_courriel %} à <strong>{{ ent.interac_courriel }}</strong>{% endif %}, en indiquant le numéro de facture.</p>
+  {% if ent.interac_instructions %}<p class="note">{{ ent.interac_instructions }}</p>{% endif %}
+  <p>Chèque à l'ordre de «&nbsp;{{ ent.nom_legal|default:ent.nom }}&nbsp;». Comptant accepté.</p>
+</div>
+{% endif %}
+
+<p class="petit" style="margin-top: 10mm">Document remis le {{ date|date:"j F Y" }}.{% if ent.inscrit_taxes and ent.numero_tps %} TPS n° {{ ent.numero_tps }}{% if ent.numero_tvq %}, TVQ n° {{ ent.numero_tvq }}{% endif %}.{% endif %}</p>
+</body>
+</html>

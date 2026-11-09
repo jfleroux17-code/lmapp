@@ -3,6 +3,8 @@ from decimal import Decimal as D
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from unittest import mock
+
 from django.test import TestCase, override_settings
 
 from clients.models import Adresse, Client
@@ -527,3 +529,58 @@ class NouvelleSaisonTests(TestCase):
         self.assertEqual([v.date_prevue for v in c.versements.all()], [d(2027, 11, 1), d(2028, 1, 15)])
         self.assertEqual(sum(v.montant for v in c.versements.all()), D("464.00"))
         self.assertEqual(Saison.objects.filter(entreprise=self.ent).count(), 2)
+
+
+class ContratPdfTests(TestCase):
+    """Contrat en PDF (B6) : PDF pour les membres, lien public, envoi par courriel (PDF joint) et par texto (lien)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from datetime import date as d
+        from decimal import Decimal as D
+        from django.contrib.auth import get_user_model
+        from clients.models import Client
+        from core.models import Entreprise, Membre
+        from facturation.models import Contrat, Saison
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai-cp", domaine="cp.exemple.test", inscrit_taxes=True,
+                                            taux_tps=D("5"), taux_tvq=D("9.975"), envois_actifs=True, numero_texto="+14503001166",
+                                            courriel_reponse="louis@exemple.test")
+        s = Saison.objects.create(entreprise=cls.ent, nom="2026-2027", debut=d(2026, 11, 1), fin=d(2027, 4, 30))
+        cls.cl = Client.objects.create(entreprise=cls.ent, nom="Tremblay", courriel="g@example.com", cellulaire="+15145550123")
+        cls.c = Contrat.objects.create(entreprise=cls.ent, client=cls.cl, saison=s, prix=D("400.00"), notes="SECRET interne")
+        cls.c.creer_echeancier([d(2026, 11, 1), d(2027, 1, 15)])
+        cls.louis = get_user_model().objects.create_user("louis-cp", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="operateur")
+
+    def test_contenu_sans_notes_internes(self):
+        from facturation import contrat_pdf
+        h = contrat_pdf.html(self.c)
+        self.assertIn("2026-2027", h)
+        self.assertIn("459,90", h)  # 400 + TPS 20 + TVQ 39,90
+        self.assertIn("229,95", h)  # chaque versement, taxes comprises
+        self.assertNotIn("SECRET", h)
+
+    def test_pdf_lien_public_et_fiche(self):
+        from django.test import override_settings
+        h = {"HTTP_HOST": "cp.exemple.test"}
+        with override_settings(ALLOWED_HOSTS=["*"]), mock.patch("facturation.contrat_pdf.rendre", return_value=b"%PDF-1.7 c"):
+            self.assertEqual(self.client.get(f"/c/{self.c.jeton}/", **h).content, b"%PDF-1.7 c")
+            self.assertEqual(self.client.get("/c/autre/", **h).status_code, 404)
+            self.assertEqual(self.client.get(f"/contrats/{self.c.pk}/pdf/", **h).status_code, 302)  # pas connecté
+            self.client.force_login(self.louis)
+            self.assertEqual(self.client.get(f"/contrats/{self.c.pk}/pdf/", **h).status_code, 200)
+            self.assertContains(self.client.get(f"/clients/{self.cl.pk}/", **h), "Contrat 2026-2027")
+
+    @override_settings(TWILIO_ACCOUNT_SID="AC", TWILIO_AUTH_TOKEN="t", LMAPP_DESTINATAIRES_TEST=["+15145550123", "g@example.com"],
+                       SMTP_HOTE="smtp.exemple.test", IMAP_UTILISATEUR="louis@exemple.test", IMAP_MOT_DE_PASSE="x")
+    def test_envois(self):
+        from communications import courriel
+        from communications.contrats import envoyer_contrat
+        with mock.patch("communications.tasks.envoyer_message.defer"):
+            t = envoyer_contrat(self.c, "texto")
+            m = envoyer_contrat(self.c, "courriel")
+        self.assertIn(f"/c/{self.c.jeton}/", t.contenu)
+        self.assertEqual((t.statut, m.statut), ("en_file", "en_file"))
+        with mock.patch("facturation.contrat_pdf.rendre", return_value=b"%PDF-1.7 c"):
+            e = courriel.construire(m)
+        self.assertEqual(next(e.iter_attachments()).get_filename(), f"contrat-2026-2027-{self.c.pk}.pdf")

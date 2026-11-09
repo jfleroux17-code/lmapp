@@ -10,4 +10,6 @@ urlpatterns = [
     # Lien public (L1) : sans compte, par le jeton secret de la facture
     path("f/<str:jeton>/", views.facture_publique, name="publique"),
     path("f/<str:jeton>/pdf/", views.facture_publique_pdf, name="publique_pdf"),
+    path("contrats/<int:pk>/pdf/", views.contrat_pdf, name="contrat_pdf"),
+    path("c/<str:jeton>/", views.contrat_public, name="contrat_public"),
 ]

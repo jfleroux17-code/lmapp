@@ -35,8 +35,13 @@ def construire(message):
     m.set_content(message.contenu)
     m.add_alternative(render_to_string("communications/courriel.html", {
         "m": message, "ent": ent, "telephone": telephone.afficher(ent.telephone),
-        "paragraphes": message.contenu.split("\n\n"), "nb_jointes": len(jointes),
+        "paragraphes": message.contenu.split("\n\n"), "nb_jointes": len(jointes) + (1 if message.contrat_id else 0),
     }), subtype="html")
+    if message.contrat_id:
+        from facturation import contrat_pdf
+
+        m.add_attachment(contrat_pdf.rendre(message.contrat), maintype="application", subtype="pdf",
+                         filename=contrat_pdf.nom_fichier(message.contrat))
     if jointes:
         from facturation import pdf
 

@@ -48,6 +48,10 @@ def _meme_entreprise(objet, *lies):
         raise ValidationError(erreurs)
 
 
+def _jeton():
+    return secrets.token_urlsafe(24)
+
+
 class Saison(Horodate):
     """Saison d'hiver (B5), ex. « 2026-2027 »."""
 
@@ -108,7 +112,9 @@ class Contrat(Horodate):
                                   help_text="Ce qui a été dit au client, ex. « 450 $ taxes incluses, payable en 2 fois ».")
     services = models.ManyToManyField(Service, blank=True, related_name="contrats", verbose_name="services inclus")
     actif = models.BooleanField(default=True)
-    notes = models.TextField(blank=True)
+    notes = models.TextField(blank=True, help_text="Notes internes : jamais sur le contrat remis au client.")
+    # Lien public du contrat en PDF (B6), comme celui des factures
+    jeton = models.CharField(max_length=40, unique=True, default=_jeton, editable=False)
 
     class Meta:
         verbose_name = "contrat"
@@ -122,6 +128,9 @@ class Contrat(Horodate):
         _meme_entreprise(self, "client", "adresse", "saison")
         if self.adresse_id and self.client_id and self.adresse.client_id != self.client_id:
             raise ValidationError({"adresse": "Cette adresse n'est pas celle de ce client."})
+
+    def lien_public(self):
+        return f"https://{self.entreprise.domaine}/c/{self.jeton}/"
 
     def creer_echeancier(self, dates):
         """Versements égaux du prix aux dates données (B3 : 1 à 4 versements). Remplace les versements pas encore facturés."""
@@ -181,10 +190,6 @@ class FactureQuerySet(models.QuerySet):
     def a_recevoir(self):
         """Émises (ou soldes d'ouverture), pas annulées, avec un solde à payer."""
         return self.filter(statut=Facture.Statut.EMISE).avec_solde().filter(solde_du__gt=0)
-
-
-def _jeton():
-    return secrets.token_urlsafe(24)
 
 
 class Facture(Horodate):

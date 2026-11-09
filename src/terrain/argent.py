@@ -254,7 +254,8 @@ def resume_client(client):
 
     qs = client.factures.avec_solde().order_by("-date_facture", "-pk")
     dues = relances.factures_dues(client)
-    resume = {"du": sum((f.solde_du for f in dues), ZERO), "factures_client": qs[:10]}
+    resume = {"du": sum((f.solde_du for f in dues), ZERO), "factures_client": qs[:10],
+              "contrats": client.contrats.filter(actif=True).select_related("saison").prefetch_related("versements").order_by("-saison__debut")[:2]}
     if dues:
         niveau = relances.niveau_suivant(client, dues)
         resume["relance"] = {
@@ -370,3 +371,25 @@ def _bilan_saison(entreprise):
         "passages": Passage.objects.filter(entreprise=entreprise, statut=Passage.Statut.FAIT,
                                            heure__date__gte=saison.debut, heure__date__lte=saison.fin).count(),
     }
+
+
+@require_POST
+@ecriture_requise
+def envoyer_contrat(request, pk):
+    """Contrat au client (B6) : courriel (PDF joint) ou texto (lien)."""
+    from communications.contrats import envoyer_contrat as envoyer
+    from communications.models import Message
+    from facturation.models import Contrat
+
+    c = get_object_or_404(Contrat, pk=pk, entreprise=request.entreprise)
+    canal = Message.Canal.TEXTO if request.POST.get("canal") == "texto" else Message.Canal.COURRIEL
+    try:
+        m = envoyer(c, canal)
+    except ValidationError as e:
+        messages.error(request, " ".join(e.messages))
+    else:
+        if m.statut == m.Statut.EN_FILE:
+            messages.success(request, f"Contrat en route vers {m.destinataire}.")
+        else:
+            messages.error(request, f"{m.get_statut_display()} : {m.erreur}")
+    return redirect("terrain:fiche", pk=c.client_id)

@@ -127,6 +127,23 @@
     <h2 class="text-lg font-bold">Argent</h2>
     {% if du %}<span class="text-lg font-bold text-danger">Doit {{ du|argent }}</span>{% else %}<span class="text-ok">Rien à payer</span>{% endif %}
   </div>
+  {% for c in contrats %}
+    <div class="carte mb-3 p-4" x-data="{ envoi: false }">
+      <div class="flex items-start justify-between gap-3">
+        <div><div class="font-semibold">Contrat {{ c.saison.nom }}</div>
+          <div class="text-sm text-gray-400">{{ c.get_type_display }} · {{ c.prix|argent }} avant taxes{% if c.versements.all %} · {{ c.versements.all|length }} versement{{ c.versements.all|length|pluralize }}{% endif %}</div></div>
+        <a href="{% url 'facturation:contrat_pdf' c.pk %}" class="flex min-h-12 shrink-0 items-center text-accent" target="_blank" rel="noopener">PDF</a>
+      </div>
+      {% if ecriture and client.courriel or ecriture and client.cellulaire %}
+        <div class="mt-2 grid grid-cols-2 gap-2">
+          {% if client.courriel %}<form method="post" action="{% url 'terrain:envoyer_contrat' c.pk %}" @submit="if (envoi || !confirm('Envoyer le contrat par courriel à {{ client.courriel|escapejs }}?')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+            <button class="flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-bordure text-sm font-semibold">Par courriel</button></form>{% endif %}
+          {% if client.cellulaire %}<form method="post" action="{% url 'terrain:envoyer_contrat' c.pk %}" @submit="if (envoi || !confirm('Envoyer le lien du contrat par texto?')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}<input type="hidden" name="canal" value="texto">
+            <button class="flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-bordure text-sm font-semibold">Par texto</button></form>{% endif %}
+        </div>
+      {% endif %}
+    </div>
+  {% endfor %}
   {% if ecriture %}<a href="{% url 'terrain:nouvelle_facture' client.pk %}" class="gros-bouton mb-3 border-2 border-accent text-accent">+ Nouvelle facture</a>{% endif %}
   {% if relance %}{% include "terrain/argent/_relance.html" %}{% endif %}
   {% if factures_client %}

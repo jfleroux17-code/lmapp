@@ -64,3 +64,29 @@ def etat_compte_pdf(request, pk):
     r["Content-Disposition"] = f'inline; filename="etat-de-compte-{client.pk}.pdf"'
     r["Cache-Control"] = "private, no-store"
     return r
+
+
+def _contrat_pdf(c):
+    from facturation import contrat_pdf
+
+    r = HttpResponse(contrat_pdf.rendre(c), content_type="application/pdf")
+    r["Content-Disposition"] = f'inline; filename="{contrat_pdf.nom_fichier(c)}"'
+    return _prive(r)
+
+
+@membre_requis
+def contrat_pdf(request, pk):
+    from facturation.models import Contrat
+
+    return _contrat_pdf(get_object_or_404(Contrat.objects.select_related("entreprise", "client", "saison", "adresse"),
+                                          pk=pk, entreprise=request.entreprise))
+
+
+def contrat_public(request, jeton):
+    """Contrat vu par le client, sans compte, par son lien secret (B6). Contrat inactif ou autre domaine : 404."""
+    from facturation.models import Contrat
+
+    if request.entreprise is None:
+        raise Http404
+    return _contrat_pdf(get_object_or_404(Contrat.objects.select_related("entreprise", "client", "saison", "adresse"),
+                                          jeton=jeton, entreprise=request.entreprise, actif=True))
