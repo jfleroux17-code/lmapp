@@ -2,26 +2,27 @@
 
 Liste tenue à jour par Claude Code sur ld1, à chaque étape. Le plan complet est dans `PRD.md`, les consignes techniques dans `CLAUDE.md`.
 
-Mise à jour : 8 novembre 2026.
+Mise à jour : 9 novembre 2026.
 
 ## Où on en est
 
-- L'app tourne en prod (`louis.ledeneigeur.com`) et en test (`test.ledeneigeur.com`) : HTTPS avec vrais certificats, accès limité à `_SLAPP` par le Mikrotik, sauvegarde avant chaque déploiement, retour en arrière possible (images étiquetées par commit).
-- En place : modèle des clients (entreprise, villes desservies, secteurs, clients, adresses), import par fichier Excel ou CSV, géocodage limité à la zone de Sainte-Adèle.
-- **La base de prod est vide.** Rien n'avance côté Louis tant que sa fiche `Entreprise` et sa liste de clients n'y sont pas.
+- L'app est en prod sur `louis.ledeneigeur.com`, **ouverte à Internet (443) depuis le 9 novembre 2026**, et en test sur `test.ledeneigeur.com` (réservé aux IP de JF). Sauvegardes aux 12 heures, surveillance avec alertes à JF, UptimeRobot de l'extérieur, retour en arrière possible (images étiquetées par commit).
+- Fait : phase 1 (clients, import, volet argent, courriels, textos, relances), phase 2 (tournée, hors ligne, avis) et une bonne partie de la V2. Réception des textos et ARRÊT/COMMENCER vérifiés en prod. Site `ledeneigeur.com` en ligne, boîte `info@` branchée (demandes dans l'administration, transférées à JF).
+- **La fiche de Louis est prête, mais sa base n'a aucun client, et ses envois réels sont éteints.** La suite dépend de ses réponses (section « Louis ») et de sa liste de clients.
 
 ## Jean-François
 
 ### Ce qui bloque la suite
 
 - [x] Créer ses comptes administrateur (prod et test).
-- [ ] Essayer les premiers écrans sur son iPhone, en test : `https://test.ledeneigeur.com/` (avec son compte administrateur de test; réseau de la maison ou du bureau, à cause du filtre `_SLAPP`). Dans Safari : Partager, « Sur l'écran d'accueil ».
+- [ ] Essayer l'app sur son iPhone, en test : `https://test.ledeneigeur.com/` (compte administrateur de test, depuis une IP de JF : le test est réservé à ses IP par Caddy). Dans Safari : Partager, « Sur l'écran d'accueil », puis ouvrir de là, Messages, « Activer les notifications » (E8).
 - [x] Fiche de Louis créée en prod (Louis Méthot Déneigement, `louis`, `louis.ledeneigeur.com`, Sainte-Adèle 8 km, centre rempli).
 - [x] Sainte-Adèle cochée « ville par défaut » dans la fiche de Louis.
 - [x] Utilisateur `louis` créé, membre « Opérateur » (entre dans l'app, pas dans l'administration).
 - [x] Fiche de Louis complétée en prod (8 novembre 2026) : nom légal, adresse, téléphone, courriel, inscrit aux taxes, numéros de TPS et de TVQ (dans la fiche seulement). Le nom affiché reste « Louis Méthot Déneigement » jusqu'à la réponse à la question 14.
 - [ ] Envoyer le gabarit d'import à Louis, ou transcrire ses papiers : `scp deploy@172.16.4.100:/srv/lmapp/gabarits/gabarit_import_clients.xlsx .`
 - [ ] Poser à Louis les questions de la section « Louis » ci-dessous.
+- [ ] **Allumer les envois réels de Louis** (interrupteur de sa fiche) : go de JF, une fois ses clients importés et vérifiés. Jalon de la phase 1 : la première vraie facture ou relance.
 
 ### Comptes de services (textos et courriels, phase 1)
 
@@ -52,7 +53,8 @@ Mise à jour : 8 novembre 2026.
 - [x] COVE inclut `/srv/lmapp/sauvegardes/` : sélection `/` au complet (vérifié le 7 novembre 2026, `sudo /opt/MXB/bin/ClientTool control.selection.list`). La copie brute de `/var/lib/docker` (base en marche) n'est pas fiable pour restaurer : toujours repartir des fichiers `.dump`.
 - [ ] Trancher les fonctionnalités V1 dans le catalogue du PRD (section 5), au besoin.
 - [ ] Offre aux autres déneigeurs (PRD section Q) : **prix revu le 8 novembre 2026 : 99 $ par mois**, un volume de textos et courriels compris, surplus facturé, nouveaux modules à part. Reste, quand les occasions viendront : le **volume compris** et le **prix du surplus** (coût Twilio : 1,15 $ US par mois par numéro, 0,0083 $ US par segment entrant ou sortant). Le tableau de bord `/admin/plateforme/` donne déjà les quantités par mois.
-- [x] Site Internet (Q5) : nom **« Le Déneigeur »**, exploitant SLAPP Technologies Inc., contact `info@ledeneigeur.com` (boîte à créer par JF) et 514 360-3227. **Hébergé sur le cPanel de JF** (racine et `www` déjà pointées par JF). En ligne depuis le 9 novembre 2026.
+- [ ] Site Internet (Q5), **en ligne le 9 novembre 2026** (`ledeneigeur.com` et `www`; nom « Le Déneigeur », exploitant SLAPP Technologies Inc., 514 360-3227; `info@ledeneigeur.com` créée et branchée). Reste : valider les durées de conservation de la politique de confidentialité, puis Claude Code retire l'avis « Ébauche » et refait `site.zip`. Facultatif : Cloudflare, Scrape Shield, « Email Address Obfuscation » à Off (sinon, sans JavaScript, les adresses paraissent « [email protected] »). `ledeneigeur.ca` ne se résout pas encore (redirection à faire).
+- [ ] Changer le mot de passe de `info@ledeneigeur.com` (écrit en clair dans une conversation le 9 novembre 2026), puis le donner à Claude Code pour le `.env` de la prod.
 - [ ] Module voix (PRD section R) : **à trancher plus tard**, après l'ouverture du 443 et la réception des textos (décision de JF, 8 novembre 2026). Propositions gardées : R1 (messagerie vocale) en premier, enregistrements gardés 90 jours. Rien n'est commencé. Modèle d'IA : pas de clé de l'API Claude pour l'instant (modèle local possible).
 - [ ] Contrat de service avec les déneigeurs (Q7) : **JF s'en occupe de son côté**, pas urgent tant que Louis est le seul client.
 
@@ -70,7 +72,7 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - [ ] **Sa liste de clients** dans le gabarit, ou en photos de ses papiers (noms, adresses, cellulaires, prix entendus, montants dus).
 - [ ] **Services** : entrée seulement, ou aussi bordage de la ville, pelletage, abrasif, toitures?
 - [ ] **Numéro de texto** : accepte-t-il que les clients textent un nouveau numéro d'affaires? Ses clients ont son 514-962-6273, qui pourrait rester pour les appels seulement.
-- [ ] **Courriel et Interac** : ses clients connaissent son Gmail (sur ses factures). Reste : dépôt automatique Interac, sur quelle adresse?
+- [ ] **Courriel et Interac** : ses clients connaissent son Gmail (sur ses factures). Reste : dépôt automatique Interac, sur quelle adresse? Pour les virements (D5) : transférer les avis d'Interac de son Gmail vers `louis@ledeneigeur.com` (filtre Gmail), et valider la lecture sur un vrai avis.
 - [ ] **Carte de crédit et débit** : des clients veulent-ils vraiment payer par carte? Son carnet a une case « carte débit » : a-t-il un terminal de paiement?
 - [ ] **Véhicules** : un seul, ou un tracteur et un camion? (Sainte-Adèle seulement et seul pour l'instant : réglé.)
 - [ ] **Comptabilité** : qui la fait, dans quel logiciel?
@@ -79,14 +81,12 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 
 ## Claude Code
 
-### Priorité : demandes de JF du 8 novembre 2026 (avant que Louis essaie l'app)
+### Demandes de JF du 8 novembre 2026 (faites)
 
-Après son essai des écrans. Une étape à la fois, chacune en test, montrée à JF sur son iPhone avant la suivante.
-
-- [ ] **Mode de l'entreprise** (PRD K9) : **en prod le 8 novembre 2026**. champ dans `Entreprise`, « déneigeur seul » ou « équipe ». Seul : le propriétaire fait tout dans l'app. Équipe : seuls les administrateurs de l'entreprise modifient les clients, les opérateurs consultent. Louis en « déneigeur seul ».
-- [ ] **Bouton Annuler partout** (PRD K10) : **en prod le 8 novembre 2026** (formulaires de saisie). sur chaque écran, ramène à l'écran précédent sans rien enregistrer. Rien ne s'enregistre sans un bouton Enregistrer.
-- [ ] **Modifier un client dans l'app** (PRD A12) : **en prod le 8 novembre 2026** (ajout essayé dans le navigateur). ajout et modification du client et de ses adresses (coordonnées, particularités du terrain, statut, notes) depuis la fiche, au cellulaire, sans l'administration. Gros champs, clavier adapté (téléphone, courriel, code postal).
-- [ ] **Corriger la position d'une adresse dans l'app** (PRD A13) : **en prod le 8 novembre 2026** (carte Leaflet, tuiles OpenStreetMap). carte plein écran avec repère fixe au centre (on déplace la carte, pas le point), bouton « Je suis devant » (GPS du téléphone), Enregistrer ou Annuler. La position devient `manuelle` ou `gps`, jamais écrasée par le géocodage.
+- [x] **Mode de l'entreprise** (PRD K9) : **en prod le 8 novembre 2026**. champ dans `Entreprise`, « déneigeur seul » ou « équipe ». Seul : le propriétaire fait tout dans l'app. Équipe : seuls les administrateurs de l'entreprise modifient les clients, les opérateurs consultent. Louis en « déneigeur seul ».
+- [x] **Bouton Annuler partout** (PRD K10) : **en prod le 8 novembre 2026** (formulaires de saisie). sur chaque écran, ramène à l'écran précédent sans rien enregistrer. Rien ne s'enregistre sans un bouton Enregistrer.
+- [x] **Modifier un client dans l'app** (PRD A12) : **en prod le 8 novembre 2026** (ajout essayé dans le navigateur). ajout et modification du client et de ses adresses (coordonnées, particularités du terrain, statut, notes) depuis la fiche, au cellulaire, sans l'administration. Gros champs, clavier adapté (téléphone, courriel, code postal).
+- [x] **Corriger la position d'une adresse dans l'app** (PRD A13) : **en prod le 8 novembre 2026** (carte Leaflet, tuiles OpenStreetMap). carte plein écran avec repère fixe au centre (on déplace la carte, pas le point), bouton « Je suis devant » (GPS du téléphone), Enregistrer ou Annuler. La position devient `manuelle` ou `gps`, jamais écrasée par le géocodage.
 - [x] **Revoir le visuel** : **visuel C (sombre plus net) choisi par JF et en prod le 8 novembre 2026** : noir pur, 20 px de base, cartes et titres plus marqués, onglet actif plein.
 
 ### Possible sans attendre
@@ -104,17 +104,17 @@ Après son essai des écrans. Une étape à la fois, chacune en test, montrée �
 - [x] Volet argent, les 5 étapes (étape 5, envois de factures, relances et reçus : 8 novembre 2026). Étape 1 : modèle (saisons, services, contrats et versements, factures, paiements, soldes d'ouverture) et administration. **En prod le 8 novembre 2026** (aucune facture encore; numérotation à 1 en attendant le numéro du carnet de Louis). Étape 2, PDF de la facture : **en prod le 8 novembre 2026** (lien « Voir le PDF » dans l'administration). Étapes 3 et 4, écrans de Louis (facture au cellulaire, paiements comptant, Interac, chèque, débit) et comptes à recevoir : **en prod le 8 novembre 2026**. Aussi, en prod : import des prix (contrats) et des soldes dus avec les clients, colonnes bleues du gabarit; brouillons créés chaque nuit pour les versements de contrat arrivés à leur date (C5). Ensuite : envois et relances (attendent Twilio et SMTP2GO).
 - [x] Phase 2 (3 étapes), en prod. Étape 1 : opérations et passages (F1 à F6, F8, F11) : **en prod le 8 novembre 2026**. Étape 2, mode hors ligne (F10) : **en prod le 8 novembre 2026** (essayé dans un vrai navigateur : réseau coupé, page rechargée sans réseau, envoi au retour). Étape 3, avis de proximité (G1 à G5) : **en prod le 8 novembre 2026**, préparés sans envoi tant que Twilio n'est pas là (essayé dans un vrai navigateur avec une position simulée). Ordre de la tournée à l'écran (F1, boutons ▲ et ▼ par arrêt et par secteur) : **en prod le 8 novembre 2026**. Reste pour plus tard : position de Louis sur une carte (G6, V2).
 - [x] Archivage des courriels dans la base et nettoyage des boîtes de 2 Go (réception et envoyés, effacés après 30 jours) : **en prod le 8 novembre 2026**. Les 7 courriels déjà là (4 reçus, 3 envoyés) archivés et relus sans erreur; premiers effacements vers le 8 décembre 2026.
-- [ ] Virements Interac (D5) : **en prod le 8 novembre 2026** (avis simulé, proposé sur la bonne facture, enregistré d'une tape). Pour la prod : Louis confirme son adresse Interac et transfère les avis d'Interac de son Gmail vers `louis@ledeneigeur.com` (filtre Gmail). Valider la lecture sur un vrai avis.
+- [x] Virements Interac (D5) : **en prod le 8 novembre 2026** (avis simulé, proposé sur la bonne facture, enregistré d'une tape). Reste du côté de Louis : voir « Courriel et Interac ».
 - [x] Courriels reçus (E5, E6, E7) : **en prod le 8 novembre 2026**. Fiche de Louis : adresse de réponse `louis@ledeneigeur.com` (interrupteur des envois toujours éteint). Lecture de la boîte aux 2 minutes, partie du UID 4 (historique non importé).
 - [x] Relances graduées (C8) : **en prod le 8 novembre 2026** (rappel reçu par JF à son adresse Peripheriq, facture jointe; texto vers un numéro fictif bloqué comme prévu). Jalon de la phase 1 : la première vraie relance, quand Louis aura ses clients et que l'interrupteur sera allumé.
 - [x] Envoi des courriels et facture par courriel (E3, C4) : **en prod le 8 novembre 2026** (interrupteur de Louis éteint; adresse d'affaires et numéro de texto à mettre dans sa fiche le moment venu) (facture d'essai 1001 envoyée à JF, PDF joint, copie dans les envoyés : reçue en boîte de réception chez Gmail, et chez Peripheriq derrière Proofpoint après quelques minutes de retard).
-- [ ] Envoi des textos par Twilio (M1) : **en prod le 8 novembre 2026**, interrupteur éteint pour Louis (rien ne part), numéro de texto pas encore dans sa fiche. Garde-fous : interrupteur « envois réels activés » dans la fiche de l'entreprise (éteint par défaut, à allumer en prod seulement avec le « go » de JF), et en test seulement le cellulaire de JF. Ensuite : réception des textos (il faut ouvrir le 443 à Twilio), envoi des factures et relances.
-- [ ] Reçus de paiement (C13) : **en prod le 8 novembre 2026**. Case « Envoyer un reçu au client » (cochée) au paiement, et à l'enregistrement d'un virement Interac; canal préféré du client, facture jointe au courriel, solde restant.
-- [ ] À collecter (D3) : **en prod le 8 novembre 2026**. Montant à collecter sur la carte de l'arrêt (client au comptant), liste « À collecter » dans l'ordre de la tournée (gardée hors ligne).
-- [ ] Bilan de la saison (J1) dans l'écran Comptes : **en prod le 8 novembre 2026** (facturé, encaissé, taxes, clients servis, opérations et passages).
-- [ ] Écrire à un client depuis sa fiche (E2, E3) et envoi groupé à tous ou à un secteur (E10, avis de service ou commercial selon la LCAP) : **en prod le 8 novembre 2026**.
-- [ ] Notifications sur le cellulaire (E8, Web Push) : **en prod le 8 novembre 2026** (abonnement et envoi réussis avec Chrome). À essayer sur l'iPhone de JF : ajouter `test.ledeneigeur.com` à l'écran d'accueil, ouvrir de là, Messages, « Activer les notifications ».
-- [ ] Demandes des clients (H1, H2) : **en prod le 8 novembre 2026** (créée depuis un message reçu dans le navigateur, urgente cochée d'office pour un oubli).
+- [x] Envoi des textos par Twilio (M1) : **en prod le 8 novembre 2026**; numéro 450-300-1166 dans la fiche de Louis le 9 novembre. Interrupteur « envois réels activés » éteint (rien ne part); en test, seulement le cellulaire de JF. Allumage : voir la tâche de JF.
+- [x] Reçus de paiement (C13) : **en prod le 8 novembre 2026**. Case « Envoyer un reçu au client » (cochée) au paiement, et à l'enregistrement d'un virement Interac; canal préféré du client, facture jointe au courriel, solde restant.
+- [x] À collecter (D3) : **en prod le 8 novembre 2026**. Montant à collecter sur la carte de l'arrêt (client au comptant), liste « À collecter » dans l'ordre de la tournée (gardée hors ligne).
+- [x] Bilan de la saison (J1) dans l'écran Comptes : **en prod le 8 novembre 2026** (facturé, encaissé, taxes, clients servis, opérations et passages).
+- [x] Écrire à un client depuis sa fiche (E2, E3) et envoi groupé à tous ou à un secteur (E10, avis de service ou commercial selon la LCAP) : **en prod le 8 novembre 2026**.
+- [x] Notifications sur le cellulaire (E8, Web Push) : **en prod le 8 novembre 2026** (abonnement et envoi réussis avec Chrome). Essai sur iPhone : tâche de JF.
+- [x] Demandes des clients (H1, H2) : **en prod le 8 novembre 2026** (créée depuis un message reçu dans le navigateur, urgente cochée d'office pour un oubli).
 - [x] Lien public de la facture (L1) et facture par texto (C4) : **en prod le 8 novembre 2026** (page sans compte par lien secret, PDF, « Ouverte par le client »). Les clients n'y auront accès qu'à l'ouverture du 443 au public.
 - [x] Appels notés à la main dans le fil du client (E6) : **en prod le 8 novembre 2026** (reçu ou fait, résumé, demande possible).
 - [x] Loi 25, minimum (K5) : **en prod le 8 novembre 2026** : effacement à la demande du client (administration, avec confirmation) et registre des incidents de confidentialité. Reste : politique de confidentialité à valider (site).
@@ -134,20 +134,21 @@ Après son essai des écrans. Une étape à la fois, chacune en test, montrée �
 - [x] Prévisions d'Environnement Canada sur l'écran de tournée (I1) : **en prod le 9 novembre 2026** (ville de prévision : Saint-Sauveur).
 - [x] Carte en direct de la position du cellulaire pendant une opération, pour JF et les administrateurs (G6) : **en prod le 9 novembre 2026**.
 - [x] Tableau de bord de la plateforme (Q1, `/admin/plateforme/`, superutilisateur seulement) : **en prod le 8 novembre 2026** (boîte de Louis : 0,2 Mo sur 2 Go). Segments de textos comptés à l'envoi, quota de la boîte lu à chaque passage.
-- [ ] Site Internet de présentation (Q5) : **en ligne sur le cPanel de JF le 9 novembre 2026** (`ledeneigeur.com` et `www`, pages et images identiques à l'archive, vérifié par Claude Code). Boîte `info@ledeneigeur.com` créée par JF et branchée dans l'app le 9 novembre 2026 (demandes gardées dans l'administration, « Demandes reçues à info@ », et transférées à `jfleroux@peripheriq.com`). Reste pour JF : valider les durées de conservation de la politique et retirer l'avis « Ébauche » de `confidentialite.html`. À savoir : la racine passe par le proxy de Cloudflare (nuage orange), qui masque les adresses courriel avec un petit script; sans JavaScript, le visiteur voit « [email protected] ». Pour l'éviter : Cloudflare, Scrape Shield, « Email Address Obfuscation » à Off.
+- [x] Site Internet de présentation (Q5) : **en ligne sur le cPanel de JF le 9 novembre 2026** (fichiers vérifiés identiques à l'archive). Boîte `info@` branchée (demandes dans l'administration, transférées à JF), alertes de la surveillance envoyées de `info@`. Reste : tâche de JF.
 - [ ] Arrivée d'un déneigeur venant d'un logiciel concurrent (Q3) : ~~correspondance des colonnes à l'import~~ (fait le 8 novembre 2026 : entêtes anglais reconnus, `--depuis <logiciel>`, `--correspondance`). Reste : un fichier de correspondance par logiciel, à faire avec un vrai export en main.
 - [x] Ajout d'un déneigeur en quelques minutes (Q4) : commande `ajouter_deneigeur` (en prod), et administration à `admin.ledeneigeur.com` (Q6) **en prod le 8 novembre 2026** (DNS par JF, bloc Caddy, `/admin/` de `louis` en 404).
 - [ ] Facturation des entreprises par l'app (Q2), quand les tarifs seront fixés.
+- [ ] Retirer l'avis « Ébauche » de la politique de confidentialité du site et refaire `site.zip`, quand JF aura validé les durées.
 - [ ] Test de restauration chaque mois (`sh outils/tester_restauration.sh`), prochain vers le 7 décembre 2026.
 
 ### En attente
 
 - Prix et services de Louis (questions 4 et 5) : contrat saisonnier seulement (réglé le 8 novembre 2026), 2 versements par défaut, 3 au-delà de 1 200 $ par saison (seuil et dates en configuration). Le modèle accepte aussi « au passage », gardé pour plus tard. Reste la question 5 (services).
-- Deuxième déneigeur (PRD section P) : déplacer `/admin/` vers une adresse neutre réservée à JF (proposé : `admin.ledeneigeur.com`), et documenter l'ajout d'un sous-domaine (Cloudflare, `Caddyfile`, `DJANGO_ALLOWED_HOSTS`, fiche `Entreprise`). Attend qu'il y ait un deuxième déneigeur.
+- Deuxième déneigeur (PRD section P) : tout est prêt (`ajouter_deneigeur`, administration à `admin.ledeneigeur.com`). Les étapes réseau (Cloudflare, `Caddyfile`, `DJANGO_ALLOWED_HOSTS`, boîte, Twilio) se feront avec le go de JF, quand il y en aura un.
 
 ## Fait
 
-- 9 novembre 2026, en prod : **boîte `info@ledeneigeur.com` de la plateforme** lue aux 2 minutes, chaque demande gardée dans l'administration (statut, note) et transférée à JF. Premier transfert parti (courriel de configuration de cPanel).
+- 9 novembre 2026, en prod : **boîte `info@ledeneigeur.com` de la plateforme** lue aux 2 minutes, chaque demande gardée dans l'administration (statut, note) et transférée à JF. Premier transfert parti (courriel de configuration de cPanel). Alertes de la surveillance envoyées de `info@` (essai reçu par JF).
 
 - 9 novembre 2026, en prod (essayés en test d'abord) : **relances proposées (C9, option B)**, éteintes par défaut (case « relances proposées chaque matin » dans la fiche de l'entreprise, à allumer avec Louis); **gabarits par défaut** dans la console de JF (administration, « Gabarits par défaut (toutes les entreprises) »), écran « Messages types » des déneigeurs (lecture seule, cloner, revenir au défaut); **photos jointes aux messages (E14)**; **alertes de la surveillance en silence pendant les déploiements** (`outils/silence.sh`). UptimeRobot sur `/sante/` (JF).
 
