@@ -116,6 +116,7 @@ def fiche(request, pk):
         "ecriture": peut_ecrire(request),
         "modifier_clients": peut_modifier_clients(request),
         "passages": _passages_avec_photos(client),
+        "contacts": [{"objet": k, "cellulaire": telephone.afficher(k.cellulaire)} for k in client.contacts.all()],
         "messages_client": client.messages.order_by("-cree_le")[:10],
         "demandes_client": client.demandes.order_by("statut", "-cree_le")[:10],
         **resume_client(client),

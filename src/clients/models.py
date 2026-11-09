@@ -150,6 +150,63 @@ class Client(Horodate):
             raise ValidationError({"consentement_date": "Indiquer la date du consentement (preuve exigée par la LCAP)."})
 
 
+class Contact(Horodate):
+    """Autre personne à joindre pour un client (PRD A3) : conjoint, locataire, gestionnaire d'immeuble.
+    Un texto ou un courriel reçu de ce contact est rattaché à la fiche du client."""
+
+    class Role(models.TextChoices):
+        CONJOINT = "conjoint", "Conjoint"
+        LOCATAIRE = "locataire", "Locataire"
+        GESTIONNAIRE = "gestionnaire", "Gestionnaire d'immeuble"
+        FAMILLE = "famille", "Famille"
+        AUTRE = "autre", "Autre"
+
+    entreprise = models.ForeignKey(Entreprise, on_delete=models.PROTECT, related_name="contacts")
+    client = models.ForeignKey("Client", on_delete=models.CASCADE, related_name="contacts")
+    nom = models.CharField(max_length=150)
+    role = models.CharField("rôle", max_length=12, choices=Role.choices, default=Role.AUTRE)
+    cellulaire = models.CharField(max_length=16, blank=True, db_index=True)
+    courriel = models.EmailField(blank=True, db_index=True)
+    note = models.CharField(max_length=200, blank=True, help_text="Ex. « appeler le soir », « a la clé du garage ».")
+
+    class Meta:
+        verbose_name = "contact"
+        verbose_name_plural = "contacts"
+        ordering = ["client", "nom"]
+
+    def __str__(self):
+        return f"{self.nom} ({self.get_role_display().lower()})"
+
+    def clean_fields(self, exclude=None):
+        self.courriel = (self.courriel or "").strip().lower()
+        super().clean_fields(exclude=exclude)
+
+    def clean(self):
+        try:
+            self.cellulaire = telephone.normaliser(self.cellulaire)
+        except ValidationError as e:
+            raise ValidationError({"cellulaire": e})
+        if self.client_id and self.entreprise_id and self.client.entreprise_id != self.entreprise_id:
+            raise ValidationError("Ce client n'est pas de cette entreprise.")
+
+
+def client_par_cellulaire(entreprise, numero):
+    """Le client d'un numéro (texto reçu) : son cellulaire, sinon celui d'un de ses contacts (A3)."""
+    c = Client.objects.filter(entreprise=entreprise, cellulaire=numero).order_by("pk").first()
+    if c is None and numero:
+        k = Contact.objects.filter(entreprise=entreprise, cellulaire=numero).select_related("client").order_by("pk").first()
+        c = k.client if k else None
+    return c
+
+
+def client_par_courriel(entreprise, adresse):
+    c = Client.objects.filter(entreprise=entreprise, courriel__iexact=adresse).order_by("pk").first()
+    if c is None and adresse:
+        k = Contact.objects.filter(entreprise=entreprise, courriel__iexact=adresse).select_related("client").order_by("pk").first()
+        c = k.client if k else None
+    return c
+
+
 class Adresse(Horodate):
     """Adresse de service : là où Louis déneige (A1, A2, A5, F1, F2)."""
 

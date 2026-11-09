@@ -25,4 +25,9 @@
     <button class="gros-bouton bg-accent text-nuit" :class="{ 'opacity-60': envoi }">Enregistrer</button>
   </div>
 </form>
+{% if retirer_url %}
+  <form method="post" action="{{ retirer_url }}" class="mt-6" @submit="if (!confirm('{{ retirer_question|escapejs }}')) $event.preventDefault()">{% csrf_token %}
+    <button class="gros-bouton border-2 border-danger/60 text-danger">{{ retirer_libelle }}</button>
+  </form>
+{% endif %}
 {% endblock %}

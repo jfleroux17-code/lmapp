@@ -63,7 +63,9 @@ def texto_recu(request):
     if sid and Message.objects.filter(entreprise=ent, message_id_externe=f"twilio:{sid}").exists():
         return _twiml()  # Twilio a réessayé : déjà enregistré
     corps = request.POST.get("Body", "").strip()
-    client = Client.objects.filter(entreprise=ent, cellulaire=de).order_by("pk").first()
+    from clients.models import client_par_cellulaire
+
+    client = client_par_cellulaire(ent, de)  # le client, ou un de ses contacts (A3)
     medias = int(request.POST.get("NumMedia", "0") or 0)
     if medias:
         corps += f"\n\n[{medias} photo{'s' if medias > 1 else ''} ou pièce{'s' if medias > 1 else ''} jointe{'s' if medias > 1 else ''} : à voir dans la console Twilio]"
@@ -74,14 +76,16 @@ def texto_recu(request):
                            statut=Message.Statut.RECU, lu=False, expediteur=de, destinataire=a, contenu=corps or "(texto vide)",
                            message_id_externe=f"twilio:{sid}" if sid else "", envoye_le=timezone.now(), fournisseur_id=sid)
     mot = corps.strip().strip(".!").lower()
-    if client and mot in ARRET:  # E11 : plus de commercial (les avis de service restent permis par la LCAP)
+    # ARRÊT et COMMENCER : seulement du numéro du client lui-même (les messages lui sont envoyés), pas d'un contact
+    proprietaire = client is not None and client.cellulaire == de
+    if proprietaire and mot in ARRET:  # E11 : plus de commercial (les avis de service restent permis par la LCAP)
         if client.desabonne_le is None:
             client.desabonne_le = timezone.now()
             client.save(update_fields=["desabonne_le"])
         if mot.startswith("arr") or mot.startswith("d"):  # STOP en anglais : Twilio répond déjà lui-même
             return _twiml(f"{ent.signature_messages or ent.nom} : vous ne recevrez plus de messages promotionnels. "
                           "Les avis de déneigement et les factures continueront. Répondez COMMENCER pour annuler.")
-    elif client and mot in REPRISE:
+    elif proprietaire and mot in REPRISE:
         etait_desabonne = client.desabonne_le is not None
         if etait_desabonne:
             client.desabonne_le = None

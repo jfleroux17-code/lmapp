@@ -2,7 +2,7 @@
 
 On ne détruit pas la fiche : les factures émises doivent être gardées six ans (lois fiscales),
 avec le nom et l'adresse de facturation. On efface tout le reste :
-  - coordonnées (cellulaire, autre téléphone, courriel), notes, consentement;
+  - coordonnées (cellulaire, autre téléphone, courriel), notes, consentement, autres personnes à joindre (A3);
   - particularités du terrain, photos de l'entrée et des passages, position et notes de passage de ses adresses (rendues inactives);
   - contenu de ses messages et copies intégrales des courriels archivés;
   - description des demandes;
@@ -34,6 +34,7 @@ def effacer(client):
         bilan["messages"] = msgs.update(contenu=EFFACE, sujet="", destinataire="", expediteur="", message_id_externe="")
         bilan["demandes"] = client.demandes.update(description=EFFACE, contact="", reglement="")
 
+        bilan["contacts"] = client.contacts.all().delete()[0]
         adresses = client.adresses.all()
         bilan["photos"] = (PhotoAdresse.objects.filter(adresse__in=adresses).delete()[0]
                            + PhotoPassage.objects.filter(adresse__in=adresses).delete()[0])

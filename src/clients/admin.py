@@ -3,7 +3,7 @@ from django.db.models import Q
 from django.template.response import TemplateResponse
 from django.contrib.gis.admin import GISModelAdmin
 
-from clients.models import Adresse, Client, Secteur
+from clients.models import Adresse, Client, Contact, Secteur
 from core import telephone
 from core.models import Entreprise, VilleDesservie
 
@@ -14,6 +14,12 @@ class SecteurAdmin(admin.ModelAdmin):
     list_editable = ["ordre", "actif"]
     list_filter = ["entreprise", "actif"]
     search_fields = ["nom"]
+
+
+class ContactEnLigne(admin.TabularInline):
+    model = Contact
+    extra = 0
+    fields = ["nom", "role", "cellulaire", "courriel", "note"]
 
 
 class AdresseEnLigne(admin.StackedInline):
@@ -32,7 +38,7 @@ class ClientAdmin(admin.ModelAdmin):
     list_display = ["__str__", "cellulaire_affiche", "courriel", "statut", "mode_paiement", "entreprise"]
     list_filter = ["entreprise", "statut", "mode_paiement", "canal_prefere", "consentement_commercial"]
     search_fields = ["nom", "prenom", "organisation", "cellulaire", "telephone_autre", "courriel", "adresses__ligne1", "adresses__ville"]
-    inlines = [AdresseEnLigne]
+    inlines = [ContactEnLigne, AdresseEnLigne]
     actions = ["effacer_a_la_demande"]
     readonly_fields = ["efface_le"]
     fieldsets = [

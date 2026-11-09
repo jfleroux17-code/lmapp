@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from clients.models import Adresse, Client, PhotoAdresse, Secteur
+from clients.models import Adresse, Client, Contact, PhotoAdresse, Secteur
 from core.acces import ecriture_requise, membre_requis, modification_clients_requise
 from core.telephone import afficher
 
@@ -82,6 +82,24 @@ class AdresseForm(forms.ModelForm):
 
             defaut = VilleDesservie.objects.filter(entreprise=entreprise, par_defaut=True).first()
             self.initial["ville"] = self.initial.get("ville") or (defaut.nom if defaut else entreprise.ville)
+
+
+class ContactForm(forms.ModelForm):
+    class Meta:
+        model = Contact
+        fields = ["nom", "role", "cellulaire", "courriel", "note"]
+        widgets = {
+            "nom": forms.TextInput(attrs=_attrs(autocomplete="off", autocapitalize="words")),
+            "role": forms.Select(attrs=_attrs()),
+            "cellulaire": forms.TextInput(attrs=_attrs(type="tel", inputmode="tel", autocomplete="off", placeholder="450 555-0100")),
+            "courriel": forms.EmailInput(attrs=_attrs(inputmode="email", autocomplete="off", autocapitalize="none")),
+            "note": forms.TextInput(attrs=_attrs()),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk and not self.is_bound:
+            self.initial["cellulaire"] = afficher(self.instance.cellulaire)
 
 
 def _enregistrer(form, **attributs):
@@ -274,3 +292,31 @@ def retirer_photo(request, pk):
     p.delete()
     messages.success(request, "Photo retirée.")
     return redirect("terrain:fiche", pk=client_id)
+
+
+# Autres personnes à joindre (A3)
+
+@modification_clients_requise
+def contact(request, client_pk, pk=None):
+    ent = request.entreprise
+    client = get_object_or_404(Client, pk=client_pk, entreprise=ent)
+    instance = get_object_or_404(Contact, pk=pk, client=client) if pk else Contact(entreprise=ent, client=client)
+    form = ContactForm(request.POST or None, instance=instance, prefix="k")
+    if request.method == "POST" and _enregistrer(form, entreprise=ent, client=client):
+        messages.success(request, "Contact enregistré.")
+        return redirect("terrain:fiche", pk=client.pk)
+    return render(request, "terrain/clients/formulaire.html", {
+        "titre": ("Modifier le contact" if pk else "Nouveau contact") + f" : {client.nom_affiche}",
+        "formulaires": [("Contact", form)], "annuler_url": client.pk,
+        "retirer_url": reverse("terrain:retirer_contact", args=[client.pk, pk]) if pk else "",
+        "retirer_libelle": "Retirer ce contact", "retirer_question": "Retirer ce contact de la fiche?",
+    })
+
+
+@require_POST
+@modification_clients_requise
+def retirer_contact(request, client_pk, pk):
+    k = get_object_or_404(Contact, pk=pk, client_id=client_pk, entreprise=request.entreprise)
+    k.delete()
+    messages.success(request, "Contact retiré.")
+    return redirect("terrain:fiche", pk=client_pk)

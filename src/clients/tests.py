@@ -232,3 +232,55 @@ class PhotoEntreeTests(TestCase):
         PhotoAdresse.objects.create(entreprise=self.ent, adresse=self.a, image=self.JPEG, type_mime="image/jpeg", taille=10)
         effacer(self.c)
         self.assertFalse(PhotoAdresse.objects.exists())
+
+
+class ContactsTests(TestCase):
+    """Autres personnes à joindre (A3) : ajout dans l'app, textos et courriels rattachés, ARRÊT du client seulement."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from django.contrib.auth import get_user_model
+        from core.models import Membre
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai-ct", domaine="ct.exemple.test", numero_texto="+14503001166")
+        cls.c = Client.objects.create(entreprise=cls.ent, prenom="Ginette", nom="Tremblay", cellulaire="+15145550123")
+        cls.louis = get_user_model().objects.create_user("louis-ct", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="admin")
+
+    def test_ajout_affichage_retrait(self):
+        from django.test import override_settings
+        from clients.models import Contact
+        self.client.force_login(self.louis)
+        with override_settings(ALLOWED_HOSTS=["*"]):
+            r = self.client.post(f"/clients/{self.c.pk}/contacts/nouveau/",
+                                 {"k-nom": "Marc Tremblay", "k-role": "conjoint", "k-cellulaire": "514 555-0177", "k-courriel": " Marc@Example.COM "},
+                                 HTTP_HOST="ct.exemple.test")
+            self.assertEqual(r.status_code, 302)
+            k = Contact.objects.get()
+            self.assertEqual((k.cellulaire, k.courriel, k.entreprise_id), ("+15145550177", "marc@example.com", self.ent.pk))
+            r = self.client.get(f"/clients/{self.c.pk}/", HTTP_HOST="ct.exemple.test")
+            self.assertContains(r, "Marc Tremblay")
+            self.assertContains(r, "514 555-0177")
+            self.client.post(f"/clients/{self.c.pk}/contacts/{k.pk}/retirer/", HTTP_HOST="ct.exemple.test")
+        self.assertFalse(Contact.objects.exists())
+
+    def test_texto_et_courriel_du_contact_rattaches(self):
+        from clients.models import Contact, client_par_cellulaire, client_par_courriel
+        Contact.objects.create(entreprise=self.ent, client=self.c, nom="Locataire", cellulaire="+15145550188", courriel="loc@example.com")
+        self.assertEqual(client_par_cellulaire(self.ent, "+15145550188"), self.c)
+        self.assertEqual(client_par_courriel(self.ent, "LOC@example.com"), self.c)
+        self.assertIsNone(client_par_cellulaire(self.ent, "+15145550199"))
+
+    def test_arret_d_un_contact_ne_desabonne_pas_le_client(self):
+        import base64, hashlib, hmac
+        from django.test import override_settings
+        from clients.models import Contact
+        Contact.objects.create(entreprise=self.ent, client=self.c, nom="Locataire", cellulaire="+15145550188")
+        url = "https://ct.exemple.test/webhooks/twilio/textos/"
+        p = {"MessageSid": "SMct1", "From": "+15145550188", "To": "+14503001166", "Body": "ARRÊT", "NumMedia": "0"}
+        sig = base64.b64encode(hmac.new(b"jeton", (url + "".join(k + p[k] for k in sorted(p))).encode(), hashlib.sha1).digest()).decode()
+        with override_settings(ALLOWED_HOSTS=["*"], TWILIO_AUTH_TOKEN="jeton"):
+            r = self.client.post("/webhooks/twilio/textos/", p, HTTP_HOST="ct.exemple.test", HTTP_X_TWILIO_SIGNATURE=sig, secure=True)
+        self.assertEqual(r.status_code, 200)
+        self.c.refresh_from_db()
+        self.assertIsNone(self.c.desabonne_le)
+        self.assertEqual(self.c.messages.get().contenu, "ARRÊT")  # rattaché à la fiche quand même

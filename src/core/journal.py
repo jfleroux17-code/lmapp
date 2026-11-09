@@ -13,7 +13,7 @@ from django.db.models.signals import post_delete, post_save, pre_save
 
 SUIVIS = [
     "core.Entreprise", "core.Membre", "core.VilleDesservie",
-    "clients.Secteur", "clients.Client", "clients.Adresse", "clients.PhotoAdresse",
+    "clients.Secteur", "clients.Client", "clients.Contact", "clients.Adresse", "clients.PhotoAdresse",
     "facturation.Saison", "facturation.Service", "facturation.Contrat", "facturation.Versement", "facturation.Facture",
     "facturation.LigneFacture", "facturation.Paiement", "facturation.VirementInterac",
     "communications.Gabarit", "demandes.Demande", "tournee.PhotoPassage",

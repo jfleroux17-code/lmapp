@@ -86,7 +86,9 @@ def traiter(entreprise, octets):
     origine = _notre_message(entreprise, str(msg.get("In-Reply-To", "")), str(msg.get("References", "")))
     client = origine.client if origine and origine.client_id else None
     if client is None and expediteur:
-        client = Client.objects.filter(entreprise=entreprise, courriel__iexact=expediteur).order_by("pk").first()
+        from clients.models import client_par_courriel
+
+        client = client_par_courriel(entreprise, expediteur)  # le client, ou un de ses contacts (A3)
     try:
         date = parsedate_to_datetime(str(msg["Date"])) if msg.get("Date") else timezone.now()
         if timezone.is_naive(date):

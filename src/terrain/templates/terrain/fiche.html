@@ -50,6 +50,23 @@
   <a href="tel:{{ client.telephone_autre }}" class="gros-bouton mb-3 border-2 border-ok text-ok">Autre numéro {{ autre_telephone }}</a>
 {% endif %}
 
+{% if contacts or modifier_clients %}
+<section class="mb-4">
+  {% for k in contacts %}
+    <div class="carte mb-2 flex items-center justify-between gap-3 p-3">
+      <div class="min-w-0">
+        <div class="font-semibold">{{ k.objet.nom }} <span class="text-sm font-normal text-gray-400">· {{ k.objet.get_role_display|lower }}</span></div>
+        {% if k.objet.courriel %}<div class="truncate text-sm text-gray-400">{{ k.objet.courriel }}</div>{% endif %}
+        {% if k.objet.note %}<div class="text-sm text-accent">{{ k.objet.note }}</div>{% endif %}
+        {% if modifier_clients %}<a href="{% url 'terrain:modifier_contact' client.pk k.objet.pk %}" class="inline-flex min-h-10 items-center text-sm text-accent">Modifier</a>{% endif %}
+      </div>
+      {% if k.objet.cellulaire %}<a href="tel:{{ k.objet.cellulaire }}" class="flex min-h-14 shrink-0 items-center rounded-xl bg-ok px-4 font-semibold text-nuit">{{ k.cellulaire }}</a>{% endif %}
+    </div>
+  {% endfor %}
+  {% if modifier_clients %}<a href="{% url 'terrain:nouveau_contact' client.pk %}" class="inline-flex min-h-12 items-center text-accent">+ Autre personne à joindre</a>{% endif %}
+</section>
+{% endif %}
+
 {% for a in adresses %}
   <section class="carte mb-4 p-4">
     <div class="mb-1 text-sm text-gray-400">{% if a.objet.secteur %}{{ a.objet.secteur }}{% if a.objet.ordre_tournee %} · arrêt {{ a.objet.ordre_tournee }}{% endif %}{% else %}Adresse de service{% endif %}</div>
