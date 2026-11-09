@@ -31,7 +31,7 @@ def effacer(client):
 
         msgs = client.messages.all()
         bilan["archives"] = ArchiveCourriel.objects.filter(message__in=msgs).delete()[0]
-        bilan["messages"] = msgs.update(contenu=EFFACE, sujet="", destinataire="", expediteur="", message_id_externe="")
+        bilan["messages"] = msgs.update(contenu=EFFACE, sujet="", destinataire="", expediteur="", message_id_externe="", jeton=None)
         from demandes.models import PhotoDemande
 
         PhotoDemande.objects.filter(demande__client=client).delete()

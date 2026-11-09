@@ -32,10 +32,13 @@ def construire(message):
     m["Message-ID"] = make_msgid(idstring=f"lmapp{message.pk}", domain=adresse.split("@")[1])
     jointes = ([message.facture] if message.facture_id else []) + [f for f in message.factures_jointes.order_by("date_facture", "pk")
                                                                     if f.pk != message.facture_id]
+    from communications import photos
+
+    images = photos.jointes(message)
     m.set_content(message.contenu)
     m.add_alternative(render_to_string("communications/courriel.html", {
         "m": message, "ent": ent, "telephone": telephone.afficher(ent.telephone),
-        "paragraphes": message.contenu.split("\n\n"), "nb_jointes": len(jointes) + (1 if message.contrat_id else 0),
+        "paragraphes": message.contenu.split("\n\n"), "nb_jointes": len(jointes) + (1 if message.contrat_id else 0) + len(images),
     }), subtype="html")
     if message.contrat_id:
         from facturation import contrat_pdf
@@ -47,6 +50,9 @@ def construire(message):
 
         for f in jointes:
             m.add_attachment(pdf.rendre(f), maintype="application", subtype="pdf", filename=pdf.nom_fichier(f))
+    for i, (p, _) in enumerate(images, start=1):
+        maintype, subtype = p.type_mime.split("/")
+        m.add_attachment(bytes(p.image), maintype=maintype, subtype=subtype, filename=f"photo-{i}.{photos.extension(p.type_mime)}")
     return m
 
 

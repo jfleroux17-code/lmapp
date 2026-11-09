@@ -247,7 +247,11 @@ def message(request, pk):
     m = get_object_or_404(Message.objects.select_related("client", "reponse_a", "facture"), pk=pk, entreprise=request.entreprise)
     if m.sens == Message.Sens.ENTRANT and not m.lu:
         Message.objects.filter(pk=m.pk).update(lu=True)
-    return render(request, "terrain/message.html", {"m": m})
+    from communications import photos
+
+    routes = {"PhotoAdresse": "terrain:photo", "PhotoPassage": "terrain:voir_photo_passage", "PhotoDemande": "terrain:voir_photo_demande"}
+    jointes = [(p, legende, reverse(routes[type(p).__name__], args=[p.pk])) for p, legende in photos.jointes(m)]
+    return render(request, "terrain/message.html", {"m": m, "photos": jointes})
 
 
 # Ordre de la tournée (F1) : boutons haut et bas plutôt que glisser (gants).

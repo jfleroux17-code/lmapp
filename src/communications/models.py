@@ -166,6 +166,12 @@ class Message(Horodate):
                                 help_text="Courriel : PDF du contrat joint (B6).")
     factures_jointes = models.ManyToManyField("facturation.Facture", blank=True, related_name="relances",
                                               help_text="Relance par courriel : PDF de chaque facture jointe.")
+    # Photos jointes (E14) : en pièces jointes du courriel; par texto, un lien secret vers elles (jeton)
+    photos_adresses = models.ManyToManyField("clients.PhotoAdresse", blank=True, related_name="messages")
+    photos_passages = models.ManyToManyField("tournee.PhotoPassage", blank=True, related_name="messages")
+    photos_demandes = models.ManyToManyField("demandes.PhotoDemande", blank=True, related_name="messages")
+    jeton = models.CharField(max_length=40, null=True, blank=True, unique=True, editable=False,
+                             help_text="Lien secret des photos jointes à un texto (/m/<jeton>/).")
     statut = models.CharField(max_length=10, choices=Statut.choices, default=Statut.PREPARE)
     envoye_le = models.DateTimeField(null=True, blank=True)
     erreur = models.CharField(max_length=300, blank=True)

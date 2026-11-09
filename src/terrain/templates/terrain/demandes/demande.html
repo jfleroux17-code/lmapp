@@ -59,6 +59,7 @@
   {% endif %}
 </section>
 {% endif %}
+{% if d.client and ecriture and d.photos.exists %}<a href="{% url 'terrain:ecrire' d.client.pk %}?demande={{ d.pk }}" class="gros-bouton mb-3 border-2 border-bordure">Écrire au client avec ces photos</a>{% endif %}
 {% if d.client %}<a href="{% url 'terrain:fiche' d.client.pk %}" class="gros-bouton mb-3 border-2 border-bordure">Fiche de {{ d.client.nom_affiche }}</a>{% endif %}
 {% if d.message %}<a href="{% url 'terrain:message' d.message.pk %}" class="gros-bouton mb-3 border-2 border-bordure">Message d'origine</a>{% endif %}
 {% if ecriture %}

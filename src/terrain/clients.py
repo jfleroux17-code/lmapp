@@ -195,35 +195,57 @@ def position(request, pk):
 
 @ecriture_requise
 def ecrire(request, pk):
-    """Écrire à un client (E2, E3) : texto ou courriel, depuis le numéro et l'adresse d'affaires; signature ajoutée."""
-    from communications import envoi
+    """Écrire à un client (E2, E3) : texto ou courriel, depuis le numéro et l'adresse d'affaires; signature ajoutée.
+    Photos jointes (E14) : en pièces jointes par courriel, par un lien secret par texto."""
+    from django.core.exceptions import ValidationError
+
+    from communications import envoi, photos
     from communications.models import Genre, Message
+    from demandes.models import Demande
 
     client = get_object_or_404(Client, pk=pk, entreprise=request.entreprise)
     ent = request.entreprise
+    demande = Demande.objects.filter(pk=request.GET.get("demande") or 0, client=client).first() if request.GET.get("demande", "").isdigit() else None
+    disponibles = photos.disponibles(client, demande)
     canaux = [(Message.Canal.TEXTO, f"Texto au {afficher(client.cellulaire)}")] if client.cellulaire else []
     if client.courriel:
         canaux.append((Message.Canal.COURRIEL, f"Courriel à {client.courriel}"))
     if request.method == "POST":
         canal, texte = request.POST.get("canal"), request.POST.get("texte", "").strip()
         sujet = request.POST.get("sujet", "").strip()[:200]
+        choisies = request.POST.getlist("photo")
+        for d in disponibles:
+            d["choisie"] = d["cle"] in choisies
         if canal not in dict(canaux) or not texte:
             messages.error(request, "Choisir le texto ou le courriel, et écrire le message.")
+        elif len(set(choisies)) > photos.MAXIMUM:
+            messages.error(request, f"Au plus {photos.MAXIMUM} photos par message.")
         else:
             courriel = canal == Message.Canal.COURRIEL
-            m = Message.objects.create(entreprise=ent, client=client, genre=Genre.MANUEL, canal=canal,
-                                       destinataire=client.courriel if courriel else client.cellulaire,
-                                       sujet=(sujet or f"Message de {ent.nom}") if courriel else "",
-                                       contenu=f"{texte}\n\n{ent.signature_messages or ent.nom}")
-            envoi.envoyer(m)
-            if m.statut == Message.Statut.EN_FILE:
-                messages.success(request, f"Message en route vers {m.destinataire}.")
+            signature = ent.signature_messages or ent.nom
+            try:
+                with transaction.atomic():
+                    m = Message.objects.create(entreprise=ent, client=client, genre=Genre.MANUEL, canal=canal,
+                                               destinataire=client.courriel if courriel else client.cellulaire,
+                                               sujet=(sujet or f"Message de {ent.nom}") if courriel else "",
+                                               contenu=f"{texte}\n\n{signature}")
+                    n = photos.joindre(m, choisies)
+                    if n and not courriel:
+                        m.contenu = f"{texte}\nPhoto{'s' if n > 1 else ''} : {photos.lien_public(m)}\n\n{signature}"
+                        m.save(update_fields=["contenu"])
+            except ValidationError as e:
+                messages.error(request, " ".join(e.messages))
             else:
-                messages.error(request, f"Message pas envoyé : {m.erreur}")
-            return redirect("terrain:fiche", pk=client.pk)
+                envoi.envoyer(m)
+                if m.statut == Message.Statut.EN_FILE:
+                    messages.success(request, f"Message en route vers {m.destinataire}.")
+                else:
+                    messages.error(request, f"Message pas envoyé : {m.erreur}")
+                return redirect("terrain:fiche", pk=client.pk)
     return render(request, "terrain/clients/ecrire.html", {
         "client": client, "canaux": canaux, "signature": ent.signature_messages or ent.nom,
         "choisi": request.POST.get("canal") or (client.canal_prefere if client.canal_prefere in dict(canaux) else (canaux[0][0] if canaux else "")),
+        "photos": disponibles, "maximum": photos.MAXIMUM, "texte": request.POST.get("texte", ""),
     })
 
 
