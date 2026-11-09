@@ -1,0 +1,38 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Balises{% endblock %}
+{% block contenu %}
+<a href="{% url 'terrain:tournee' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Tournée</a>
+<h1 class="mb-1 text-2xl font-bold">Balises</h1>
+<p class="mb-4 text-gray-400">{{ total_en_place }} balise{{ total_en_place|pluralize }} en place à {{ adresses_en_place }} adresse{{ adresses_en_place|pluralize }}. Dans l'ordre de la tournée.</p>
+<div class="mb-4 grid grid-cols-2 gap-2">
+  <a href="?vue=poser" class="onglet{% if vue == 'poser' %} onglet-actif{% endif %}">À poser</a>
+  <a href="?vue=retirer" class="onglet{% if vue == 'retirer' %} onglet-actif{% endif %}">À retirer</a>
+</div>
+<div class="carte divide-y divide-bordure">
+  {% for l in lignes %}
+    <div class="flex items-center justify-between gap-3 p-4" id="a{{ l.adresse.pk }}">
+      <a href="{% url 'terrain:fiche' l.adresse.client_id %}" class="min-w-0">
+        <div class="truncate font-semibold">{{ l.adresse.client.nom_affiche }}</div>
+        <div class="truncate text-sm text-gray-400">{{ l.adresse.ligne1 }}{% if l.adresse.secteur %} · {{ l.adresse.secteur.nom }}{% endif %}</div>
+        {% if l.balisage %}<div class="text-sm text-accent">{{ l.balisage.nombre }} posée{{ l.balisage.nombre|pluralize }} le {{ l.balisage.posees_le|date:"j F" }}</div>{% endif %}
+      </a>
+      {% if ecriture %}
+        {% if vue == "poser" %}
+          <form method="post" action="{% url 'terrain:poser_balises' l.adresse.pk %}" class="flex shrink-0 items-center gap-2">{% csrf_token %}
+            <input type="hidden" name="retour" value="{% url 'terrain:balises' %}?vue=poser">
+            <input name="nombre" type="number" inputmode="numeric" min="1" max="50" value="{{ l.propose }}" class="champ w-20 px-3 text-center" aria-label="Nombre de balises">
+            <button class="flex min-h-14 items-center rounded-xl bg-ok px-4 font-semibold text-nuit">Posées</button>
+          </form>
+        {% else %}
+          <form method="post" action="{% url 'terrain:retirer_balises' l.balisage.pk %}" class="shrink-0">{% csrf_token %}
+            <input type="hidden" name="retour" value="{% url 'terrain:balises' %}?vue=retirer">
+            <button class="flex min-h-14 items-center rounded-xl border-2 border-accent px-4 font-semibold text-accent">Retirées</button>
+          </form>
+        {% endif %}
+      {% endif %}
+    </div>
+  {% empty %}
+    <p class="p-4 text-gray-400">{% if vue == "poser" %}Toutes les adresses ont leurs balises.{% else %}Aucune balise en place.{% endif %}</p>
+  {% endfor %}
+</div>
+{% endblock %}

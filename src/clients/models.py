@@ -7,6 +7,7 @@ from django.contrib.gis.db import models as gis
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.functions import Lower
+from django.utils import timezone
 
 from core import telephone
 from core.models import Entreprise, Horodate
@@ -318,3 +319,28 @@ class PhotoAdresse(models.Model):
         if debut[4:12] in (b"ftypheic", b"ftypheix", b"ftypmif1", b"ftyphevc"):
             return "image/heic"
         return None
+
+
+class Balisage(models.Model):
+    """Balises (piquets) posées à une adresse (PRD A11) : combien, quand, et quand elles ont été retirées.
+    Une adresse a au plus un balisage en place (sans date de retrait)."""
+    entreprise = models.ForeignKey(Entreprise, on_delete=models.PROTECT, related_name="balisages")
+    adresse = models.ForeignKey(Adresse, on_delete=models.CASCADE, related_name="balisages")
+    nombre = models.PositiveSmallIntegerField(default=4)
+    posees_le = models.DateField("posées le", default=timezone.localdate)
+    retirees_le = models.DateField("retirées le", null=True, blank=True)
+    note = models.CharField(max_length=200, blank=True)
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "balisage"
+        verbose_name_plural = "balises"
+        ordering = ["-posees_le", "-pk"]
+        constraints = [models.UniqueConstraint(fields=["adresse"], condition=models.Q(retirees_le=None), name="un_balisage_en_place")]
+
+    def __str__(self):
+        return f"{self.nombre} balise(s) au {self.adresse}"
+
+    def clean(self):
+        if self.retirees_le and self.retirees_le < self.posees_le:
+            raise ValidationError({"retirees_le": "Le retrait ne peut pas précéder la pose."})

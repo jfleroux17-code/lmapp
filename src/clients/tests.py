@@ -284,3 +284,37 @@ class ContactsTests(TestCase):
         self.c.refresh_from_db()
         self.assertIsNone(self.c.desabonne_le)
         self.assertEqual(self.c.messages.get().contenu, "ARRÊT")  # rattaché à la fiche quand même
+
+
+class BalisesTests(TestCase):
+    """Balises (A11) : pose, une seule en place par adresse, retrait, listes à poser et à retirer."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from django.contrib.auth import get_user_model
+        from core.models import Membre
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai-bal", domaine="bal.exemple.test")
+        cls.c = Client.objects.create(entreprise=cls.ent, nom="Tremblay")
+        cls.a = Adresse.objects.create(entreprise=cls.ent, client=cls.c, ligne1="1, rue A", ville="Sainte-Adèle")
+        cls.louis = get_user_model().objects.create_user("louis-bal", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="operateur")
+
+    def test_poser_puis_retirer(self):
+        from django.test import override_settings
+        from clients.models import Balisage
+        self.client.force_login(self.louis)
+        h = {"HTTP_HOST": "bal.exemple.test"}
+        with override_settings(ALLOWED_HOSTS=["*"]):
+            self.assertContains(self.client.get("/balises/?vue=poser", **h), "1, rue A")
+            self.client.post(f"/balises/poser/{self.a.pk}/", {"nombre": "6"}, **h)
+            self.client.post(f"/balises/poser/{self.a.pk}/", {"nombre": "6"}, **h)  # double tape : une seule
+            self.assertEqual(Balisage.objects.count(), 1)
+            b = Balisage.objects.get()
+            self.assertEqual(b.nombre, 6)
+            self.assertNotContains(self.client.get("/balises/?vue=poser", **h), f'id="a{self.a.pk}"')
+            self.assertContains(self.client.get(f"/clients/{self.c.pk}/", **h), "6 balises posées")
+            self.client.post(f"/balises/{b.pk}/retirer/", **h)
+            b.refresh_from_db()
+            self.assertIsNotNone(b.retirees_le)
+            r = self.client.get("/balises/?vue=poser", **h)
+            self.assertContains(r, 'value="6"')  # nombre de la dernière saison proposé

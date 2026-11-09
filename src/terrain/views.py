@@ -105,7 +105,8 @@ def _passages_avec_photos(client):
 def fiche(request, pk):
     client = get_object_or_404(Client, pk=pk, entreprise=request.entreprise)
     adresses = [
-        {"objet": a, "navigation": _liens_navigation(a), "photos": list(a.photos.only("pk", "cree_le", "adresse_id"))}  # sans les octets
+        {"objet": a, "navigation": _liens_navigation(a), "photos": list(a.photos.only("pk", "cree_le", "adresse_id")),
+         "balisage": a.balisages.filter(retirees_le=None).first()}  # sans les octets
         for a in client.adresses.filter(active=True).select_related("secteur").order_by("secteur__ordre", "ordre_tournee")
     ]
     contexte = {

@@ -14,9 +14,10 @@
     {% endfor %}
   </form>
 {% endif %}
-<div class="mb-6 grid grid-cols-2 gap-2">
-  <a href="{% url 'terrain:a_collecter' %}" class="gros-bouton border-2 border-bordure">À collecter</a>
-  <a href="{% url 'terrain:ordre' %}" class="gros-bouton border-2 border-bordure">Ordre</a>
+<div class="mb-6 grid grid-cols-3 gap-2">
+  <a href="{% url 'terrain:a_collecter' %}" class="gros-bouton border-2 border-bordure px-2">À collecter</a>
+  <a href="{% url 'terrain:ordre' %}" class="gros-bouton border-2 border-bordure px-2">Ordre</a>
+  <a href="{% url 'terrain:balises' %}" class="gros-bouton border-2 border-bordure px-2">Balises</a>
 </div>
 {% if dernieres %}
   <h2 class="mb-2 text-lg font-bold">Dernières opérations</h2>

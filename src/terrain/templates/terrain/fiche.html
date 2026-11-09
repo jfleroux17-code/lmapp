@@ -73,6 +73,7 @@
     <div class="text-xl font-semibold">{{ a.objet.ligne1 }}{% if a.objet.ligne2 %}, {{ a.objet.ligne2 }}{% endif %}</div>
     <div class="mb-3 text-gray-300">{{ a.objet.ville }}{% if a.objet.code_postal %} {{ a.objet.code_postal }}{% endif %}</div>
 
+    {% if a.balisage %}<p class="mb-3 text-sm text-accent">{{ a.balisage.nombre }} balise{{ a.balisage.nombre|pluralize }} posée{{ a.balisage.nombre|pluralize }} le {{ a.balisage.posees_le|date:"j F Y" }} · <a href="{% url 'terrain:balises' %}?vue=retirer#a{{ a.objet.pk }}" class="underline">balises</a></p>{% endif %}
     {% if a.objet.position_a_verifier %}
       <p class="mb-3 rounded-xl bg-accent/15 p-3 text-sm text-accent">Position approximative : la navigation se fait par l'adresse.</p>
     {% endif %}
