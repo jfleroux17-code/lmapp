@@ -55,6 +55,11 @@ IMAP_UTILISATEUR = env("IMAP_UTILISATEUR", "")
 IMAP_MOT_DE_PASSE = env("IMAP_MOT_DE_PASSE", "")
 IMAP_DOSSIER_ENVOYES = env("IMAP_DOSSIER_ENVOYES", "INBOX.Sent")
 COURRIEL_HELO = env("COURRIEL_HELO", "ld1.ledeneigeur.com")  # nom donné au serveur de courriel (pas l'IP du conteneur)
+# Boîte de la plateforme (info@, adresse du site Internet) : lue par le worker, demandes gardées dans
+# l'administration et transférées à JF (core/boite_plateforme.py). Même serveur que les boîtes des déneigeurs.
+PLATEFORME_IMAP_UTILISATEUR = env("PLATEFORME_IMAP_UTILISATEUR", "").lower()
+PLATEFORME_IMAP_MOT_DE_PASSE = env("PLATEFORME_IMAP_MOT_DE_PASSE", "")
+PLATEFORME_TRANSFERT_A = env("PLATEFORME_TRANSFERT_A", "")
 # Lecture de la boîte (E5) : en prod seulement par défaut, pour que les vrais courriels des clients
 # n'aillent jamais dans la base de test.
 COURRIEL_LECTURE_ACTIVE = env_bool("COURRIEL_LECTURE_ACTIVE", LMAPP_ENV == "prod")

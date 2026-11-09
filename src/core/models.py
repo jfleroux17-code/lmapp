@@ -333,3 +333,51 @@ class Meteo(models.Model):
 
     def __str__(self):
         return f"Météo de {self.entreprise} ({self.ville_nom})"
+
+
+class DemandeSite(models.Model):
+    """Courriel reçu à l'adresse de la plateforme (info@, celle du site Internet) : clients potentiels, questions.
+
+    Lu par le worker aux 2 minutes (core/boite_plateforme.py, en prod seulement), gardé au complet ici
+    (compressé) et transféré à JF (PLATEFORME_TRANSFERT_A). Rien n'est marqué lu ni effacé dans la boîte.
+    Suivi par JF dans l'administration (superutilisateur seulement)."""
+
+    class Statut(models.TextChoices):
+        NOUVELLE = "nouvelle", "Nouvelle"
+        EN_COURS = "en_cours", "En cours"
+        CLIENT = "client", "Devenu client"
+        SANS_SUITE = "sans_suite", "Sans suite"
+        POURRIEL = "pourriel", "Pourriel"
+        AUTOMATIQUE = "automatique", "Message automatique"
+
+    recu_le = models.DateTimeField("reçu le", db_index=True)
+    uidvalidite = models.BigIntegerField()
+    uid = models.BigIntegerField()
+    entete_message_id = models.CharField("Message-ID", max_length=300, blank=True)
+    expediteur = models.CharField("adresse", max_length=254, blank=True)
+    nom = models.CharField(max_length=200, blank=True)
+    sujet = models.CharField(max_length=200, blank=True)
+    texte = models.TextField(blank=True)
+    pieces_jointes = models.JSONField("pièces jointes", default=list, blank=True, help_text="Noms seulement : le courriel complet est gardé.")
+    brut = models.BinaryField(help_text="Courriel complet, compressé (zlib).")
+    statut = models.CharField(max_length=12, choices=Statut.choices, default=Statut.NOUVELLE, db_index=True)
+    note = models.TextField(blank=True, help_text="Suivi : appel fait, offre envoyée, etc.")
+    transferee_le = models.DateTimeField("transférée le", null=True, blank=True)
+    essais_transfert = models.PositiveSmallIntegerField(default=0)
+    erreur_transfert = models.CharField(max_length=300, blank=True)
+    cree_le = models.DateTimeField(auto_now_add=True)
+    modifie_le = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "demande reçue à info@"
+        verbose_name_plural = "demandes reçues à info@ (clients potentiels)"
+        ordering = ["-recu_le", "-pk"]
+        constraints = [models.UniqueConstraint(fields=["uidvalidite", "uid"], name="demande_site_uid_unique")]
+
+    def __str__(self):
+        return f"{self.recu_le:%Y-%m-%d} {self.nom or self.expediteur} : {self.sujet[:60]}"
+
+    def octets(self):
+        import zlib
+
+        return zlib.decompress(bytes(self.brut))

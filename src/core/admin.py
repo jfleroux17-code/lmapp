@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.gis.geos import Point
 
-from core.models import (AbonnementNotification, EchecConnexion, Entreprise, IncidentConfidentialite, JournalAction, Membre,
+from core.models import (AbonnementNotification, DemandeSite, EchecConnexion, Entreprise, IncidentConfidentialite, JournalAction, Membre,
                          VilleDesservie)
 
 _titre = "LMAPP : administration"
@@ -13,6 +13,18 @@ admin.site.site_header = _titre
 admin.site.site_title = _titre
 admin.site.index_title = "Tableau de bord"
 admin.site.index_template = "admin/index_lmapp.html"  # ajoute le lien vers l'écran de la plateforme
+_index_django = admin.site.index
+
+
+def _index_lmapp(request, extra_context=None):
+    """Accueil de l'administration : nombre de demandes nouvelles reçues à info@ (superutilisateur)."""
+    extra_context = dict(extra_context or {})
+    if request.user.is_superuser:
+        extra_context["demandes_nouvelles"] = DemandeSite.objects.filter(statut=DemandeSite.Statut.NOUVELLE).count()
+    return _index_django(request, extra_context)
+
+
+admin.site.index = _index_lmapp
 
 
 class MembreEnLigne(admin.TabularInline):
@@ -152,3 +164,53 @@ class JournalActionAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(DemandeSite)
+class DemandeSiteAdmin(admin.ModelAdmin):
+    """Demandes reçues à info@ (site Internet) : suivi des clients potentiels, par JF seulement."""
+    list_display = ["recu_le", "nom", "expediteur", "sujet", "statut", "transfert"]
+    list_filter = ["statut"]
+    list_editable = ["statut"]
+    search_fields = ["nom", "expediteur", "sujet", "texte", "note"]
+    date_hierarchy = "recu_le"
+    fields = ["statut", "note", "recu_le", "nom", "expediteur", "sujet", "texte", "pieces_jointes",
+              "transferee_le", "erreur_transfert"]
+    readonly_fields = ["recu_le", "nom", "expediteur", "sujet", "texte", "pieces_jointes", "transferee_le", "erreur_transfert"]
+    actions = ["telecharger_eml", "transferer_de_nouveau"]
+
+    @admin.display(description="transférée", boolean=True)
+    def transfert(self, obj):
+        return obj.transferee_le is not None
+
+    @admin.action(description="Télécharger le courriel (.eml)")
+    def telecharger_eml(self, request, queryset):
+        from django.http import HttpResponse
+
+        if queryset.count() != 1:
+            self.message_user(request, "Choisir une seule demande.", messages.WARNING)
+            return None
+        d = queryset.get()
+        r = HttpResponse(d.octets(), content_type="message/rfc822")
+        r["Content-Disposition"] = f'attachment; filename="demande-{d.pk}.eml"'
+        return r
+
+    @admin.action(description="Transférer de nouveau (au prochain passage du worker)")
+    def transferer_de_nouveau(self, request, queryset):
+        n = queryset.update(transferee_le=None, essais_transfert=0, erreur_transfert="")
+        self.message_user(request, f"{n} demande(s) seront transférées d'ici 2 minutes.")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser

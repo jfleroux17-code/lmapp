@@ -49,3 +49,27 @@ def relever_meteo(timestamp):
 
     for e in Entreprise.objects.filter(active=True):
         meteo.relever(e)
+
+
+@app.periodic(cron="*/2 * * * *")
+@app.task(queue="communications", queueing_lock="lire_boite_plateforme")
+def lire_boite_plateforme_aux_2_minutes(timestamp):
+    """Boîte info@ de la plateforme : demandes gardées dans la base et transférées à JF. En prod seulement."""
+    import imaplib
+    import logging
+
+    from django.conf import settings
+
+    from core import boite_plateforme
+
+    if not settings.COURRIEL_LECTURE_ACTIVE:
+        return "lecture désactivée"
+    if not boite_plateforme.configuree():
+        return "boîte de la plateforme non configurée"
+    try:
+        n = boite_plateforme.lire()
+    except (OSError, imaplib.IMAP4.error) as e:
+        logging.getLogger(__name__).warning("boîte de la plateforme illisible : %s", e)
+        n = 0  # on transfère quand même ce qui attend
+    t = sum(1 for d in boite_plateforme.a_transferer()[:20] if boite_plateforme.transferer(d))
+    return {"nouvelles": n, "transferees": t}

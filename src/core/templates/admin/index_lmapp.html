@@ -4,6 +4,7 @@
 <div class="module" style="margin-bottom: 20px;">
   <table style="width: 100%;"><caption>Plateforme</caption>
     <tr><th scope="row"><a href="{% url 'plateforme' %}">Usage par entreprise (courriels, textos, factures, espace)</a></th><td></td></tr>
+    <tr><th scope="row"><a href="{% url 'admin:core_demandesite_changelist' %}?statut__exact=nouvelle">Demandes reçues à info@ (clients potentiels)</a></th><td>{% if demandes_nouvelles %}<strong>{{ demandes_nouvelles }} nouvelle{{ demandes_nouvelles|pluralize }}</strong>{% endif %}</td></tr>
   </table>
 </div>
 {% endif %}
