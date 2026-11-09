@@ -34,3 +34,6 @@ node_modules/
 *.swp
 .DS_Store
 site.zip
+
+# Silence des alertes de la surveillance (outils/silence.sh)
+/etat/

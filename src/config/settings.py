@@ -205,6 +205,7 @@ LMAPP_ALERTES_COURRIEL = env("LMAPP_ALERTES_COURRIEL", "")
 LMAPP_SURVEILLANCE_HOTES = env_liste("LMAPP_SURVEILLANCE_HOTES", "")
 LMAPP_DISQUE_SEUIL = int(env("LMAPP_DISQUE_SEUIL", "70"))
 LMAPP_SAUVEGARDE_TEMOIN = env("LMAPP_SAUVEGARDE_TEMOIN", "/sauvegardes/derniere_reussite")
+LMAPP_SILENCE_FICHIER = env("LMAPP_SILENCE_FICHIER", "/etat/silence_jusqu_a")  # outils/silence.sh
 # Journal des actions (K4) : durée de conservation, en jours
 LMAPP_JOURNAL_JOURS = int(env("LMAPP_JOURNAL_JOURS", "730"))
 

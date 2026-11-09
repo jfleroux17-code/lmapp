@@ -93,6 +93,7 @@ services:
       - db
     volumes:
       - ./sauvegardes:/sauvegardes:ro
+      - ./etat:/etat:ro  # silence des alertes (outils/silence.sh)
     networks:
       - interne
       - edge

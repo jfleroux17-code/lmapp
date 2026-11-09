@@ -8,6 +8,11 @@ Vérifications :
     expire dans moins de 14 jours, lecture de la boîte courriel en erreur, boîte pleine à 90 %.
 Une alerte part au 2e échec de suite pour le HTTPS (un raté isolé n'est pas une panne), au 1er pour le reste;
 elle est répétée toutes les 6 heures tant que ça dure, et un message « Rétabli » suit.
+Silence (décision de JF, 9 novembre 2026) : pendant un déploiement ou une mise en service, aucune alerte de
+panne ne part (`sh outils/silence.sh <minutes>`, appelé par `outils/deployer_prod.sh`; fichier témoin
+LMAPP_SILENCE_FICHIER, monté en lecture seule), ni pendant les GRACE premières minutes après le démarrage du
+service (le worker redémarre en même temps). Les vérifications continuent : une panne qui dure encore à la
+fin du silence est signalée normalement. Un « Rétabli » pendant le silence part par courriel seulement.
 Ce que ce service ne voit pas : ld1 éteint au complet ou le routeur en panne. Pour ça, une vérification
 externe de /sante/ (ex. UptimeRobot), chez JF.
 """
@@ -29,6 +34,17 @@ log = logging.getLogger("lmapp.surveillance")
 GRAVES = {"https", "base", "worker", "file"}
 SEUIL_ECHECS = {"https": 2}
 REPETER = timedelta(hours=6)
+GRACE = timedelta(minutes=3)
+
+
+def silence_jusqu_a():
+    """Fin du silence demandé (outils/silence.sh), ou None. Fichier absent ou illisible : pas de silence."""
+    try:
+        with open(settings.LMAPP_SILENCE_FICHIER) as f:
+            fin = timezone.datetime.fromtimestamp(int(f.read().strip()), tz=timezone.get_current_timezone())
+    except (OSError, ValueError, OverflowError):
+        return None
+    return fin if fin > timezone.now() else None
 
 
 def _hotes():
@@ -188,11 +204,16 @@ def envoyer_texto(texte):
 class Veilleur:
     """État des alertes, en mémoire : fonctionne même quand la base est en panne."""
 
-    def __init__(self, envoyer_texto=envoyer_texto, envoyer_courriel=envoyer_courriel, maintenant=timezone.now):
+    def __init__(self, envoyer_texto=envoyer_texto, envoyer_courriel=envoyer_courriel, maintenant=timezone.now, silence=silence_jusqu_a):
         self.echecs, self.alerte_le, self.envoyer_texto, self.envoyer_courriel, self.maintenant = {}, {}, envoyer_texto, envoyer_courriel, maintenant
+        self.silence, self.demarre_le = silence, maintenant()
+
+    def en_silence(self):
+        return self.maintenant() - self.demarre_le < GRACE or self.silence() is not None
 
     def traiter(self, resultats):
         envois = []
+        silence = self.en_silence()
         for cle, (ok, detail) in resultats.items():
             genre = cle.split()[0]
             if ok:
@@ -204,6 +225,9 @@ class Veilleur:
             if self.echecs[cle] < SEUIL_ECHECS.get(genre, 1):
                 continue
             derniere = self.alerte_le.get(cle)
+            if silence:
+                log.info("en silence, pas d'alerte : %s %s", cle, detail)
+                continue
             if derniere is None or self.maintenant() - derniere >= REPETER:
                 self.alerte_le[cle] = self.maintenant()
                 envois.append((genre, f"{'Toujours en panne' if derniere else 'Panne'} : {cle}. {detail}"))
@@ -211,7 +235,7 @@ class Veilleur:
             log.warning("alerte : %s", texte)
             env = "" if settings.LMAPP_ENV == "prod" else f" ({settings.LMAPP_ENV})"
             self.envoyer_courriel(f"[Le Déneigeur{env}] {texte[:120]}", texte + "\n\nSurveillance de ld1 (service « surveillance »).")
-            if genre in GRAVES:
+            if genre in GRAVES and not silence:
                 self.envoyer_texto(f"Le Déneigeur{env} : {texte}")
         return envois
 

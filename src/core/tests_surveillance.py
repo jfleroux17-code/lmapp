@@ -12,8 +12,60 @@ class VeilleurTests(TestCase):
 
     def setUp(self):
         self.textos, self.courriels, self.t = [], [], timezone.now()
+        self.fin_silence = None
         self.v = surveillance.Veilleur(envoyer_texto=self.textos.append, envoyer_courriel=lambda s, t: self.courriels.append(s),
-                                       maintenant=lambda: self.t)
+                                       maintenant=lambda: self.t, silence=lambda: self.fin_silence)
+        self.v.demarre_le = self.t - timedelta(minutes=10)  # délai de grâce du démarrage passé
+
+    def test_silence_puis_alerte_si_la_panne_dure(self):
+        self.fin_silence = self.t + timedelta(minutes=20)
+        self.v.traiter({"worker": (False, "pas de battement")})
+        self.v.traiter({"worker": (False, "pas de battement")})
+        self.assertEqual((self.textos, self.courriels), ([], []))
+        self.fin_silence = None
+        self.v.traiter({"worker": (False, "pas de battement")})
+        self.assertEqual(len(self.textos), 1)
+
+    def test_silence_panne_reglee_pendant_le_silence_rien_ne_part(self):
+        self.fin_silence = self.t + timedelta(minutes=20)
+        self.v.traiter({"worker": (False, "x")})
+        self.v.traiter({"worker": (True, "")})
+        self.fin_silence = None
+        self.v.traiter({"worker": (True, "")})
+        self.assertEqual((self.textos, self.courriels), ([], []))
+
+    def test_retabli_pendant_le_silence_par_courriel_seulement(self):
+        self.v.traiter({"worker": (False, "x")})
+        self.assertEqual(len(self.textos), 1)
+        self.fin_silence = self.t + timedelta(minutes=20)
+        self.v.traiter({"worker": (True, "")})
+        self.assertEqual(len(self.textos), 1)
+        self.assertEqual(self.courriels[-1][:len("[Le Déneigeur")], "[Le Déneigeur")
+        self.assertIn("Rétabli", self.courriels[-1])
+
+    def test_grace_au_demarrage(self):
+        self.v.demarre_le = self.t - timedelta(minutes=1)
+        self.v.traiter({"worker": (False, "x")})
+        self.assertEqual(self.textos, [])
+        self.t += timedelta(minutes=3)
+        self.v.traiter({"worker": (False, "x")})
+        self.assertEqual(len(self.textos), 1)
+
+    def test_fichier_de_silence(self):
+        import tempfile
+        from django.test import override_settings
+        with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
+            f.write(str(int((timezone.now() + timedelta(minutes=10)).timestamp())))
+        with override_settings(LMAPP_SILENCE_FICHIER=f.name):
+            self.assertIsNotNone(surveillance.silence_jusqu_a())
+            with open(f.name, "w") as g:
+                g.write(str(int((timezone.now() - timedelta(minutes=1)).timestamp())))
+            self.assertIsNone(surveillance.silence_jusqu_a())
+            with open(f.name, "w") as g:
+                g.write("n'importe quoi")
+            self.assertIsNone(surveillance.silence_jusqu_a())
+        with override_settings(LMAPP_SILENCE_FICHIER="/nexiste/pas"):
+            self.assertIsNone(surveillance.silence_jusqu_a())
 
     def test_https_au_deuxieme_echec_puis_retabli(self):
         self.v.traiter({"https louis.x": (False, "délai")})

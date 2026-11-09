@@ -14,6 +14,9 @@ PG_DB=$(sed -n 's/^POSTGRES_DB=//p' .env)
 COMMIT=$(git rev-parse --short HEAD)
 F="sauvegardes/lmapp_avant-deploiement_$(date +%Y%m%d-%H%M%S).dump"
 
+echo "== Alertes de la surveillance en silence (20 minutes au plus)"
+sh outils/silence.sh 20
+
 echo "== Sauvegarde avant déploiement"
 (umask 077; docker compose exec -T db pg_dump -U "$PG_USER" -d "$PG_DB" -Fc > "$F")
 n=$(docker compose exec -T db pg_restore --list < "$F" | grep -c 'TABLE DATA')
@@ -36,4 +39,5 @@ echo "== Vérifications"
 curl -sf --resolve louis.ledeneigeur.com:443:127.0.0.1 https://louis.ledeneigeur.com/sante/ && echo
 echo "Ports ouverts sur ld1 (attendu : 22, 443 et 5000 de COVE) :"
 ss -tln | awk '/LISTEN/ && $4 !~ /^127\./ {print "  " $4}'
+sh outils/silence.sh 5  # le temps que le worker reprenne son battement; ensuite, alertes normales
 echo "Déployé : commit $COMMIT. Retour arrière possible : docker tag lmapp:<ancien commit> lmapp:latest && docker compose up -d"

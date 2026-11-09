@@ -17,6 +17,9 @@ class Command(BaseCommand):
             self.stdout.write("courriel d'essai parti" if ok else "courriel d'essai PAS parti (voir le journal)")
             return
         if o["une_fois"]:
+            fin = surveillance.silence_jusqu_a()
+            if fin:
+                self.stdout.write(f"EN SILENCE jusqu'à {fin:%H:%M} : aucune alerte de panne ne part")
             for cle, (ok, detail) in surveillance.tout_verifier().items():
                 self.stdout.write(f"{'ok  ' if ok else 'PANNE'} {cle} {detail}")
             return
