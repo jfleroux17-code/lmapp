@@ -129,6 +129,7 @@ Après son essai des écrans. Une étape à la fois, chacune en test, montrée �
 - [x] Trop-perçu gardé en crédit et appliqué à la facture suivante (D7) : **en prod le 9 novembre 2026**.
 - [x] Livraison et coût de chaque texto (E13), totaux dans le tableau de la plateforme : **en prod le 9 novembre 2026**.
 - [x] Revenus par secteur (J2) et rapport de fin de saison pour le comptable (J3, PDF) : **en prod le 9 novembre 2026**.
+- [x] Dossier de dommage : photos, entente de réparation, coût (H3) : **en prod le 9 novembre 2026**.
 - [x] Tableau de bord de la plateforme (Q1, `/admin/plateforme/`, superutilisateur seulement) : **en prod le 8 novembre 2026** (boîte de Louis : 0,2 Mo sur 2 Go). Segments de textos comptés à l'envoi, quota de la boîte lu à chaque passage.
 - [ ] Site Internet de présentation (Q5) : archive `/srv/lmapp/site.zip` prête le 8 novembre 2026 (liens relatifs, captures au visuel C). Reste pour JF : la déposer dans `public_html`, créer `info@ledeneigeur.com`, valider les durées de conservation de la politique et retirer l'avis « Ébauche ».
 - [ ] Arrivée d'un déneigeur venant d'un logiciel concurrent (Q3) : ~~correspondance des colonnes à l'import~~ (fait le 8 novembre 2026 : entêtes anglais reconnus, `--depuis <logiciel>`, `--correspondance`). Reste : un fichier de correspondance par logiciel, à faire avec un vrai export en main.

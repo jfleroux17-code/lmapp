@@ -1,5 +1,25 @@
 {% extends "terrain/base.html" %}
 {% block titre %}Demande{% endblock %}
+{% block tete %}{% load static %}<script src="{% static 'terrain/photo.js' %}"></script>
+<script>
+  document.addEventListener("alpine:init", () => {
+    Alpine.data("photoDemande", () => ({
+      envoi: false,
+      async envoyer(form) {
+        const fichier = form.photo.files[0];
+        if (!fichier || this.envoi) return;
+        this.envoi = true;
+        const donnees = new FormData(form);
+        const reduite = await window.reduirePhoto(fichier);
+        if (reduite) donnees.set("photo", reduite, "dommage.jpg");
+        try {
+          const r = await fetch(form.action, { method: "POST", body: donnees, credentials: "same-origin" });
+          window.location.href = r.redirected ? r.url : window.location.href;
+        } catch (e) { this.envoi = false; alert("Pas de réseau : la photo n'est pas partie."); }
+      },
+    }));
+  });
+</script>{% endblock %}
 {% block contenu %}
 <a href="{% url 'terrain:demandes' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Demandes</a>
 <div class="carte mb-4 p-4">
@@ -11,6 +31,34 @@
   <p class="mt-3 text-sm text-gray-400">{{ d.get_statut_display }}{% if d.statut == "planifiee" and d.prevue_le %}, prévue le {{ d.prevue_le|date:"j F" }}{% endif %}{% if d.reglee_le %}, le {{ d.reglee_le|date:"j F" }}{% endif %}</p>
   {% if d.reglement %}<p class="mt-1 text-ok">{{ d.reglement }}</p>{% endif %}
 </div>
+{% if d.genre == "dommage" or d.photos.exists or d.entente or d.cout is not None %}
+<section class="carte mb-4 p-4">
+  <h2 class="mb-2 text-lg font-bold">Dossier{% if d.genre == "dommage" %} de dommage{% endif %}</h2>
+  {% if d.photos.exists %}<div class="mb-3 grid grid-cols-3 gap-2">{% for p in d.photos.all %}
+    <a href="{% url 'terrain:voir_photo_demande' p.pk %}" target="_blank" rel="noopener"><img src="{% url 'terrain:voir_photo_demande' p.pk %}" alt="Photo du {{ p.cree_le|date:'j F' }}" class="h-24 w-full rounded-lg object-cover" loading="lazy"></a>
+  {% endfor %}</div>{% endif %}
+  {% if ecriture %}
+    <form method="post" enctype="multipart/form-data" action="{% url 'terrain:photo_demande' d.pk %}" class="mb-3" x-data="photoDemande" @submit.prevent="envoyer($el)">{% csrf_token %}
+      <label class="gros-bouton cursor-pointer border-2 border-bordure" :class="{ 'opacity-60': envoi }">
+        <span x-text="envoi ? 'Envoi de la photo...' : '+ Photo'">+ Photo</span>
+        <input type="file" name="photo" accept="image/*" capture="environment" class="sr-only" @change="envoyer($el.form)">
+      </label>
+    </form>
+    <form method="post" action="{% url 'terrain:dossier_demande' d.pk %}" class="space-y-3">{% csrf_token %}
+      <label class="block"><span class="mb-2 block text-gray-300">Entente de réparation</span><textarea name="entente" rows="3" class="champ py-3">{{ d.entente }}</textarea></label>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block"><span class="mb-2 block text-gray-300">Coût</span><input name="cout" inputmode="decimal" class="champ" value="{{ d.cout|default_if_none:'' }}" placeholder="0,00"></label>
+        <label class="block"><span class="mb-2 block text-gray-300">Payé par</span><select name="paye_par" class="champ"><option value="">?</option>
+          {% for v, n in payeurs %}<option value="{{ v }}" {% if d.paye_par == v %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></label>
+      </div>
+      <button class="gros-bouton border-2 border-accent text-accent">Enregistrer le dossier</button>
+    </form>
+  {% else %}
+    {% if d.entente %}<p class="whitespace-pre-line">{{ d.entente }}</p>{% endif %}
+    {% if d.cout is not None %}<p class="mt-1 text-gray-300">Coût : {{ d.cout }} $ {% if d.paye_par %}({{ d.get_paye_par_display|lower }}){% endif %}</p>{% endif %}
+  {% endif %}
+</section>
+{% endif %}
 {% if d.client %}<a href="{% url 'terrain:fiche' d.client.pk %}" class="gros-bouton mb-3 border-2 border-bordure">Fiche de {{ d.client.nom_affiche }}</a>{% endif %}
 {% if d.message %}<a href="{% url 'terrain:message' d.message.pk %}" class="gros-bouton mb-3 border-2 border-bordure">Message d'origine</a>{% endif %}
 {% if ecriture %}

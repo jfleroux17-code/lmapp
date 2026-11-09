@@ -28,7 +28,8 @@ def liste(request):
 @membre_requis
 def demande(request, pk):
     d = get_object_or_404(Demande.objects.select_related("client", "adresse", "message"), pk=pk, entreprise=request.entreprise)
-    return render(request, "terrain/demandes/demande.html", {"d": d, "ecriture": peut_ecrire(request), "statuts": Demande.Statut})
+    return render(request, "terrain/demandes/demande.html", {"d": d, "ecriture": peut_ecrire(request), "statuts": Demande.Statut,
+                                                            "payeurs": Demande._meta.get_field("paye_par").choices})
 
 
 @ecriture_requise
@@ -80,3 +81,59 @@ def changer(request, pk):
     if statut == Demande.Statut.REGLEE:
         return redirect("terrain:demandes")
     return redirect("terrain:demande", pk=d.pk)
+
+
+# Dossier de dommage (H3) : photos, entente, coût
+
+@require_POST
+@ecriture_requise
+def dossier(request, pk):
+    from decimal import Decimal, InvalidOperation
+
+    d = get_object_or_404(Demande, pk=pk, entreprise=request.entreprise)
+    d.entente = request.POST.get("entente", "").strip()
+    texte = (request.POST.get("cout") or "").replace("$", "").replace(" ", "").replace("\u202f", "").replace(",", ".").strip()
+    try:
+        d.cout = Decimal(texte).quantize(Decimal("0.01")) if texte else None
+    except InvalidOperation:
+        messages.error(request, "Coût illisible : écrire par exemple « 250 » ou « 249,99 ».")
+        return redirect("terrain:demande", pk=d.pk)
+    paye_par = request.POST.get("paye_par", "")
+    d.paye_par = paye_par if paye_par in dict(Demande._meta.get_field("paye_par").choices) else ""
+    d.save(update_fields=["entente", "cout", "paye_par", "modifie_le"])
+    messages.success(request, "Dossier enregistré.")
+    return redirect("terrain:demande", pk=d.pk)
+
+
+@require_POST
+@ecriture_requise
+def ajouter_photo(request, pk):
+    from clients.models import PhotoAdresse
+    from demandes.models import PhotoDemande
+
+    d = get_object_or_404(Demande, pk=pk, entreprise=request.entreprise)
+    f = request.FILES.get("photo")
+    if f is None or f.size > PhotoAdresse.MAX_OCTETS:
+        messages.error(request, "Photo absente ou trop lourde (8 Mo au plus).")
+    else:
+        octets = f.read()
+        mime = PhotoAdresse.type_de(octets[:16])
+        if mime is None:
+            messages.error(request, "Ce fichier n'est pas une photo.")
+        else:
+            PhotoDemande.objects.create(entreprise=request.entreprise, demande=d, image=octets, type_mime=mime, taille=len(octets),
+                                        prise_par=request.user)
+            messages.success(request, "Photo ajoutée.")
+    return redirect("terrain:demande", pk=d.pk)
+
+
+@membre_requis
+def photo(request, pk):
+    from django.http import HttpResponse
+
+    from demandes.models import PhotoDemande
+
+    p = get_object_or_404(PhotoDemande, pk=pk, entreprise=request.entreprise)
+    r = HttpResponse(bytes(p.image), content_type=p.type_mime)
+    r["Cache-Control"] = "private, max-age=604800, immutable"
+    return r

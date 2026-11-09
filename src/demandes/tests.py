@@ -74,3 +74,40 @@ class DemandesTests(TestCase):
         etranger = Client.objects.create(entreprise=self.autre, nom="X")
         self.client.post("/demandes/nouvelle/", {"client": etranger.pk, "genre": "autre", "description": "x"})
         self.assertIsNone(Demande.objects.get().client)
+
+
+class DossierDommageTests(TestCase):
+    """Dossier de dommage (H3) : photo, entente, coût, payé par; effacé avec le client (Loi 25)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from django.contrib.auth import get_user_model
+        from clients.models import Client
+        from core.models import Entreprise, Membre
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai-dd", domaine="dd.exemple.test")
+        cls.c = Client.objects.create(entreprise=cls.ent, nom="Tremblay")
+        cls.d = Demande.objects.create(entreprise=cls.ent, client=cls.c, genre="dommage", description="Boîte aux lettres accrochée", urgent=True)
+        cls.louis = get_user_model().objects.create_user("louis-dd", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="operateur")
+
+    def test_dossier_complet(self):
+        from decimal import Decimal
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import override_settings
+        from demandes.models import PhotoDemande
+        self.client.force_login(self.louis)
+        h = {"HTTP_HOST": "dd.exemple.test"}
+        with override_settings(ALLOWED_HOSTS=["*"]):
+            self.client.post(f"/demandes/{self.d.pk}/photos/", {"photo": SimpleUploadedFile("p.jpg", b"\xff\xd8\xff\xe0" + b"2" * 50)}, **h)
+            self.client.post(f"/demandes/{self.d.pk}/dossier/", {"entente": "Je remplace le poteau samedi.", "cout": "85,50 $", "paye_par": "deneigeur"}, **h)
+            r = self.client.get(f"/demandes/{self.d.pk}/", **h)
+        self.d.refresh_from_db()
+        self.assertEqual((self.d.cout, self.d.paye_par), (Decimal("85.50"), "deneigeur"))
+        self.assertContains(r, "Je remplace le poteau samedi.")
+        p = PhotoDemande.objects.get()
+        self.assertContains(r, f"/photos-demande/{p.pk}/")
+        from clients.effacement import effacer
+        effacer(self.c)
+        self.assertFalse(PhotoDemande.objects.exists())
+        self.d.refresh_from_db()
+        self.assertEqual(self.d.entente, "")

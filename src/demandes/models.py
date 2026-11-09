@@ -49,6 +49,12 @@ class Demande(Horodate):
     prevue_le = models.DateField("prévue le", null=True, blank=True)
     reglement = models.TextField("ce qui a été fait", blank=True)
     reglee_le = models.DateTimeField("réglée le", null=True, blank=True)
+    # Dossier de dommage (H3)
+    entente = models.TextField("entente de réparation", blank=True, help_text="Dommage : ce qui a été convenu avec le client.")
+    cout = models.DecimalField("coût de la réparation", max_digits=10, decimal_places=2, null=True, blank=True)
+    paye_par = models.CharField("payé par", max_length=12, blank=True,
+                                choices=[("deneigeur", "Le déneigeur"), ("assurance", "L'assurance"), ("client", "Le client"),
+                                         ("partage", "Partagé"), ("aucun", "Rien à payer")])
 
     class Meta:
         verbose_name = "demande"
@@ -76,3 +82,19 @@ class Demande(Horodate):
         else:
             self.reglee_le = None
         self.save(update_fields=["statut", "reglee_le", "reglement", "modifie_le"])
+
+
+class PhotoDemande(models.Model):
+    """Photo d'un dommage ou d'une demande (H3), gardée dans la base comme les autres photos, membres seulement."""
+    entreprise = models.ForeignKey(Entreprise, on_delete=models.PROTECT, related_name="photos_demandes")
+    demande = models.ForeignKey(Demande, on_delete=models.CASCADE, related_name="photos")
+    image = models.BinaryField()
+    type_mime = models.CharField(max_length=20)
+    taille = models.PositiveIntegerField()
+    prise_par = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "photo de demande"
+        verbose_name_plural = "photos de demandes"
+        ordering = ["cree_le"]
