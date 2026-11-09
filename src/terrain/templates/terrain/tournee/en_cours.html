@@ -3,6 +3,7 @@
 {% block titre %}Tournée{% endblock %}
 {% block contenu %}
 {# Chargé avant Alpine (qui est en « defer ») : le composant doit être enregistré à son démarrage #}
+<script src="{% static 'terrain/photo.js' %}"></script>
 <script src="{% static 'terrain/tournee.js' %}"></script>
 {{ donnees|json_script:"donnees-tournee" }}
 <div x-data="tournee(JSON.parse(document.getElementById('donnees-tournee').textContent))" x-cloak>
@@ -55,6 +56,10 @@
             <summary class="flex min-h-12 cursor-pointer items-center text-gray-400">+ Note (dommage, obstacle, demande)</summary>
             <input x-model="note" class="champ mt-2" maxlength="300" placeholder="Ex. boîte aux lettres accrochée">
           </details>
+          <label class="gros-bouton mb-3 cursor-pointer border-2 border-bordure" :class="{ 'opacity-60': photoEnvoi }">
+            <span x-text="photoEnvoi ? 'Envoi de la photo...' : '+ Photo' + (courant.photos ? ' (' + courant.photos + ' prise' + (courant.photos > 1 ? 's' : '') + ')' : '')"></span>
+            <input type="file" accept="image/*" capture="environment" class="sr-only" @change="photo($event)">
+          </label>
           <button type="button" @click="marquer('fait')" class="gros-bouton min-h-20 bg-ok text-2xl text-nuit">Fait</button>
           <button type="button" @click="menuSaute = !menuSaute" class="gros-bouton mt-3 border-2 border-bordure text-gray-300">Sauté…</button>
           <div x-show="menuSaute" class="mt-3 grid grid-cols-1 gap-2">

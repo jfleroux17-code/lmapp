@@ -113,6 +113,9 @@ Après son essai des écrans. Une étape à la fois, chacune en test, montrée �
 - [x] Appels notés à la main dans le fil du client (E6) : **en prod le 8 novembre 2026** (reçu ou fait, résumé, demande possible).
 - [x] Loi 25, minimum (K5) : **en prod le 8 novembre 2026** : effacement à la demande du client (administration, avec confirmation) et registre des incidents de confidentialité. Reste : politique de confidentialité à valider (site).
 - [x] Photo de l'entrée (A5) : **en prod le 8 novembre 2026** (appareil photo du cellulaire, réduite avant l'envoi, gardée dans la base).
+- [x] État de compte PDF par client (C10) et export pour le comptable en CSV (C12) : **en prod le 8 novembre 2026**. Format propre à QuickBooks, Sage ou Acomba : quand Louis dira quel logiciel son comptable utilise (question « Comptabilité »).
+- [x] Journal des actions (K4) : **en prod le 8 novembre 2026** (administration, « Journal des actions »; gardé 2 ans).
+- [x] Photo du passage (F7) : **en prod le 8 novembre 2026** (bouton « + Photo » à l'arrêt, heure et position, avant ou après; réseau requis).
 - [x] Tableau de bord de la plateforme (Q1, `/admin/plateforme/`, superutilisateur seulement) : **en prod le 8 novembre 2026** (boîte de Louis : 0,2 Mo sur 2 Go). Segments de textos comptés à l'envoi, quota de la boîte lu à chaque passage.
 - [ ] Site Internet de présentation (Q5) : archive `/srv/lmapp/site.zip` prête le 8 novembre 2026 (liens relatifs, captures au visuel C). Reste pour JF : la déposer dans `public_html`, créer `info@ledeneigeur.com`, valider les durées de conservation de la politique et retirer l'avis « Ébauche ».
 - [ ] Arrivée d'un déneigeur venant d'un logiciel concurrent (Q3) : ~~correspondance des colonnes à l'import~~ (fait le 8 novembre 2026 : entêtes anglais reconnus, `--depuis <logiciel>`, `--correspondance`). Reste : un fichier de correspondance par logiciel, à faire avec un vrai export en main.

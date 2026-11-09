@@ -2,8 +2,10 @@
 {% load argent %}
 {% block titre %}{{ client.nom_affiche }}{% endblock %}
 {% block tete %}
+{% load static %}
+<script src="{% static 'terrain/photo.js' %}"></script>
 <script>
-  // Photo de l'entrée (A5) : réduite dans le cellulaire (1600 px au plus, JPEG) avant l'envoi; sinon, l'original part tel quel
+  // Photo de l'entrée (A5) : réduite dans le cellulaire (terrain/photo.js); sinon, l'original part tel quel
   document.addEventListener("alpine:init", () => {
     Alpine.data("photoEntree", () => ({
       envoi: false,
@@ -11,17 +13,9 @@
         const fichier = form.photo.files[0];
         if (!fichier || this.envoi) return;
         this.envoi = true;
-        let donnees = new FormData(form);
-        try {
-          const image = await createImageBitmap(fichier);
-          const echelle = Math.min(1, 1600 / Math.max(image.width, image.height));
-          const toile = document.createElement("canvas");
-          toile.width = Math.round(image.width * echelle);
-          toile.height = Math.round(image.height * echelle);
-          toile.getContext("2d").drawImage(image, 0, 0, toile.width, toile.height);
-          const blob = await new Promise((ok) => toile.toBlob(ok, "image/jpeg", 0.82));
-          if (blob) donnees.set("photo", blob, "entree.jpg");
-        } catch (e) { /* format illisible par le navigateur : on envoie l'original */ }
+        const donnees = new FormData(form);
+        const reduite = await window.reduirePhoto(fichier);
+        if (reduite) donnees.set("photo", reduite, "entree.jpg");
         try {
           const r = await fetch(form.action, { method: "POST", body: donnees, credentials: "same-origin" });
           window.location.href = r.redirected ? r.url : window.location.href;
@@ -154,6 +148,11 @@
           <div>{{ p.heure|date:"j F, H \h i" }} · {{ p.operation.get_type_display|lower }}</div>
           {% if adresses|length > 1 %}<div class="text-sm text-gray-400">{{ p.adresse.ligne1 }}</div>{% endif %}
           {% if p.note %}<div class="text-sm text-accent">{{ p.note }}</div>{% endif %}
+          {% if p.photos %}<div class="mt-2 flex flex-wrap gap-2">{% for ph in p.photos %}
+            <a href="{% url 'terrain:voir_photo_passage' ph.pk %}" target="_blank" rel="noopener" class="block w-24">
+              <img src="{% url 'terrain:voir_photo_passage' ph.pk %}" alt="Photo {{ ph.quand }}, {{ ph.prise_le|date:'H \h i' }}" class="h-24 w-24 rounded-lg object-cover" loading="lazy">
+              <span class="block text-center text-xs text-gray-400">{{ ph.quand|capfirst }}, {{ ph.prise_le|date:"H \h i" }}</span>
+            </a>{% endfor %}</div>{% endif %}
         </div>
         {% if p.statut == "fait" %}<span class="pastille bg-ok/20 text-ok">Fait</span>{% else %}<span class="pastille bg-bordure text-gray-300">Sauté{% if p.raison %} : {{ p.get_raison_display|lower }}{% endif %}</span>{% endif %}
       </div>

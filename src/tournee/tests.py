@@ -316,3 +316,59 @@ class ACollecterTests(TourneeBase):
         self.assertEqual(arrets_[self.a_mont.pk]["du"], "")
         services.marquer(op, self.a2, "fait")
         self.assertTrue(self.client.get("/tournee/collecter/").context["lignes"][0]["fait"])
+
+
+@override_settings(ALLOWED_HOSTS=["*"])
+class PhotoPassageTests(TestCase):
+    """Photo du passage (F7) : opération en cours, heure bornée, position, avant ou après, fiche, effacement."""
+    JPEG = b"\xff\xd8\xff\xe0" + b"1" * 200
+
+    @classmethod
+    def setUpTestData(cls):
+        from django.contrib.auth import get_user_model
+        from core.models import Membre
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai-pp", domaine="pp.exemple.test")
+        cls.c = Client.objects.create(entreprise=cls.ent, nom="Tremblay")
+        cls.a = Adresse.objects.create(entreprise=cls.ent, client=cls.c, ligne1="1, rue A", ville="Sainte-Adèle")
+        cls.louis = get_user_model().objects.create_user("louis-pp", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="operateur")
+
+    def envoyer(self, **extra):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        d = {"adresse": self.a.pk, "photo": SimpleUploadedFile("p.jpg", self.JPEG), **extra}
+        return self.client.post("/tournee/photos/", d, HTTP_HOST="pp.exemple.test")
+
+    def test_sans_operation_refusee(self):
+        self.client.force_login(self.louis)
+        self.assertEqual(self.envoyer().status_code, 400)
+
+    def test_avant_apres_et_fiche(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from tournee.models import PhotoPassage
+        self.client.force_login(self.louis)
+        op = Operation.objects.create(entreprise=self.ent, type="neige", debut=timezone.now() - timedelta(hours=1))
+        avant = (timezone.now() - timedelta(minutes=20)).isoformat()
+        r = self.envoyer(quand=avant, lat="45.95", lng="-74.13", precision="12")
+        self.assertEqual(r.json()["photos"], 1)
+        Passage.objects.create(entreprise=self.ent, operation=op, adresse=self.a, statut="fait", heure=timezone.now() - timedelta(minutes=10))
+        self.envoyer(quand=(timezone.now() + timedelta(days=1)).isoformat())  # heure du futur : bornée à maintenant
+        p1, p2 = PhotoPassage.objects.order_by("prise_le")
+        self.assertEqual((p1.moment(), p2.moment()), ("avant", "après"))
+        self.assertEqual((round(p1.position.y, 2), p1.precision_m), (45.95, 12))
+        self.assertLessEqual(p2.prise_le, timezone.now())
+        r = self.client.get(f"/clients/{self.c.pk}/", HTTP_HOST="pp.exemple.test")
+        self.assertContains(r, f"/photos-passage/{p1.pk}/")
+        self.assertContains(r, "Avant")
+        self.assertEqual(self.client.get(f"/photos-passage/{p1.pk}/", HTTP_HOST="pp.exemple.test").content, self.JPEG)
+        from clients.effacement import effacer
+        effacer(self.c)
+        self.assertFalse(PhotoPassage.objects.exists())
+
+    def test_pas_une_photo(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.utils import timezone
+        self.client.force_login(self.louis)
+        Operation.objects.create(entreprise=self.ent, type="neige", debut=timezone.now())
+        r = self.client.post("/tournee/photos/", {"adresse": self.a.pk, "photo": SimpleUploadedFile("p.jpg", b"<svg>")}, HTTP_HOST="pp.exemple.test")
+        self.assertEqual(r.status_code, 400)

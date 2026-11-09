@@ -83,6 +83,24 @@ def _liens_navigation(adresse):
     ]
 
 
+def _passages_avec_photos(client):
+    """Dix derniers passages, chacun avec ses photos (F7) : sans les octets, avec « avant » ou « après »."""
+    from tournee.models import PhotoPassage
+
+    passages = list(Passage.objects.filter(adresse__client=client).select_related("operation", "adresse").order_by("-heure")[:10])
+    cles = {(p.operation_id, p.adresse_id): p for p in passages}
+    for p in passages:
+        p.photos = []
+    photos = PhotoPassage.objects.filter(operation_id__in={k[0] for k in cles}, adresse__client=client).only(
+        "pk", "prise_le", "operation_id", "adresse_id")
+    for ph in photos:
+        p = cles.get((ph.operation_id, ph.adresse_id))
+        if p is not None:
+            ph.quand = ph.moment(p)
+            p.photos.append(ph)
+    return passages
+
+
 @membre_requis
 def fiche(request, pk):
     client = get_object_or_404(Client, pk=pk, entreprise=request.entreprise)
@@ -97,7 +115,7 @@ def fiche(request, pk):
         "autre_telephone": telephone.afficher(client.telephone_autre),
         "ecriture": peut_ecrire(request),
         "modifier_clients": peut_modifier_clients(request),
-        "passages": Passage.objects.filter(adresse__client=client).select_related("operation", "adresse").order_by("-heure")[:10],
+        "passages": _passages_avec_photos(client),
         "messages_client": client.messages.order_by("-cree_le")[:10],
         "demandes_client": client.demandes.order_by("statut", "-cree_le")[:10],
         **resume_client(client),

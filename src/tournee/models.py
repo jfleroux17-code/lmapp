@@ -122,3 +122,36 @@ class PositionGPS(models.Model):
         verbose_name_plural = "positions GPS"
         ordering = ["-moment"]
         indexes = [models.Index(fields=["operation", "-moment"], name="position_operation_moment")]
+
+
+class PhotoPassage(models.Model):
+    """Photo prise à un arrêt pendant une opération (PRD F7) : heure de la prise et position du cellulaire.
+    Gardée dans la base, comme la photo de l'entrée (clients.PhotoAdresse), servie aux membres seulement.
+    « Avant » ou « après » se déduit de l'heure du passage noté pour cet arrêt."""
+    entreprise = models.ForeignKey(Entreprise, on_delete=models.PROTECT, related_name="photos_passages")
+    operation = models.ForeignKey(Operation, on_delete=models.CASCADE, related_name="photos")
+    adresse = models.ForeignKey(Adresse, on_delete=models.CASCADE, related_name="photos_passages")
+    image = models.BinaryField()
+    type_mime = models.CharField(max_length=20)
+    taille = models.PositiveIntegerField(help_text="Octets.")
+    prise_le = models.DateTimeField("prise le")
+    position = gis.PointField(srid=4326, geography=True, null=True, blank=True)
+    precision_m = models.PositiveIntegerField("précision (m)", null=True, blank=True)
+    prise_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "photo de passage"
+        verbose_name_plural = "photos de passage"
+        ordering = ["prise_le"]
+
+    def __str__(self):
+        return f"Photo du {self.prise_le:%Y-%m-%d %H:%M} ({self.adresse})"
+
+    def moment(self, passage=None):
+        """« avant » ou « après » le passage noté (heure comparée), sinon « pendant l'opération »."""
+        if passage is None:
+            passage = Passage.objects.filter(operation_id=self.operation_id, adresse_id=self.adresse_id).first()
+        if passage is None or passage.statut != Passage.Statut.FAIT:
+            return "pendant l'opération"
+        return "avant" if self.prise_le < passage.heure else "après"

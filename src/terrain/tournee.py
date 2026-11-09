@@ -75,7 +75,14 @@ def tournee(request):
         "position": reverse("terrain:position"),
         "avis_proximite": request.entreprise.avis_proximite_actif,
         "nb_avis": op.messages.count(),
+        "photo_url": reverse("terrain:photo_passage"),
     }
+    # F7 : nombre de photos déjà prises à chaque arrêt pendant cette opération
+    from django.db.models import Count
+
+    nb_photos = dict(op.photos.values("adresse_id").annotate(n=Count("pk")).values_list("adresse_id", "n"))
+    for x in donnees["arrets"]:
+        x["photos"] = nb_photos.get(x["id"], 0)
     secteurs = sorted({(a.secteur.ordre, a.secteur.pk, a.secteur.nom) for a in arrets(request.entreprise) if a.secteur})
     return render(request, "terrain/tournee/en_cours.html", {"op": op, "donnees": donnees, "ecriture": donnees["ecriture"],
                                                              "secteurs": [(pk, nom) for _, pk, nom in secteurs]})
@@ -343,3 +350,71 @@ def envoi_groupe(request):
                 messages.error(request, f"{len(envoyes) - partis} pas envoyé{'s' if len(envoyes) - partis > 1 else ''} : {next(m.erreur for m in envoyes if m.statut != Message.Statut.EN_FILE)}")
             return redirect(f"{reverse('terrain:messages')}?vue=envoyes")
     return render(request, "terrain/envoi_groupe.html", contexte)
+
+
+# Photo du passage (F7)
+
+@require_POST
+@ecriture_requise
+def photo_passage(request):
+    """Photo prise à l'arrêt pendant l'opération en cours : JSON en retour (écran de tournée, en fetch)."""
+    from datetime import datetime
+
+    from django.contrib.gis.geos import Point
+    from django.http import JsonResponse
+
+    from clients.models import Adresse, PhotoAdresse
+    from tournee.models import PhotoPassage
+
+    op = Operation.en_cours_de(request.entreprise)
+    a = Adresse.objects.filter(pk=request.POST.get("adresse") or 0, entreprise=request.entreprise).first()
+    f = request.FILES.get("photo")
+    if op is None or a is None or f is None:
+        return JsonResponse({"erreur": "Opération terminée, arrêt inconnu ou photo absente."}, status=400)
+    if f.size > PhotoAdresse.MAX_OCTETS:
+        return JsonResponse({"erreur": "Photo trop lourde (plus de 8 Mo)."}, status=400)
+    octets = f.read()
+    mime = PhotoAdresse.type_de(octets[:16])
+    if mime is None:
+        return JsonResponse({"erreur": "Ce fichier n'est pas une photo."}, status=400)
+    maintenant = timezone.now()
+    try:
+        quand = datetime.fromisoformat(request.POST.get("quand", "").replace("Z", "+00:00"))
+        quand = min(max(quand, op.debut), maintenant)  # bornée comme les passages (F10)
+    except ValueError:
+        quand = maintenant
+    position, precision = None, None
+    try:
+        lat, lng = float(request.POST["lat"]), float(request.POST["lng"])
+        if -90 <= lat <= 90 and -180 <= lng <= 180:
+            position, precision = Point(lng, lat, srid=4326), int(float(request.POST.get("precision") or 0)) or None
+    except (KeyError, ValueError):
+        pass
+    p = PhotoPassage.objects.create(entreprise=request.entreprise, operation=op, adresse=a, image=octets, type_mime=mime,
+                                    taille=len(octets), prise_le=quand, position=position, precision_m=precision,
+                                    prise_par=request.user)
+    return JsonResponse({"id": p.pk, "photos": op.photos.filter(adresse=a).count()})
+
+
+@membre_requis
+def voir_photo_passage(request, pk):
+    from django.http import HttpResponse
+
+    from tournee.models import PhotoPassage
+
+    p = get_object_or_404(PhotoPassage, pk=pk, entreprise=request.entreprise)
+    r = HttpResponse(bytes(p.image), content_type=p.type_mime)
+    r["Cache-Control"] = "private, max-age=604800, immutable"
+    return r
+
+
+@require_POST
+@ecriture_requise
+def retirer_photo_passage(request, pk):
+    from tournee.models import PhotoPassage
+
+    p = get_object_or_404(PhotoPassage.objects.select_related("adresse"), pk=pk, entreprise=request.entreprise)
+    client_id = p.adresse.client_id
+    p.delete()
+    messages.success(request, "Photo retirée.")
+    return redirect("terrain:fiche", pk=client_id)

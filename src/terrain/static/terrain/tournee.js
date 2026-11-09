@@ -16,6 +16,7 @@ document.addEventListener("alpine:init", () => {
     gpsEtat: "",
     surveillance: null,
     dernierEnvoi: null,
+    photoEnvoi: false,
 
     get cleFile() { return "lmapp-tournee-" + this.operation.id; },
 
@@ -115,6 +116,32 @@ document.addEventListener("alpine:init", () => {
     },
 
     sauver() { localStorage.setItem(this.cleFile, JSON.stringify(this.file)); },
+
+    // Photo du passage (F7) : réduite, heure et position du moment, envoyée tout de suite.
+    // Pas de file hors ligne pour les photos (trop lourdes pour le cellulaire) : sans réseau, on le dit.
+    async photo(ev) {
+      const a = this.courant, fichier = ev.target.files[0];
+      ev.target.value = "";
+      if (!a || !fichier || this.photoEnvoi) return;
+      this.photoEnvoi = true;
+      const quand = new Date().toISOString();
+      const [reduite, pos] = await Promise.all([window.reduirePhoto(fichier), window.positionRapide()]);
+      const d = new FormData();
+      d.append("adresse", a.id); d.append("quand", quand);
+      d.append("photo", reduite || fichier, reduite ? "passage.jpg" : fichier.name);
+      if (pos) { d.append("lat", pos.lat); d.append("lng", pos.lng); d.append("precision", pos.precision); }
+      try {
+        const r = await fetch(this.photo_url, { method: "POST", credentials: "same-origin", headers: { "X-CSRFToken": this.jetonCsrf() }, body: d });
+        const rep = await r.json();
+        if (!r.ok) throw new Error(rep.erreur || "HTTP " + r.status);
+        a.photos = rep.photos;
+        this.message = a.client + " : photo gardée" + (pos ? "." : " (sans position).");
+      } catch (e) {
+        alert(navigator.onLine ? "Photo pas enregistrée : " + e.message : "Pas de réseau : la photo n'est pas partie. La reprendre plus tard.");
+      } finally {
+        this.photoEnvoi = false;
+      }
+    },
 
     jetonCsrf() {
       const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
