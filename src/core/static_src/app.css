@@ -1,14 +1,19 @@
 /* Source du CSS de LMAPP, compilée par Tailwind à la construction de l'image.
    Pensé pour un iPhone, à une main, avec des gants, souvent la nuit :
-   gros caractères, grosses cibles, contraste élevé, thème sombre par défaut. */
+   gros caractères, grosses cibles, contraste élevé, thème sombre par défaut.
+   Visuel C « sombre plus net » (choix de JF, 8 novembre 2026) : noir pur, 20 px de base,
+   cartes et titres plus marqués, onglet actif plein. */
 @import "tailwindcss";
 @source "../../**/templates";
 
 @theme {
   --color-neige: #f5f7fa;
-  --color-nuit: #0d1117;
-  --color-carte: #161b22;
-  --color-bordure: #30363d;
+  --color-nuit: #000000;
+  --color-carte: #12161c;
+  --color-bordure: #3d444d;
+  --color-gray-300: #dde3ea;  /* gris plus clairs : lisibles sur le noir */
+  --color-gray-400: #b7c0cb;
+  --font-weight-semibold: 700;
   --color-accent: #f5c400;   /* jaune de signalisation */
   --color-danger: #ff6b6b;
   --color-ok: #3fb950;
@@ -17,7 +22,7 @@
 
 @layer base {
   [x-cloak] { display: none !important; }
-  html { font-size: 18px; -webkit-text-size-adjust: 100%; }
+  html { font-size: 20px; -webkit-text-size-adjust: 100%; }
   body { @apply bg-nuit text-neige antialiased; }
   /* Respecter l'encoche et la barre d'accueil de l'iPhone */
   .zone-sure { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); padding-bottom: env(safe-area-inset-bottom); }
@@ -27,6 +32,12 @@
   /* Bouton tapable avec des gants : au moins 56 px de haut */
   .gros-bouton { @apply flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl px-5 text-lg font-semibold active:scale-[0.98] transition; }
   .champ { @apply min-h-14 w-full rounded-2xl border-2 border-bordure bg-carte px-5 text-lg text-neige placeholder:text-gray-500 focus:border-accent focus:outline-none; }
-  .carte { @apply rounded-2xl border border-bordure bg-carte; }
+  .carte { @apply rounded-[22px] border-2 border-bordure bg-carte; }
+  /* Onglets du bas de l'en-tête : actif plein, jaune sur noir */
+  .onglet { @apply flex min-h-12 items-center justify-center rounded-xl bg-carte font-semibold text-gray-300; }
+  .onglet-actif { @apply bg-accent text-nuit; }
   .pastille { @apply inline-block whitespace-nowrap rounded-full px-3 py-1 text-sm font-semibold; }
 }
+
+/* Visuel C : titres très gras. Hors des couches pour passer devant l'utilitaire font-bold. */
+h1 { font-weight: 800; letter-spacing: -0.01em; }

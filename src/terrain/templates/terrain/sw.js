@@ -39,7 +39,7 @@ self.addEventListener("fetch", (e) => {
       if (rep.ok && !rep.redirected) { const copie = rep.clone(); caches.open(CACHE_PAGES).then((c) => c.put(url.pathname, copie)); }
       return rep;
     }).catch(() => caches.match(url.pathname).then((r) => r || caches.match("/tournee/")).then((r) => r || new Response(
-      "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'><body style='background:#0d1117;color:#f5f7fa;font:18px system-ui;padding:2em'>" +
+      "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'><body style='background:#000000;color:#f5f7fa;font:18px system-ui;padding:2em'>" +
       "<h1>Hors ligne</h1><p>Cette page n'a pas encore été ouverte sur ce téléphone. La tournée reste disponible si elle a été ouverte une fois.</p>",
       { headers: { "Content-Type": "text/html; charset=utf-8" } }))));
   }
