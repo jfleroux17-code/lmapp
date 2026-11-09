@@ -103,6 +103,9 @@ class Client(Horodate):
     )
 
     notes = models.TextField(blank=True)
+    ne_pas_relancer = models.BooleanField("ne pas relancer", default=False,
+                                          help_text="Jamais proposé dans les relances du matin (entente de paiement, cas délicat). La relance à la main reste possible.")
+    relance_reportee_au = models.DateField("relance reportée au", null=True, blank=True)
     efface_le = models.DateTimeField("renseignements effacés le", null=True, blank=True, editable=False,
                                      help_text="Demande de suppression du client (Loi 25) : voir clients/effacement.py.")
 

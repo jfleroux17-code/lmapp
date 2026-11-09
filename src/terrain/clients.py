@@ -29,7 +29,7 @@ class ClientForm(forms.ModelForm):
         model = Client
         fields = ["prenom", "nom", "organisation", "cellulaire", "telephone_autre", "courriel", "canal_prefere",
                   "mode_paiement", "statut", "facturation_ligne1", "facturation_ligne2", "facturation_ville",
-                  "facturation_code_postal", "notes"]
+                  "facturation_code_postal", "notes", "ne_pas_relancer"]
         widgets = {
             "prenom": forms.TextInput(attrs=_attrs(autocomplete="off", autocapitalize="words")),
             "nom": forms.TextInput(attrs=_attrs(autocomplete="off", autocapitalize="words")),
@@ -45,7 +45,9 @@ class ClientForm(forms.ModelForm):
             "facturation_ville": forms.TextInput(attrs=_attrs()),
             "facturation_code_postal": forms.TextInput(attrs=_attrs(autocapitalize="characters", maxlength="7")),
             "notes": forms.Textarea(attrs=_attrs(rows=3)),
+            "ne_pas_relancer": forms.CheckboxInput(attrs={"class": "h-6 w-6 accent-[#f5c400]"}),
         }
+        help_texts = {"ne_pas_relancer": ""}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

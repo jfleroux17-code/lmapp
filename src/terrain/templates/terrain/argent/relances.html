@@ -1,0 +1,39 @@
+{% extends "terrain/base.html" %}
+{% load argent %}
+{% block titre %}Relances à envoyer{% endblock %}
+{% block contenu %}
+<h1 class="mb-2 text-2xl font-bold">Relances à envoyer</h1>
+<p class="mb-4 text-gray-400">Rappel 15 jours après l'échéance, deuxième avis à 30, dernier avis à 60. Rien ne part sans votre tape.</p>
+{% if not actif %}<p class="mb-4 rounded-xl bg-bordure/40 p-3 text-sm text-gray-300">Les relances proposées sont éteintes dans la fiche de l'entreprise : pas d'avis le matin. La liste ci-dessous reste juste.</p>{% endif %}
+{% if propositions %}
+  {% if ecriture %}
+  <form method="post" action="{% url 'terrain:envoyer_relances' %}" x-data="{ envoi: false, n: {{ propositions|length }} }"
+        @submit="if (envoi || n === 0 || !confirm('Envoyer ' + n + ' relance' + (n > 1 ? 's' : '') + '?')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+  {% endif %}
+    <div class="carte mb-4 divide-y divide-bordure">
+      {% for p in propositions %}
+        <div class="flex items-start gap-3 p-4">
+          {% if ecriture %}<input type="checkbox" name="client" value="{{ p.client.pk }}" checked class="mt-1 h-6 w-6 shrink-0 accent-[#f5c400]"
+                 @change="n += $event.target.checked ? 1 : -1" aria-label="Relancer {{ p.client.nom_affiche }}">{% endif %}
+          <div class="min-w-0 flex-1">
+            <a href="{% url 'terrain:fiche' p.client.pk %}" class="block truncate font-semibold underline-offset-4 active:underline">{{ p.client.nom_affiche }}</a>
+            <div class="text-sm {% if p.niveau == 3 %}text-danger{% else %}text-accent{% endif %}">{{ p.genre_label }}</div>
+            <div class="text-sm text-gray-400">{{ p.du|argent }} · {{ p.factures }} facture{{ p.factures|pluralize }} · {{ p.jours }} jours après l'échéance</div>
+            <div class="text-sm text-gray-400">Par {{ p.canaux_texte }}{% if p.derniere %} · {{ p.derniere.get_genre_display }} le {{ p.derniere.cree_le|date:"j F" }}{% endif %}</div>
+          </div>
+          {% if ecriture %}<button form="reporter-{{ p.client.pk }}" class="min-h-12 shrink-0 rounded-xl border-2 border-bordure px-3 text-sm text-gray-300">Pas cette<br>semaine</button>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% if ecriture %}
+    <div class="sticky bottom-0 -mx-4 border-t border-bordure bg-nuit/95 px-4 py-3 backdrop-blur" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
+      <button class="gros-bouton bg-accent text-nuit" :class="{ 'opacity-60': envoi || n === 0 }">Envoyer <span x-text="n">{{ propositions|length }}</span> relance<span x-show="n > 1">s</span></button>
+    </div>
+  </form>
+  {% for p in propositions %}<form id="reporter-{{ p.client.pk }}" method="post" action="{% url 'terrain:reporter_relance' p.client.pk %}" class="hidden">{% csrf_token %}</form>{% endfor %}
+  {% endif %}
+{% else %}
+  <p class="carte p-4 text-gray-300">Aucune relance due aujourd'hui.</p>
+{% endif %}
+<a href="{% url 'terrain:comptes' %}" class="mt-4 block text-sm text-gray-400">‹ Comptes à recevoir</a>
+{% endblock %}

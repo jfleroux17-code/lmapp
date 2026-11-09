@@ -246,7 +246,16 @@ def comptes(request):
         "encaisse_30j": encaisse_30j,
         "brouillons": Facture.objects.filter(entreprise=request.entreprise, statut=Facture.Statut.BROUILLON).count(),
         "modifier_clients": peut_modifier_clients(request),
+        "relances_pretes": _relances_pretes(request.entreprise),
     })
+
+
+def _relances_pretes(entreprise):
+    if not entreprise.relances_proposees:
+        return None
+    from communications.relances_proposees import proposees
+
+    return len(proposees(entreprise))
 
 
 def resume_client(client):
@@ -312,6 +321,60 @@ def relancer(request, client_pk):
         if m not in partis:
             messages.error(request, f"{m.get_canal_display()} pas envoyé : {m.erreur}")
     return redirect("terrain:fiche", pk=client.pk)
+
+
+@membre_requis
+def relances_a_envoyer(request):
+    """C9 : les relances dues aujourd'hui, toutes cochées; le déneigeur décoche ce qu'il ne veut pas et envoie."""
+    from communications.relances_proposees import proposees
+
+    return render(request, "terrain/argent/relances.html", {
+        "propositions": proposees(request.entreprise), "actif": request.entreprise.relances_proposees,
+        "ecriture": peut_ecrire(request),
+    })
+
+
+@require_POST
+@ecriture_requise
+def envoyer_relances(request):
+    """Envoie les relances cochées. La liste est recalculée : un client qui a payé entre-temps est sauté."""
+    from communications import relances
+    from communications.relances_proposees import proposees
+
+    cochees = set(request.POST.getlist("client"))
+    partis, problemes = 0, []
+    for p in proposees(request.entreprise):
+        if str(p["client"].pk) not in cochees:
+            continue
+        try:
+            envoyes = relances.relancer(p["client"], p["niveau"])
+        except ValidationError as e:
+            problemes.append(f"{p['client'].nom_affiche} : {' '.join(e.messages)}")
+            continue
+        if any(m.statut == m.Statut.EN_FILE for m in envoyes):
+            partis += 1
+        problemes += [f"{p['client'].nom_affiche}, {m.get_canal_display().lower()} : {m.erreur}"
+                      for m in envoyes if m.statut != m.Statut.EN_FILE]
+    if partis:
+        messages.success(request, f"{partis} relance{'s' if partis > 1 else ''} en route.")
+    for t in problemes:
+        messages.error(request, t)
+    if not partis and not problemes:
+        messages.info(request, "Aucune relance envoyée.")
+    return redirect("terrain:relances_a_envoyer")
+
+
+@require_POST
+@ecriture_requise
+def reporter_relance(request, client_pk):
+    """« Pas cette semaine » : le client sort de la liste pour REPORT_JOURS jours."""
+    from communications.relances_proposees import REPORT_JOURS
+
+    client = get_object_or_404(Client, pk=client_pk, entreprise=request.entreprise)
+    client.relance_reportee_au = timezone.localdate() + timedelta(days=REPORT_JOURS)
+    client.save(update_fields=["relance_reportee_au", "modifie_le"])
+    messages.success(request, f"{client.nom_affiche} : relance reportée au {client.relance_reportee_au:%d/%m}.")
+    return redirect("terrain:relances_a_envoyer")
 
 
 @membre_requis

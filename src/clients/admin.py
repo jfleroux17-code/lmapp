@@ -44,7 +44,7 @@ class ClientAdmin(admin.ModelAdmin):
     fieldsets = [
         (None, {"fields": ["entreprise", ("prenom", "nom"), "organisation", "statut"]}),
         ("Coordonnées", {"fields": [("cellulaire", "telephone_autre"), "courriel"]}),
-        ("Préférences", {"fields": [("canal_prefere", "langue"), "mode_paiement"]}),
+        ("Préférences", {"fields": [("canal_prefere", "langue"), "mode_paiement", ("ne_pas_relancer", "relance_reportee_au")]}),
         ("Consentement (LCAP)", {"fields": ["consentement_commercial", ("consentement_date", "consentement_source"), "desabonne_le"]}),
         ("Adresse de facturation (si différente)", {
             "classes": ["collapse"],

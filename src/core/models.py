@@ -95,6 +95,17 @@ class Entreprise(Horodate):
                                                     help_text="Pour estimer « d'ici environ X minutes ».")
     avis_passage_fait = models.BooleanField("avis « c'est fait »", default=False, help_text="Texto au client quand son passage est fait.")
 
+    # Relances proposées (PRD C9) : l'app prépare, le déneigeur envoie d'une tape. Rien ne part tout seul.
+    relances_proposees = models.BooleanField(
+        "relances proposées chaque matin", default=False,
+        help_text="Les jours de semaine, l'app dresse la liste des relances dues (15, 30 et 60 jours après l'échéance) et avise le cellulaire. Rien ne part sans une tape.",
+    )
+    relances_soldes_anterieurs = models.BooleanField(
+        "proposer aussi les soldes antérieurs", default=False,
+        help_text="Éteint : un client qui ne doit qu'un solde d'une saison antérieure se relance à la main.",
+    )
+    relances_avisees_le = models.DateField("relances avisées le", null=True, blank=True, editable=False)
+
     # Paiement Interac (PRD D4)
     interac_courriel = models.EmailField("courriel Interac", blank=True)
     interac_instructions = models.TextField(

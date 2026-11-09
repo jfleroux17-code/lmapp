@@ -27,15 +27,18 @@ def relances_du_client(client):
     return Message.objects.filter(client=client, genre__in=RELANCES, statut__in=COMPTEES)
 
 
+def plus_haute_relance(client, dues):
+    """0 à 3 : la plus haute relance partie depuis la plus vieille facture due (courriel et texto comptent une fois)."""
+    genres = set(relances_du_client(client).filter(cree_le__date__gte=dues[0].date_facture).values_list("genre", flat=True))
+    return max((RELANCES.index(g) + 1 for g in genres), default=0)
+
+
 def niveau_suivant(client, dues=None):
-    """1, 2 ou 3 : le niveau qui suit la plus haute relance partie depuis la plus vieille facture due
-    (une relance par courriel et par texto compte une fois)."""
+    """1, 2 ou 3 : le niveau qui suit la plus haute relance partie depuis la plus vieille facture due."""
     dues = factures_dues(client) if dues is None else dues
     if not dues:
         return None
-    genres = set(relances_du_client(client).filter(cree_le__date__gte=dues[0].date_facture).values_list("genre", flat=True))
-    plus_haut = max((RELANCES.index(g) + 1 for g in genres), default=0)
-    return min(plus_haut + 1, 3)
+    return min(plus_haute_relance(client, dues) + 1, 3)
 
 
 def canaux(client):

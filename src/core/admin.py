@@ -46,6 +46,7 @@ class EntrepriseAdmin(admin.ModelAdmin):
         ("Taxes et factures", {"fields": ["inscrit_taxes", "numero_tps", "numero_tvq", "taux_tps", "taux_tvq", "prochain_numero_facture"]}),
         ("Communications", {"fields": ["envois_actifs", "numero_texto", "courriel_reponse", "signature_messages"]}),
         ("Avis pendant les opérations", {"fields": ["avis_proximite_actif", "avis_rayon_m", "minutes_par_arret", "avis_passage_fait"]}),
+        ("Relances proposées (C9)", {"fields": ["relances_proposees", "relances_soldes_anterieurs"]}),
         ("Paiement Interac", {"fields": ["interac_courriel", "interac_instructions"]}),
     ]
 

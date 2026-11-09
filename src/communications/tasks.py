@@ -85,3 +85,33 @@ def relever_couts_chaque_heure(timestamp):
             Message.objects.filter(pk=m.pk).update(cout=r[0], cout_devise=r[1])
             n += 1
     return n
+
+
+@app.periodic(cron="0 * * * *")
+@app.task(queue="communications", queueing_lock="aviser_relances")
+def aviser_relances(timestamp):
+    """C9 : une fois par jour de semaine, dès 9 h (heure de l'entreprise), avise le cellulaire des relances
+    prêtes. Pas pendant une opération de déneigement (on réessaie à l'heure suivante, jusqu'à 16 h).
+    N'envoie aucune relance : le déneigeur les envoie lui-même depuis l'écran."""
+    from django.utils import timezone
+
+    from communications.relances_proposees import proposees
+    from core.models import Entreprise
+    from core.tasks import notifier
+    from tournee.models import Operation
+
+    maintenant = timezone.localtime()
+    if maintenant.weekday() >= 5 or not 9 <= maintenant.hour < 17:
+        return "hors des heures"
+    aujourdhui = maintenant.date()
+    n_avis = 0
+    for ent in Entreprise.objects.filter(active=True, relances_proposees=True).exclude(relances_avisees_le=aujourdhui):
+        if Operation.en_cours_de(ent):
+            continue
+        n = len(proposees(ent, aujourdhui))
+        Entreprise.objects.filter(pk=ent.pk).update(relances_avisees_le=aujourdhui)  # update() : pas une action à journaliser
+        if n:
+            notifier.defer(entreprise_id=ent.pk, titre="Relances prêtes",
+                           corps=f"{n} relance{'s' if n > 1 else ''} à envoyer. Rien ne part sans vous.", url="/comptes/relances/")
+            n_avis += 1
+    return n_avis

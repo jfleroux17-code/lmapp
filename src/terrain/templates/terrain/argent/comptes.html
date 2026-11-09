@@ -17,6 +17,7 @@
   <div class="carte p-4"><div class="text-sm text-gray-400">Encaissé, 30 jours</div><div class="text-2xl font-bold text-ok">{{ encaisse_30j|argent }}</div></div>
 </div>
 {% if plus_de_60 %}<p class="mb-4 text-danger">Dont {{ plus_de_60|argent }} depuis plus de 60 jours.</p>{% endif %}
+{% if relances_pretes %}<a href="{% url 'terrain:relances_a_envoyer' %}" class="mb-4 block rounded-2xl bg-accent/15 p-4 font-semibold text-accent">{{ relances_pretes }} relance{{ relances_pretes|pluralize }} prête{{ relances_pretes|pluralize }} à envoyer ›</a>{% elif relances_pretes == 0 %}<a href="{% url 'terrain:relances_a_envoyer' %}" class="mb-4 block text-sm text-gray-400">Relances à envoyer : aucune aujourd'hui ›</a>{% endif %}
 {% if virements_a_confirmer %}<a href="{% url 'terrain:virements' %}" class="mb-4 block rounded-2xl bg-ok/15 p-4 font-semibold text-ok">{{ virements_a_confirmer }} virement{{ virements_a_confirmer|pluralize }} Interac à confirmer ›</a>{% else %}<a href="{% url 'terrain:virements' %}" class="mb-4 block text-sm text-gray-400">Virements Interac reçus ›</a>{% endif %}
 <a href="{% url 'terrain:rapport_saison' %}" class="mb-2 block text-sm text-gray-400">Rapport de la saison (par secteur, pour le comptable) ›</a>
 <a href="{% url 'terrain:export_comptable' %}" class="mb-4 block text-sm text-gray-400">Export pour le comptable (Excel) ›</a>
