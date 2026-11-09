@@ -31,6 +31,7 @@ Mise à jour : 8 novembre 2026.
 - [x] Premier courriel d'essai à JF (8 novembre 2026) : SPF, DKIM et DMARC « pass », mais arrivé dans les pourriels (domaine neuf, DNS inverse générique). IP sur aucune liste noire vérifiée.
 - [ ] JF : dans Gmail, « non-spam », ajouter `louis@ledeneigeur.com` aux contacts et répondre au courriel d'essai. Facultatif : Google Postmaster Tools pour `ledeneigeur.com` (valeur TXT à donner à Claude Code).
 - [x] Twilio : compte payant, numéro 450-300-1166, `TWILIO_ACCOUNT_SID` et `TWILIO_AUTH_TOKEN` dans les deux `.env` (8 novembre 2026). Premier texto d'essai livré au cellulaire de JF, depuis le test.
+- [ ] **JF : deuxième numéro Twilio, réservé à la plateforme** (alertes de la surveillance, plus tard la facturation des déneigeurs) : acheter un numéro canadien local dans la console Twilio (même compte, environ 1,15 $ US par mois), sans webhook à configurer, et donner le numéro à Claude Code. Il ira dans `LMAPP_ALERTES_TEXTO_DE` du `.env` de la prod. D'ici là, les alertes partent du 450-300-1166 de Louis.
 - [x] ~~SMTP2GO~~ : abandonné le 8 novembre 2026 (décision de JF), remplacé par le serveur de courriel de JF.
 - [x] ~~Boîte IMAP `info@`~~ : remplacée par `louis@ledeneigeur.com` (une boîte par déneigeur), en place.
 - [ ] Stripe : seulement si des clients veulent payer par carte (question 8 de Louis).
@@ -145,5 +146,7 @@ Après son essai des écrans. Une étape à la fois, chacune en test, montrée �
 - Deuxième déneigeur (PRD section P) : déplacer `/admin/` vers une adresse neutre réservée à JF (proposé : `admin.ledeneigeur.com`), et documenter l'ajout d'un sous-domaine (Cloudflare, `Caddyfile`, `DJANGO_ALLOWED_HOSTS`, fiche `Entreprise`). Attend qu'il y ait un deuxième déneigeur.
 
 ## Fait
+
+- 9 novembre 2026, en prod (essayés en test d'abord) : **relances proposées (C9, option B)**, éteintes par défaut (case « relances proposées chaque matin » dans la fiche de l'entreprise, à allumer avec Louis); **gabarits par défaut** dans la console de JF (administration, « Gabarits par défaut (toutes les entreprises) »), écran « Messages types » des déneigeurs (lecture seule, cloner, revenir au défaut); **photos jointes aux messages (E14)**; **alertes de la surveillance en silence pendant les déploiements** (`outils/silence.sh`). UptimeRobot sur `/sante/` (JF).
 
 - 7 novembre 2026 : dépôt Git (copie sur GitHub privé), squelette Django, Docker (projets `edge`, `lmapp`, `lmapp-test`), vrais certificats Let's Encrypt, ouverture filtrée par IP au routeur (IP réelle conservée), modèle des clients, import Excel et CSV avec gabarit, géocodage avec zone de service Sainte-Adèle, données d'essai, déploiements en prod, comptes administrateur de JF en prod et en test.

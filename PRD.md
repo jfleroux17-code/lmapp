@@ -117,7 +117,7 @@ Légende : **V1** = version de base, **V2** = saison suivante ou dès que V1 rou
 | C6 | Saisie des soldes d'ouverture : montants dus des saisons passées par client, avec note | V1 |
 | C7 | Écran « Comptes à recevoir » : qui doit quoi, depuis combien de temps, tri par montant et par ancienneté | V1 |
 | C8 | Relance en un geste : courriel ou texto avec facture jointe, ton gradué (rappel, deuxième avis, dernier avis) | V1 |
-| C9 | Relances automatiques planifiées (ex. 15, 30, 60 jours) avec arrêt dès que payé | V2 |
+| C9 | Relances automatiques planifiées (ex. 15, 30, 60 jours) avec arrêt dès que payé | **Fait (9 novembre 2026), option B choisie par JF** : proposées chaque matin, envoyées d'une tape, jamais toutes seules |
 | C10 | État de compte PDF par client (toutes les factures et paiements) | V2 |
 | C11 | Note de crédit, rabais, radiation d'une créance irrécouvrable | V2 |
 | C12 | Export comptable (CSV pour comptable ou pour QuickBooks, Sage, Acomba) | V2 |
@@ -148,12 +148,12 @@ Légende : **V1** = version de base, **V2** = saison suivante ou dès que V1 rou
 | E6 | Historique unifié par client : textos, courriels, avis automatiques, appels notés à la main, dans un seul fil chronologique | V1 |
 | E7 | Boîte de réception globale : tous les messages entrants non lus, avec accès rapide à la fiche | V1 |
 | E8 | Notification sur le cellulaire de Louis quand un client répond | V1 |
-| E9 | Gabarits de messages (début de tempête, passage terminé, facture, rappel, fin de saison) modifiables | V1 |
+| E9 | Gabarits de messages (début de tempête, passage terminé, facture, rappel, fin de saison) modifiables | V1. **9 novembre 2026** : gabarits par défaut de la plateforme modifiés par JF dans sa console; chaque déneigeur les voit en lecture seule et les clone pour avoir sa version |
 | E10 | Envoi groupé : à tous les clients, à un secteur, aux clients d'une route | V1 |
 | E11 | Gestion du désabonnement : un client qui texte ARRÊT ou STOP n'est plus sollicité pour le commercial, mais reçoit encore les avis de service | V1 |
 | E12 | Avis par appel vocal automatisé pour les clients sans cellulaire | Plus tard (voir aussi la section R pour les appels reçus) |
 | E13 | Journal d'envoi : livré, échoué, coût par message | V2 |
-| E14 | Pièces jointes (photo d'un dommage, du passage) dans les textos et courriels | V2 |
+| E14 | Pièces jointes (photo d'un dommage, du passage) dans les textos et courriels | **Fait (9 novembre 2026)** : pièces jointes par courriel, lien secret par texto (pas de MMS) |
 
 ### F. Tournée et opérations
 
@@ -506,7 +506,7 @@ Jalon : une tempête complète gérée dans l'app.
 ### Phase 3 : Consolidation et premier assistant IA (janvier et février)
 Fonctionnalités : A3, A4, A11, B5, B6, C9 à C12, D5, D7, E13, E14, F7, G6, H1 à H3, I1, J2, J3, J5, K4, O1, O2, O6.
 
-**Fait le 9 novembre 2026** (en prod, essayé en test d'abord) : A3, A11, B5, B6, C10, C12, D7, E13, F7, H1 à H3, I1, J2, J3, K4, G6, plus la surveillance (6.7). Reste de la phase : A4 (déjà possible : plusieurs adresses par payeur), C9 (relances automatiques : décision de JF et de Louis, elles enverraient sans intervention), E14, J5 (fait pour JF dans Q1), O1, O2, O6 (modèle d'IA à choisir).
+**Fait le 9 novembre 2026** (en prod, essayé en test d'abord) : A3, A11, B5, B6, C9 (option B : proposées, envoyées d'une tape), C10, C12, D7, E13, E14, F7, H1 à H3, I1, J2, J3, K4, G6, plus la surveillance (6.7). A4 : déjà possible (plusieurs adresses par payeur). J5 : fait pour JF dans Q1; l'afficher aux déneigeurs dépend de la grille de tarifs (Q2). Reste de la phase : O1, O2, O6 (modèle d'IA à choisir par JF).
 Livrable : automatisation des relances, rapports pour le comptable, demandes de service, et l'assistant qui classe les messages entrants et propose des brouillons que Louis approuve en une tape. Le reste de la saison sert à mesurer la qualité des brouillons.
 
 ### Phase 4 : Préparation de la saison suivante (printemps et été 2027)
