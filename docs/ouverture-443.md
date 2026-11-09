@@ -18,35 +18,49 @@ webhooks sans signature valide sont refusés, (c) la liste des chemins publics e
 
 ### Routeur Mikrotik (fait par JF)
 
-D'abord, afficher les règles actuelles pour repérer celles qui utilisent la liste `_SLAPP` sur le 443 :
+État actuel (relevé par JF le 8 novembre 2026) : **une seule règle NAT couvre 22 et 443 ensemble**, avec `_SLAPP` en
+« Src. Address List ». À l'ouverture : **deux règles séparées**, le 443 sans restriction, le 22 qui reste dans `_SLAPP`.
+
+**1. Afficher** la règle actuelle et noter son numéro (`<n>`) :
 
 ```
-/ip firewall nat print detail where dst-port=443
-/ip firewall filter print detail where dst-port=443
+/ip firewall nat print detail where chain=dstnat
+/ip firewall filter print detail where chain=forward
 ```
 
-Ouverture : retirer la condition de liste d'adresses source de la redirection (et de la règle `forward` qui
-l'accompagne, s'il y en a une). Remplacer `<n>` par le numéro affiché par `print` :
+La deuxième commande sert à vérifier qu'aucune règle `forward` ne limite aussi le 443 à `_SLAPP` (la configuration par
+défaut du Mikrotik laisse passer ce qui a été redirigé : `connection-nat-state=dstnat`). S'il y en a une, me la montrer
+avant d'aller plus loin.
+
+**2. Ajouter la règle du 443, sans restriction, juste avant l'actuelle** (le 443 reste ouvert à `_SLAPP` pendant tout
+le changement, aucune coupure) :
 
 ```
-/ip firewall nat set <n> !src-address-list
-/ip firewall filter set <n> !src-address-list
+/ip firewall nat add chain=dstnat action=dst-nat protocol=tcp dst-address=216.46.12.226 dst-port=443 to-addresses=172.16.4.100 to-ports=443 comment="ld1 443 public (Le Deneigeur)" place-before=<n>
 ```
 
-La règle de redirection devient alors, en entier :
+**3. Limiter l'ancienne règle au 22** (elle garde `_SLAPP`). Attention : après l'ajout, son numéro a augmenté de 1;
+refaire le `print` de l'étape 1 et prendre le nouveau numéro (`<n2>`) :
 
 ```
-chain=dstnat action=dst-nat to-addresses=172.16.4.100 to-ports=443 protocol=tcp dst-address=216.46.12.226 dst-port=443
+/ip firewall nat set <n2> dst-port=22
 ```
 
-Retour en arrière (refermer, en une commande chacune) :
+Résultat attendu au `print` :
 
 ```
-/ip firewall nat set <n> src-address-list=_SLAPP
-/ip firewall filter set <n> src-address-list=_SLAPP
+chain=dstnat action=dst-nat to-addresses=172.16.4.100 to-ports=443 protocol=tcp dst-address=216.46.12.226 dst-port=443   (sans liste)
+chain=dstnat action=dst-nat to-addresses=172.16.4.100 protocol=tcp dst-address=216.46.12.226 dst-port=22 src-address-list=_SLAPP
 ```
 
-La liste `_SLAPP` reste en place : elle ne sert plus au 443, mais elle est prête pour un retour en arrière.
+(Les autres paramètres de l'ancienne règle ne changent pas; s'ils diffèrent de ce qui est écrit ici, c'est normal.)
+
+**Retour en arrière** (refermer le 443 au public, en deux commandes) :
+
+```
+/ip firewall nat remove [find comment="ld1 443 public (Le Deneigeur)"]
+/ip firewall nat set <n2> dst-port=22,443
+```
 
 ### Frontal Caddy (`edge/Caddyfile`, état actuel)
 
@@ -125,6 +139,15 @@ Gestes d'écriture : en plus, pas le rôle lecture seule.
 `/admin/...` : seulement sur `admin.ledeneigeur.com`, seulement depuis les IP de JF, puis compte de JF.
 
 ## Balayage externe (PRD 6.1.1), fait par JF
+
+**Balayage « avant » : fait, conforme** (JF, 8 novembre 2026, 23 h 50, réseau cellulaire hors `_SLAPP`,
+`nmap 7.80 -Pn -sV -p-`, fichier `nmap_avant.txt` gardé par JF) : 65 531 ports filtrés, dont 22, 443, 5000 et 5432.
+21, 80, 554 et 1723 paraissent « open » avec des réponses HTTP 502 « Connection timed out » et « Tunnel Connection
+Failed » : c'est le **proxy transparent du fournisseur cellulaire**, pas ld1 ni le Mikrotik. **Faux positifs à ignorer**
+dans le balayage « après » s'il est fait du cellulaire. Rien d'exposé.
+
+**Balayage « après »**, attendu du même réseau cellulaire : `443/tcp open` (Caddy, TLS 1.2 et 1.3), 22 toujours
+filtré (resté dans `_SLAPP`), 5000 et 5432 filtrés, et les mêmes faux positifs 21, 80, 554, 1723 du fournisseur.
 
 À faire **depuis l'extérieur de ld1**, deux fois :
 
