@@ -15,7 +15,8 @@ personnels : Jean-François Leroux (confirmé par JF).
 
 1. Refaire l'archive au besoin, depuis ld1 : `cd /srv/lmapp && sh outils/archiver_site.sh` (produit `/srv/lmapp/site.zip`,
    hors Git, sans ce fichier LISEZMOI).
-2. La copier sur le poste de JF : `scp deploy@172.16.4.100:/srv/lmapp/site.zip .`
+2. La prendre sur GitHub (`site.zip` à la racine du dépôt `jfleroux17-code/lmapp`, bouton « Download raw file »), ou par
+   `scp deploy@172.16.4.100:/srv/lmapp/site.zip .`
 3. cPanel, Gestionnaire de fichiers : `public_html`, Téléverser `site.zip`, puis Extraire. `index.html` doit se
    retrouver directement dans `public_html` (pas dans un sous-dossier).
 
