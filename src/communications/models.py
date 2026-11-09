@@ -44,6 +44,29 @@ GABARITS_PAR_DEFAUT = {
     # Reçu de paiement (C13)
     Genre.RECU_PAIEMENT: "Bonjour {client}, nous avons bien reçu votre paiement de {montant} ({mode}) le {date}, pour {factures}. {solde} Merci!",
 }
+# Variables permises par genre (vérifiées quand un déneigeur modifie sa copie)
+VARIABLES_PAR_GENRE = {
+    Genre.DEBUT: [],
+    Genre.PROXIMITE: ["adresse", "minutes"],
+    Genre.PASSAGE_FAIT: ["adresse", "heure"],
+    Genre.RELANCE_1: ["client", "montant", "factures", "depuis", "paiement"],
+    Genre.RELANCE_2: ["client", "montant", "factures", "depuis", "paiement"],
+    Genre.RELANCE_3: ["client", "montant", "factures", "depuis", "paiement"],
+    Genre.RECU_PAIEMENT: ["client", "montant", "mode", "date", "factures", "solde"],
+}
+
+
+def variables_inconnues(genre, texte):
+    """Les {variables} du texte que ce genre de message ne connaît pas (texte mal formé : [\"accolades\"])."""
+    from string import Formatter
+
+    try:
+        noms = {nom for _, nom, _, _ in Formatter().parse(texte) if nom is not None}
+    except ValueError:
+        return ["accolades"]
+    return sorted(noms - set(VARIABLES_PAR_GENRE.get(genre, [])))
+
+
 VARIABLES = ("{adresse}, {minutes}, {heure}, {client}; relances : {montant}, {factures}, {depuis}, {paiement}; "
              "reçu : {montant}, {mode}, {date}, {factures}, {solde}")
 
@@ -61,9 +84,47 @@ class Gabarit(Horodate):
     def __str__(self):
         return self.get_genre_display()
 
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        inconnues = variables_inconnues(self.genre, self.texte)
+        if inconnues:
+            permises = ", ".join("{" + v + "}" for v in VARIABLES_PAR_GENRE.get(self.genre, [])) or "aucune"
+            raise ValidationError({"texte": f"Variables inconnues : {', '.join(inconnues)}. Permises : {permises}."})
+
     @classmethod
     def texte_pour(cls, entreprise, genre):
+        """La copie de l'entreprise si elle en a une, sinon le gabarit par défaut de la plateforme."""
         g = cls.objects.filter(entreprise=entreprise, genre=genre).first()
+        return g.texte if g else GabaritParDefaut.texte_de(genre)
+
+
+class GabaritParDefaut(Horodate):
+    """Texte par défaut d'un genre de message, pour toutes les entreprises de la plateforme. Modifié par JF
+    dans sa console; les déneigeurs le voient en lecture seule et peuvent le cloner (leur `Gabarit`).
+    Changer un texte par défaut change les messages de toutes les entreprises qui n'en ont pas de copie."""
+    genre = models.CharField(max_length=15, choices=Genre.choices, unique=True)
+    texte = models.TextField(help_text="La signature de l'entreprise est ajoutée à la fin. Aucun nom de déneigeur ici.")
+
+    class Meta:
+        verbose_name = "gabarit par défaut (toutes les entreprises)"
+        verbose_name_plural = "gabarits par défaut (toutes les entreprises)"
+        ordering = ["genre"]
+
+    def __str__(self):
+        return self.get_genre_display()
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        inconnues = variables_inconnues(self.genre, self.texte)
+        if inconnues:
+            permises = ", ".join("{" + v + "}" for v in VARIABLES_PAR_GENRE.get(self.genre, [])) or "aucune"
+            raise ValidationError({"texte": f"Variables inconnues : {', '.join(inconnues)}. Permises : {permises}."})
+
+    @classmethod
+    def texte_de(cls, genre):
+        g = cls.objects.filter(genre=genre).first()
         return g.texte if g else GABARITS_PAR_DEFAUT.get(genre, "")
 
 

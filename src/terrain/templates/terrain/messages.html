@@ -2,7 +2,8 @@
 {% block titre %}Messages{% endblock %}
 {% block contenu %}
 <div class="mb-3 flex items-center justify-between gap-3"><h1 class="text-2xl font-bold">Messages</h1><a href="{% url 'terrain:demandes' %}" class="flex min-h-12 items-center text-accent">Demandes ›</a></div>
-<a href="{% url 'terrain:envoi_groupe' %}" class="gros-bouton mb-4 border-2 border-bordure">Écrire à plusieurs clients</a>
+<a href="{% url 'terrain:envoi_groupe' %}" class="gros-bouton mb-2 border-2 border-bordure">Écrire à plusieurs clients</a>
+<a href="{% url 'terrain:gabarits' %}" class="mb-4 block text-center text-sm text-gray-400">Messages types (textes des avis, relances, reçus) ›</a>
 {% if cle_vapid %}
 <script>
   // E8 : notifications sur ce cellulaire (Web Push). iPhone : seulement une fois l'app ajoutée à l'écran d'accueil.

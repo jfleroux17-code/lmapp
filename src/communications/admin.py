@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from django.http import HttpResponse
 
-from communications.models import GABARITS_PAR_DEFAUT, ArchiveCourriel, EtatBoite, Gabarit, Message
+from communications.models import VARIABLES_PAR_GENRE, ArchiveCourriel, EtatBoite, Gabarit, GabaritParDefaut, Message
 
 
 @admin.register(Gabarit)
@@ -12,7 +12,38 @@ class GabaritAdmin(admin.ModelAdmin):
 
     def get_changeform_initial_data(self, request):
         genre = request.GET.get("genre")
-        return {"texte": GABARITS_PAR_DEFAUT.get(genre, "")} if genre else {}
+        return {"texte": GabaritParDefaut.texte_de(genre)} if genre else {}
+
+
+@admin.register(GabaritParDefaut)
+class GabaritParDefautAdmin(admin.ModelAdmin):
+    """Console de JF : les textes par défaut de toute la plateforme. Superutilisateur seulement."""
+    list_display = ["genre", "texte", "modifie_le"]
+    readonly_fields = ["variables", "copies", "modifie_le"]
+    fields = ["genre", "texte", "variables", "copies", "modifie_le"]
+
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
+    has_view_permission = has_change_permission = has_add_permission = lambda self, request, obj=None: request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return False  # sans texte par défaut, le message retomberait sur le texte du code : on le modifie plutôt
+
+    def get_readonly_fields(self, request, obj=None):
+        return self.readonly_fields + (["genre"] if obj else [])
+
+    @admin.display(description="variables permises")
+    def variables(self, obj):
+        noms = VARIABLES_PAR_GENRE.get(obj.genre, []) if obj and obj.genre else []
+        return ", ".join("{" + v + "}" for v in noms) or "aucune"
+
+    @admin.display(description="entreprises qui ont leur propre copie")
+    def copies(self, obj):
+        if not obj or not obj.genre:
+            return "-"
+        noms = list(Gabarit.objects.filter(genre=obj.genre).values_list("entreprise__nom", flat=True))
+        return ", ".join(noms) if noms else "aucune : toutes utilisent ce texte"
 
 
 @admin.register(Message)

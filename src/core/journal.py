@@ -16,7 +16,7 @@ SUIVIS = [
     "clients.Secteur", "clients.Client", "clients.Contact", "clients.Adresse", "clients.Balisage", "clients.PhotoAdresse",
     "facturation.Saison", "facturation.Service", "facturation.Contrat", "facturation.Versement", "facturation.Facture",
     "facturation.LigneFacture", "facturation.Paiement", "facturation.Credit", "facturation.VirementInterac",
-    "communications.Gabarit", "demandes.Demande", "tournee.PhotoPassage",
+    "communications.Gabarit", "communications.GabaritParDefaut", "demandes.Demande", "tournee.PhotoPassage",
 ]
 IGNORES = {"cree_le", "modifie_le", "image", "jeton", "password"}
 

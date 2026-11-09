@@ -1,0 +1,37 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Messages types{% endblock %}
+{% block contenu %}
+<h1 class="mb-2 text-2xl font-bold">Messages types</h1>
+<p class="mb-4 text-gray-400">Les textes envoyés par l'app. Le texte par défaut est le même pour toutes les entreprises; clonez-le pour en faire votre version. La signature « {{ signature }} » est ajoutée à la fin de chaque message.</p>
+{% for l in lignes %}
+  <section class="carte mb-4 p-4">
+    <h2 class="mb-2 text-lg font-bold">{{ l.nom }}</h2>
+    {% if l.copie %}
+      <div class="mb-1 text-sm font-semibold text-accent">Votre version (c'est elle qui part)</div>
+      <p class="mb-3 whitespace-pre-line rounded-xl border-2 border-accent/50 p-3">{{ l.copie.texte }}</p>
+      {% if l.defaut_change %}<p class="mb-3 text-sm text-accent">Le texte par défaut a changé depuis votre dernière modification.</p>{% endif %}
+      <details class="mb-3"><summary class="min-h-10 cursor-pointer text-sm text-gray-400">Texte par défaut</summary>
+        <p class="mt-2 whitespace-pre-line text-gray-400">{{ l.defaut }}</p></details>
+    {% else %}
+      <div class="mb-1 text-sm text-gray-400">Texte par défaut (lecture seule, c'est lui qui part)</div>
+      <p class="mb-3 whitespace-pre-line rounded-xl border-2 border-bordure p-3 text-gray-300">{{ l.defaut }}</p>
+    {% endif %}
+    {% if l.variables %}<p class="mb-3 text-sm text-gray-500">Remplacés à l'envoi : {% for v, aide in l.variables %}{{ v }} ({{ aide }}){% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+    {% if peut_modifier %}
+      {% if l.copie %}
+        <div class="grid grid-cols-2 gap-3">
+          <a href="{% url 'terrain:modifier_gabarit' l.genre %}" class="gros-bouton border-2 border-accent text-accent">Modifier</a>
+          <form method="post" action="{% url 'terrain:retirer_gabarit' l.genre %}" @submit="if (!confirm('Effacer votre version et revenir au texte par défaut?')) $event.preventDefault()">{% csrf_token %}
+            <button class="gros-bouton w-full border-2 border-bordure text-gray-300">Revenir au défaut</button>
+          </form>
+        </div>
+      {% else %}
+        <form method="post" action="{% url 'terrain:cloner_gabarit' l.genre %}">{% csrf_token %}
+          <button class="gros-bouton border-2 border-bordure text-gray-300">Cloner pour le modifier</button>
+        </form>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endfor %}
+<a href="{% url 'terrain:messages' %}" class="block text-sm text-gray-400">‹ Messages</a>
+{% endblock %}
