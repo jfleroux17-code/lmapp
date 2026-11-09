@@ -32,6 +32,9 @@
   /* Bouton tapable avec des gants : au moins 56 px de haut */
   .gros-bouton { @apply flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl px-5 text-lg font-semibold active:scale-[0.98] transition; }
   .champ { @apply min-h-14 w-full rounded-2xl border-2 border-bordure bg-carte px-5 text-lg text-neige placeholder:text-gray-500 focus:border-accent focus:outline-none; }
+  /* Safari sur iPhone : un champ de date garde sa largeur native et déborde du cadre à droite */
+  input[type="date"].champ { -webkit-appearance: none; appearance: none; min-width: 0; display: block; line-height: 3.25rem; }
+  input[type="date"].champ::-webkit-date-and-time-value { text-align: left; }
   .carte { @apply rounded-[22px] border-2 border-bordure bg-carte; }
   /* Onglets du bas de l'en-tête : actif plein, jaune sur noir */
   .onglet { @apply flex min-h-12 items-center justify-center rounded-xl bg-carte font-semibold text-gray-300; }

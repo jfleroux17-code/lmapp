@@ -15,7 +15,7 @@ Mise à jour : 9 novembre 2026.
 ### Ce qui bloque la suite
 
 - [x] Créer ses comptes administrateur (prod et test).
-- [ ] Essayer l'app sur son iPhone, en test : `https://test.ledeneigeur.com/` (compte administrateur de test, depuis une IP de JF : le test est réservé à ses IP par Caddy). Dans Safari : Partager, « Sur l'écran d'accueil », puis ouvrir de là, Messages, « Activer les notifications » (E8).
+- [x] App essayée sur l'iPhone de JF, en test (9 novembre 2026) : écran d'accueil, notifications (essai reçu), position pendant la tournée (précision 4 à 6 m). Corrigé à la suite : adresse en premier dans la tournée, champ de date des demandes qui débordait, bouton Messages toujours visible (enveloppe), page de secours au lieu d'un écran blanc pendant un redémarrage.
 - [x] Fiche de Louis créée en prod (Louis Méthot Déneigement, `louis`, `louis.ledeneigeur.com`, Sainte-Adèle 8 km, centre rempli).
 - [x] Sainte-Adèle cochée « ville par défaut » dans la fiche de Louis.
 - [x] Utilisateur `louis` créé, membre « Opérateur » (entre dans l'app, pas dans l'administration).
@@ -136,7 +136,7 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - [x] Site Internet de présentation (Q5) : **en ligne sur le cPanel de JF le 9 novembre 2026** (fichiers vérifiés identiques à l'archive). Boîte `info@` branchée (demandes dans l'administration, transférées à JF), alertes de la surveillance envoyées de `info@`. Reste : tâche de JF.
 - [ ] Arrivée d'un déneigeur venant d'un logiciel concurrent (Q3) : ~~correspondance des colonnes à l'import~~ (fait le 8 novembre 2026 : entêtes anglais reconnus, `--depuis <logiciel>`, `--correspondance`). Reste : un fichier de correspondance par logiciel, à faire avec un vrai export en main.
 - [x] Ajout d'un déneigeur en quelques minutes (Q4) : commande `ajouter_deneigeur` (en prod), et administration à `admin.ledeneigeur.com` (Q6) **en prod le 8 novembre 2026** (DNS par JF, bloc Caddy, `/admin/` de `louis` en 404).
-- [ ] **Échéancier des contrats de Louis (B3, C5)** : 2 ou 3 versements créés avec le contrat (et à l'import), dates de l'entreprise (approbation, 15 janvier, 15 février), facture préparée 5 jours d'avance (10 janvier), rappel à Louis et envoi groupé d'une tape. **Avant l'import de ses clients.**
+- [x] **Échéancier des contrats (B3, C5)** : en prod le 9 novembre 2026. Fiche de l'entreprise (versements par défaut, dates, jours d'avance), échéancier créé par l'import (colonne `versements`) et par l'administration, facture préparée d'avance avec avis au cellulaire, écran « Versements à envoyer » (une tape). Vérifié dans Chrome en test.
 - [ ] **Chèques postdatés (D9)** : date et numéro du chèque, encaissé à sa date, liste des chèques à déposer, avis le jour venu.
 - [ ] **Dépenses par photo (PRD S1, S2)** : photo du reçu, montant, taxes, catégorie; dans le rapport et l'export de fin de saison.
 - [ ] Saison d'été, paysagement (PRD T) : à définir avec Louis, plus tard.

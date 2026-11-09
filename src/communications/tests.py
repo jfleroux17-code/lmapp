@@ -650,7 +650,7 @@ class ReceptionTests(TestCase):
         self.client.defaults["HTTP_HOST"] = HOTE
         self.client.force_login(self.louis)
         accueil = self.client.get("/")
-        self.assertContains(accueil, "✉ 1")
+        self.assertContains(accueil, "</svg> 1</a>")
         liste = self.client.get("/messages/")
         self.assertEqual(liste.context["vue"], "recus")
         self.assertContains(liste, "Nouveau")
@@ -661,7 +661,9 @@ class ReceptionTests(TestCase):
         self.assertContains(page, "Fiche de Tremblay")
         m.refresh_from_db()
         self.assertTrue(m.lu)
-        self.assertNotContains(self.client.get("/"), "✉")
+        accueil = self.client.get("/")
+        self.assertNotContains(accueil, "</svg> 1</a>")  # plus de compteur une fois lu...
+        self.assertContains(accueil, 'aria-label="Messages"><svg')  # ...mais Messages reste accessible
         etranger = Message.objects.create(entreprise=self.autre, genre="recu", canal="courriel", sens="entrant", contenu="x")
         self.assertEqual(self.client.get(f"/messages/{etranger.pk}/").status_code, 404)
 

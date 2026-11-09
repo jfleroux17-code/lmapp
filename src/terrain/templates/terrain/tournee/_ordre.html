@@ -11,8 +11,8 @@
     {% for a in g.arrets %}
       <div id="a{{ a.pk }}" class="flex min-h-16 items-center justify-between gap-3 p-3 {% if a.bouge %}bg-accent/10{% endif %}">
         <div class="min-w-0">
-          <div class="truncate font-semibold">{{ a.rang }}. {{ a.client.nom_affiche }}</div>
-          <div class="truncate text-sm text-gray-400">{{ a.ligne1 }}</div>
+          <div class="truncate font-semibold">{{ a.rang }}. {{ a.ligne1 }}</div>
+          <div class="truncate text-sm text-gray-400">{{ a.client.nom_affiche }}</div>
         </div>
         {% if ecriture %}
           <div class="flex shrink-0 gap-2">

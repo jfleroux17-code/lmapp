@@ -1,6 +1,7 @@
 // Service worker de LMAPP (PRD F10) : l'app s'ouvre même sans réseau.
 //  - /static/ : fichiers à nom unique (empreinte), gardés en cache sans limite de temps;
-//  - pages : le réseau d'abord; sans réseau, la dernière copie gardée (tournée, fiches, accueil);
+//  - pages : le réseau d'abord; sans réseau ou si le serveur répond une erreur (5xx, ex. redémarrage), la dernière
+//    copie gardée (tournée, fiches, accueil), sinon une page qui réessaie toute seule (jamais d'écran blanc);
 //  - jamais de cache pour les POST, la connexion, l'administration ni les PDF.
 const VERSION = "{{ version }}";
 const CACHE_STATIQUE = "lmapp-statique-" + VERSION;
@@ -33,17 +34,31 @@ self.addEventListener("fetch", (e) => {
     })));
     return;
   }
-  if (req.mode === "navigate" && PAGES_GARDEES.some((m) => m.test(url.pathname))) {
-    e.respondWith(fetch(req).then((rep) => {
-      // Seulement les vraies pages (pas une redirection vers la connexion)
-      if (rep.ok && !rep.redirected) { const copie = rep.clone(); caches.open(CACHE_PAGES).then((c) => c.put(url.pathname, copie)); }
-      return rep;
-    }).catch(() => caches.match(url.pathname).then((r) => r || caches.match("/tournee/")).then((r) => r || new Response(
-      "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'><body style='background:#000000;color:#f5f7fa;font:18px system-ui;padding:2em'>" +
-      "<h1>Hors ligne</h1><p>Cette page n'a pas encore été ouverte sur ce téléphone. La tournée reste disponible si elle a été ouverte une fois.</p>",
-      { headers: { "Content-Type": "text/html; charset=utf-8" } }))));
-  }
+  if (req.mode !== "navigate") return;
+  const gardee = PAGES_GARDEES.some((m) => m.test(url.pathname));
+  // Serveur injoignable ou en erreur (redémarrage pendant une mise à jour : 502 de Caddy) : jamais d'écran blanc.
+  // Page gardée : la dernière copie; sinon une page qui réessaie toute seule.
+  const secours = () => (gardee ? caches.match(url.pathname) : Promise.resolve(null)).then((r) => r || attente(gardee));
+  e.respondWith(fetch(req).then((rep) => {
+    if (rep.status >= 500) return secours();
+    // Seulement les vraies pages (pas une redirection vers la connexion)
+    if (gardee && rep.ok && !rep.redirected) { const copie = rep.clone(); caches.open(CACHE_PAGES).then((c) => c.put(url.pathname, copie)); }
+    return rep;
+  }).catch(() => (gardee ? caches.match(url.pathname).then((r) => r || caches.match("/tournee/")) : Promise.resolve(null))
+    .then((r) => r || attente(gardee))));
 });
+
+function attente(gardee) {
+  return new Response(
+    "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>" +
+    "<body style='background:#000000;color:#f5f7fa;font:20px system-ui;padding:2em'>" +
+    "<h1 style='font-size:28px'>Un instant</h1><p>Le serveur ne répond pas pour le moment (mise à jour ou réseau). " +
+    "La page se recharge toute seule dans quelques secondes.</p>" +
+    (gardee ? "" : "<p style='color:#9ca3af'>La tournée reste disponible si elle a été ouverte une fois sur ce téléphone.</p>") +
+    "<button onclick='location.reload()' style='margin-top:1em;width:100%;min-height:56px;border:0;border-radius:16px;background:#f5c400;color:#000;font:600 20px system-ui'>Réessayer</button>" +
+    "<script>setTimeout(function () { location.reload(); }, 8000);</script>",
+    { status: 503, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+}
 
 // Notifications (E8) : un client a écrit, un virement Interac est arrivé
 self.addEventListener("push", (e) => {
