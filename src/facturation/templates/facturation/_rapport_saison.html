@@ -1,0 +1,24 @@
+{% load argent %}
+<h3>Ventes de la saison</h3>
+<table class="lignes">
+  <tr><td>Factures émises</td><td class="nombre">{{ nb_factures }}{% if numeros.0 %} (n° {{ numeros.0 }} à {{ numeros.1 }}){% endif %}</td></tr>
+  <tr><td>Ventes avant taxes</td><td class="nombre">{{ sous_total|argent }}</td></tr>
+  <tr><td>TPS perçue</td><td class="nombre">{{ tps|argent }}</td></tr>
+  <tr><td>TVQ perçue</td><td class="nombre">{{ tvq|argent }}</td></tr>
+  <tr><td><strong>Total facturé</strong></td><td class="nombre"><strong>{{ total|argent }}</strong></td></tr>
+  {% if nb_soldes_ouverture %}<tr><td>Soldes des saisons passées inscrits (sans taxes)</td><td class="nombre">{{ soldes_ouverture|argent }}</td></tr>{% endif %}
+  <tr><td>Factures annulées</td><td class="nombre">{{ annulees|length }}{% for f in annulees %}{% if forloop.first %} : {% endif %}n° {{ f.numero }}{% if not forloop.last %}, {% endif %}{% endfor %}</td></tr>
+</table>
+<h3>Argent reçu, par mode</h3>
+<table class="lignes">
+  {% for e in encaissements %}<tr><td>{{ e.mode }}</td><td class="nombre">{{ e.montant|argent }}</td></tr>{% endfor %}
+  <tr><td><strong>Total reçu</strong></td><td class="nombre"><strong>{{ encaisse|argent }}</strong></td></tr>
+</table>
+<h3>Revenus par secteur</h3>
+<table class="lignes">
+  <thead><tr><th>Secteur</th><th class="nombre">Clients</th><th class="nombre">Avant taxes</th><th class="nombre">Total</th><th class="nombre">Payé</th></tr></thead>
+  {% for l in par_secteur %}<tr><td>{{ l.nom }}</td><td class="nombre">{{ l.clients }}</td><td class="nombre">{{ l.sous_total|argent }}</td><td class="nombre">{{ l.total|argent }}</td><td class="nombre">{{ l.paye|argent }}</td></tr>
+  {% empty %}<tr><td colspan="5">Aucune facture.</td></tr>{% endfor %}
+</table>
+<h3>À recevoir aujourd'hui (toutes saisons)</h3>
+<table class="lignes"><tr><td>{{ nb_a_recevoir }} client{{ nb_a_recevoir|pluralize }}</td><td class="nombre">{{ a_recevoir|argent }}</td></tr></table>

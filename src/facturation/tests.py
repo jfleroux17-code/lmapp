@@ -632,3 +632,52 @@ class TropPercuTests(TestCase):
         self.assertEqual(credits.encaisse(self.ent), D("200.00"))  # l'argent reçu compte une seule fois
         lignes, solde = etat_compte.mouvements(self.c)
         self.assertEqual(solde, D("-20.00"))  # crédit restant
+
+
+class RapportSaisonTests(TestCase):
+    """J2 et J3 : par secteur, taxes perçues, argent reçu par mode (crédit compté une fois), annulées, PDF."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from datetime import date as d
+        from decimal import Decimal as D
+        from django.contrib.auth import get_user_model
+        from clients.models import Adresse, Client, Secteur
+        from core.models import Entreprise, Membre
+        from facturation.models import Facture, Saison
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai-rs", domaine="rs.exemple.test", inscrit_taxes=True,
+                                            taux_tps=D("5"), taux_tvq=D("9.975"), prochain_numero_facture=10)
+        cls.s = Saison.objects.create(entreprise=cls.ent, nom="2026-2027", debut=d(2026, 11, 1), fin=d(2027, 4, 30))
+        village = Secteur.objects.create(entreprise=cls.ent, nom="Village")
+        for nom, prix, secteur in (("A", "100", village), ("B", "200", None)):
+            c = Client.objects.create(entreprise=cls.ent, nom=nom)
+            a = Adresse.objects.create(entreprise=cls.ent, client=c, ligne1=f"{nom}, rue", ville="Sainte-Adèle", secteur=secteur)
+            f = Facture.objects.create(entreprise=cls.ent, client=c, adresse=a, date_facture=d(2026, 11, 5))
+            f.lignes.create(description="x", quantite=1, prix_unitaire=D(prix))
+            f.recalculer(); f.emettre()
+        cls.f_a = Facture.objects.get(client__nom="A")
+        from facturation import credits
+        credits.encaisser(cls.f_a, D("150.00"), "comptant", date=d(2026, 11, 6), surplus_permis=True)
+        cls.louis = get_user_model().objects.create_user("compta-rs", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="lecture")
+
+    def test_chiffres(self):
+        from decimal import Decimal as D
+        from facturation import rapports
+        r = rapports.saison(self.ent, self.s)
+        self.assertEqual((r["nb_factures"], r["sous_total"], r["tps"]), (2, D("300.00"), D("15.00")))
+        self.assertEqual([(l["nom"], l["sous_total"]) for l in r["par_secteur"]], [("Sans secteur", D("200.00")), ("Village", D("100.00"))])
+        self.assertEqual(r["encaisse"], D("150.00"))  # 114,98 sur A + 35,02 en crédit (appliqué à B) : compté une fois
+        self.assertEqual(r["encaissements"], [{"mode": "Comptant", "montant": D("150.00")}])
+        self.assertEqual(r["numeros"], (10, 11))
+
+    def test_ecran_et_pdf_pour_le_comptable(self):
+        from django.test import override_settings
+        self.client.force_login(self.louis)
+        h = {"HTTP_HOST": "rs.exemple.test"}
+        with override_settings(ALLOWED_HOSTS=["*"]):
+            r = self.client.get(f"/comptes/rapport/?saison={self.s.pk}", **h)
+            self.assertContains(r, "Village")
+            self.assertContains(r, "TPS perçue")
+            with mock.patch("weasyprint.HTML.write_pdf", return_value=b"%PDF-1.7 r"):
+                self.assertEqual(self.client.get(f"/comptes/rapport/{self.s.pk}/pdf/", **h).content, b"%PDF-1.7 r")
