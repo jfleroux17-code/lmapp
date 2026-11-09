@@ -54,7 +54,6 @@ Mise à jour : 9 novembre 2026.
 - [ ] Trancher les fonctionnalités V1 dans le catalogue du PRD (section 5), au besoin.
 - [ ] Offre aux autres déneigeurs (PRD section Q) : **prix revu le 8 novembre 2026 : 99 $ par mois**, un volume de textos et courriels compris, surplus facturé, nouveaux modules à part. Reste, quand les occasions viendront : le **volume compris** et le **prix du surplus** (coût Twilio : 1,15 $ US par mois par numéro, 0,0083 $ US par segment entrant ou sortant). Le tableau de bord `/admin/plateforme/` donne déjà les quantités par mois.
 - [x] Site Internet (Q5), **en ligne le 9 novembre 2026** (`ledeneigeur.com` et `www`; politique de confidentialité validée et en ligne, sans l'avis « Ébauche »; `info@` branchée). Archive `site.zip` sur GitHub, refaite à chaque modification.
-- [ ] Changer le mot de passe de `info@ledeneigeur.com` (écrit en clair dans une conversation le 9 novembre 2026), puis le donner à Claude Code pour le `.env` de la prod.
 - [ ] Module voix (PRD section R) : **à trancher plus tard**, après l'ouverture du 443 et la réception des textos (décision de JF, 8 novembre 2026). Propositions gardées : R1 (messagerie vocale) en premier, enregistrements gardés 90 jours. Rien n'est commencé. Modèle d'IA : pas de clé de l'API Claude pour l'instant (modèle local possible).
 - [ ] Contrat de service avec les déneigeurs (Q7) : **JF s'en occupe de son côté**, pas urgent tant que Louis est le seul client.
 
