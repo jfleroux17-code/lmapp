@@ -55,12 +55,22 @@ def _passage_json(p):
             "heure": timezone.localtime(p.heure).strftime("%H:%M"), "note": p.note}
 
 
+def _meteo(request):
+    """I1 : prévisions gardées par le worker, si elles ont moins de 6 heures."""
+    from datetime import timedelta
+
+    from core.models import Meteo
+
+    m = Meteo.objects.filter(entreprise=request.entreprise).first()
+    return m if m and m.lue_le and timezone.now() - m.lue_le < timedelta(hours=6) else None
+
+
 @membre_requis
 def tournee(request):
     op = Operation.en_cours_de(request.entreprise)
     if op is None:
         return render(request, "terrain/tournee/demarrer.html", {
-            "types": Operation.Type.choices, "ecriture": peut_ecrire(request),
+            "types": Operation.Type.choices, "ecriture": peut_ecrire(request), "meteo": _meteo(request),
             "dernieres": Operation.objects.filter(entreprise=request.entreprise).order_by("-debut")[:5],
         })
     passages = {p.adresse_id: p for p in op.passages.all()}
@@ -84,7 +94,7 @@ def tournee(request):
     for x in donnees["arrets"]:
         x["photos"] = nb_photos.get(x["id"], 0)
     secteurs = sorted({(a.secteur.ordre, a.secteur.pk, a.secteur.nom) for a in arrets(request.entreprise) if a.secteur})
-    return render(request, "terrain/tournee/en_cours.html", {"op": op, "donnees": donnees, "ecriture": donnees["ecriture"],
+    return render(request, "terrain/tournee/en_cours.html", {"op": op, "donnees": donnees, "ecriture": donnees["ecriture"], "meteo": _meteo(request),
                                                              "secteurs": [(pk, nom) for _, pk, nom in secteurs]})
 
 

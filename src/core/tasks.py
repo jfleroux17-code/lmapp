@@ -38,3 +38,14 @@ def purger_journal_chaque_nuit(timestamp):
 
     limite = timezone.now() - timedelta(days=settings.LMAPP_JOURNAL_JOURS)
     return JournalAction.objects.filter(moment__lt=limite).delete()[0]
+
+
+@app.periodic(cron="*/30 * * * *")
+@app.task(queue="communications", queueing_lock="releve_meteo")
+def relever_meteo(timestamp):
+    """I1 : prévisions d'Environnement Canada pour chaque entreprise active, aux 30 minutes."""
+    from core import meteo
+    from core.models import Entreprise
+
+    for e in Entreprise.objects.filter(active=True):
+        meteo.relever(e)

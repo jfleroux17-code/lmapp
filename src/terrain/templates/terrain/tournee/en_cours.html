@@ -104,6 +104,8 @@
   </details>
   {% endif %}
 
+  {% include "terrain/_meteo.html" %}
+
   <h2 class="mb-2 text-lg font-bold">Arrêts</h2>
   <div class="carte mb-6 divide-y divide-bordure">
     <template x-for="a in arrets" :key="a.id">

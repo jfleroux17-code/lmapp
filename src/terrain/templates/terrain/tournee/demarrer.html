@@ -3,6 +3,7 @@
 {% block contenu %}
 <h1 class="mb-1 text-2xl font-bold">Tournée</h1>
 <p class="mb-5 text-gray-400">Aucune opération en cours.</p>
+{% include "terrain/_meteo.html" with ouvert=True %}
 {% if ecriture %}
   <form method="post" action="{% url 'terrain:demarrer' %}" class="mb-8 space-y-3" x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
     <label class="carte flex min-h-14 cursor-pointer items-center gap-3 p-4">

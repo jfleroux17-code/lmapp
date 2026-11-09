@@ -301,3 +301,24 @@ class JournalAction(models.Model):
 
     def __str__(self):
         return f"{self.get_action_display()} : {self.modele} « {self.objet} »"
+
+
+class Meteo(models.Model):
+    """Prévisions d'Environnement Canada pour l'entreprise (PRD I1), relevées par le worker (l'app n'a pas Internet).
+    Ville de prévision : la plus proche du centre de la ville desservie par défaut, trouvée une fois."""
+    entreprise = models.OneToOneField(Entreprise, on_delete=models.CASCADE, related_name="meteo")
+    ville_id = models.CharField(max_length=20, blank=True, help_text="Identifiant GeoMet, ex. qc-c3 (Saint-Sauveur).")
+    ville_nom = models.CharField(max_length=100, blank=True)
+    lien = models.URLField(blank=True)
+    periodes = models.JSONField(default=list, blank=True, help_text="[{nom, resume, neige_cm, pluie_mm}]")
+    avertissements = models.JSONField(default=list, blank=True)
+    publiee_le = models.DateTimeField(null=True, blank=True)
+    lue_le = models.DateTimeField(null=True, blank=True)
+    erreur = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        verbose_name = "prévisions météo"
+        verbose_name_plural = "prévisions météo"
+
+    def __str__(self):
+        return f"Météo de {self.entreprise} ({self.ville_nom})"
