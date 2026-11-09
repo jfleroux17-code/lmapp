@@ -793,9 +793,14 @@ class WebhooksTwilioTests(TestCase):
         self.assertIn("vous ne recevrez plus de messages promotionnels", r.content.decode())
         r = self.texto("STOP", sid="SM3")
         self.assertNotIn("<Message>", r.content.decode())  # Twilio répond lui-même au STOP anglais
-        self.texto("Commencer", sid="SM4")
+        r = self.texto("Commencer", sid="SM4")
         self.c.refresh_from_db()
         self.assertIsNone(self.c.desabonne_le)
+        self.assertIn("vous recevrez de nouveau nos messages", r.content.decode())  # confirmation en français
+        r = self.texto("START", sid="SM6")
+        self.assertNotIn("<Message>", r.content.decode())  # Twilio répond lui-même au START anglais
+        r = self.texto("Oui", sid="SM7")
+        self.assertNotIn("<Message>", r.content.decode())  # « oui » d'un client abonné : réponse ordinaire, pas de confirmation
 
     def test_numero_sans_entreprise(self):
         r = self.envoyer("/webhooks/twilio/textos/", {"MessageSid": "SM5", "From": "+14505550101", "To": "+14505559999", "Body": "x"})

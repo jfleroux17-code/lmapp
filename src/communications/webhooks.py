@@ -81,9 +81,16 @@ def texto_recu(request):
         if mot.startswith("arr") or mot.startswith("d"):  # STOP en anglais : Twilio répond déjà lui-même
             return _twiml(f"{ent.signature_messages or ent.nom} : vous ne recevrez plus de messages promotionnels. "
                           "Les avis de déneigement et les factures continueront. Répondez COMMENCER pour annuler.")
-    elif client and mot in REPRISE and client.desabonne_le is not None:
-        client.desabonne_le = None
-        client.save(update_fields=["desabonne_le"])
+    elif client and mot in REPRISE:
+        etait_desabonne = client.desabonne_le is not None
+        if etait_desabonne:
+            client.desabonne_le = None
+            client.save(update_fields=["desabonne_le"])
+        # Confirmation en français (demande de JF, 9 novembre 2026). START anglais : Twilio répond déjà lui-même.
+        # « Oui » ne reçoit une réponse que s'il a vraiment réabonné (sinon, c'est une réponse ordinaire).
+        if mot in ("commencer", "reprendre") or (mot == "oui" and etait_desabonne):
+            return _twiml(f"{ent.signature_messages or ent.nom} : c'est noté, vous recevrez de nouveau nos messages "
+                          "promotionnels. Répondez ARRÊT pour arrêter.")
     return _twiml()
 
 
