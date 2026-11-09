@@ -53,19 +53,19 @@ La liste `_SLAPP` reste en place : elle ne sert plus au 443, mais elle est prêt
 | Nom | Où ça va | Restriction |
 |---|---|---|
 | `louis.ledeneigeur.com` | app de prod | aucune au réseau; l'app exige une connexion, sauf les chemins publics (c) |
-| `test.ledeneigeur.com` | app de test | **aucune** aujourd'hui (voir proposition 1) |
+| `test.ledeneigeur.com` | app de test | tout le site réservé aux IP de JF (proposition 1, en place) |
 | `admin.ledeneigeur.com` | app de prod, `/admin/` et `/static/` seulement (le reste : 404) | `/admin/` réservé aux IP de JF |
 | tout autre nom, IP directe | rien | refus TLS |
 
 Les trois sites importent le bloc `commun` : HSTS, `nosniff`, `Referrer-Policy: same-origin`, journal d'accès JSON,
 et `/admin/` réservé aux IP de JF (403 « Accès refusé. » ailleurs).
 
-### Propositions à valider avant l'ouverture
+### Propositions (acceptées par JF le 8 novembre 2026, en place)
 
 1. **Garder le test fermé** : aujourd'hui, seul le routeur protège `test.ledeneigeur.com`. Une fois le 443 ouvert,
    n'importe qui verrait la page de connexion du test. Proposé : réserver tout le site de test aux IP de JF dans
    Caddy (même liste que l'administration). C'est une deuxième couche dans Caddy, ce que la décision du
-   7 novembre 2026 écartait : à confirmer.
+   7 novembre 2026 écartait. **Accepté par JF et en place** : depuis une autre IP, 403 « Accès refusé. »; depuis ld1, 200.
 
    ```
    test.ledeneigeur.com {
@@ -77,6 +77,7 @@ et `/admin/` réservé aux IP de JF (403 « Accès refusé. » ailleurs).
    ```
 2. **Taille des envois** : plafonner le corps des requêtes à 10 Mo dans `commun` (`request_body { max_size 10MB }`).
    La plus grosse requête légitime est une photo de l'entrée (8 Mo au plus, environ 300 Ko une fois réduite).
+   **Accepté et en place** : un envoi de 11 Mo reçoit 413.
 
 ## (b) Webhooks : preuve automatisée
 
