@@ -132,3 +132,43 @@ class VerificationsTests(TestCase):
             r = surveillance.verifier_https()
         self.assertEqual(list(r), ["louis.exemple.test"])
         self.assertFalse(r["louis.exemple.test"][0])
+
+
+class CompteAlertesTests(TestCase):
+    def envoyer(self):
+        from unittest import mock
+
+        from core import surveillance
+
+        envoi = {}
+
+        class Smtp:
+            def __init__(self, *a, **k):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def login(self, u, p):
+                envoi["login"] = (u, p)
+
+            def send_message(self, m):
+                envoi["de"] = m["From"]
+
+        with mock.patch("smtplib.SMTP_SSL", Smtp):
+            self.assertTrue(surveillance.envoyer_courriel("Essai", "texte"))
+        return envoi
+
+    @override_settings(LMAPP_ALERTES_COURRIEL="jf@exemple.test", SMTP_HOTE="smtp.exemple.test", IMAP_UTILISATEUR="louis@exemple.test",
+                       IMAP_MOT_DE_PASSE="l", PLATEFORME_IMAP_UTILISATEUR="info@exemple.test", PLATEFORME_IMAP_MOT_DE_PASSE="i")
+    def test_alertes_partent_de_la_boite_de_la_plateforme(self):
+        e = self.envoyer()
+        self.assertEqual((e["login"], e["de"]), (("info@exemple.test", "i"), '"Le Déneigeur (surveillance)" <info@exemple.test>'))
+
+    @override_settings(LMAPP_ALERTES_COURRIEL="jf@exemple.test", SMTP_HOTE="smtp.exemple.test", IMAP_UTILISATEUR="louis@exemple.test",
+                       IMAP_MOT_DE_PASSE="l", PLATEFORME_IMAP_UTILISATEUR="", PLATEFORME_IMAP_MOT_DE_PASSE="")
+    def test_sinon_la_boite_du_deneigeur(self):
+        self.assertEqual(self.envoyer()["login"], ("louis@exemple.test", "l"))

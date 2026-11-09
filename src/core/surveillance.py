@@ -167,20 +167,28 @@ def tout_verifier(complet=True):
 
 # Envoi des alertes : directement (pas par Message ni par le worker, qui est peut-être justement en panne)
 
+def compte_alertes():
+    """(adresse, mot de passe) d'envoi des alertes : la boîte de la plateforme (info@), sinon celle du déneigeur."""
+    if settings.PLATEFORME_IMAP_UTILISATEUR and settings.PLATEFORME_IMAP_MOT_DE_PASSE:
+        return settings.PLATEFORME_IMAP_UTILISATEUR, settings.PLATEFORME_IMAP_MOT_DE_PASSE
+    return settings.IMAP_UTILISATEUR, settings.IMAP_MOT_DE_PASSE
+
+
 def envoyer_courriel(sujet, texte):
     import smtplib
 
-    if not (settings.LMAPP_ALERTES_COURRIEL and settings.SMTP_HOTE and settings.IMAP_UTILISATEUR):
+    adresse, mot_de_passe = compte_alertes()
+    if not (settings.LMAPP_ALERTES_COURRIEL and settings.SMTP_HOTE and adresse):
         return False
     m = EmailMessage()
-    m["From"] = formataddr(("Le Déneigeur (surveillance)", settings.IMAP_UTILISATEUR))
+    m["From"] = formataddr(("Le Déneigeur (surveillance)", adresse))
     m["To"] = settings.LMAPP_ALERTES_COURRIEL
     m["Subject"] = sujet
-    m["Message-ID"] = make_msgid(domain=settings.IMAP_UTILISATEUR.split("@")[-1])
+    m["Message-ID"] = make_msgid(domain=adresse.split("@")[-1])
     m.set_content(texte)
     try:
         with smtplib.SMTP_SSL(settings.SMTP_HOTE, settings.SMTP_PORT, local_hostname=settings.COURRIEL_HELO, timeout=30) as s:
-            s.login(settings.IMAP_UTILISATEUR, settings.IMAP_MOT_DE_PASSE)
+            s.login(adresse, mot_de_passe)
             s.send_message(m)
         return True
     except (OSError, smtplib.SMTPException) as e:
