@@ -213,6 +213,10 @@ LMAPP_SAUVEGARDE_TEMOIN = env("LMAPP_SAUVEGARDE_TEMOIN", "/sauvegardes/derniere_
 LMAPP_SILENCE_FICHIER = env("LMAPP_SILENCE_FICHIER", "/etat/silence_jusqu_a")  # outils/silence.sh
 # Journal des actions (K4) : durée de conservation, en jours
 LMAPP_JOURNAL_JOURS = int(env("LMAPP_JOURNAL_JOURS", "730"))
+# Durées de conservation (Loi 25), écrites aussi dans la politique de confidentialité du site (site/confidentialite.html) :
+# positions GPS du véhicule pendant les tournées, et demandes reçues à info@ (clients potentiels). Décision de JF, 9 novembre 2026.
+LMAPP_POSITIONS_JOURS = int(env("LMAPP_POSITIONS_JOURS", "120"))
+LMAPP_DEMANDES_SITE_JOURS = int(env("LMAPP_DEMANDES_SITE_JOURS", "730"))
 
 LOGGING = {
     "version": 1,

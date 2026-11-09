@@ -110,7 +110,8 @@ class Passage(Horodate):
 
 
 class PositionGPS(models.Model):
-    """Position du cellulaire pendant une opération (G1), envoyée par l'écran de tournée ouvert."""
+    """Position du cellulaire pendant une opération (G1), envoyée par l'écran de tournée ouvert.
+    Effacée après LMAPP_POSITIONS_JOURS jours (120, core.tasks.purger_conservation_chaque_nuit; Loi 25)."""
 
     operation = models.ForeignKey(Operation, on_delete=models.CASCADE, related_name="positions")
     moment = models.DateTimeField(default=timezone.now)

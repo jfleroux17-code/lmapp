@@ -73,3 +73,23 @@ def lire_boite_plateforme_aux_2_minutes(timestamp):
         n = 0  # on transfère quand même ce qui attend
     t = sum(1 for d in boite_plateforme.a_transferer()[:20] if boite_plateforme.transferer(d))
     return {"nouvelles": n, "transferees": t}
+
+
+# 7 h 10 UTC : après la purge du journal
+@app.periodic(cron="10 7 * * *")
+@app.task(queue="facturation", queueing_lock="purger_conservation")
+def purger_conservation_chaque_nuit(timestamp):
+    """Loi 25 : positions GPS des tournées après LMAPP_POSITIONS_JOURS jours (120), demandes reçues à info@ après
+    LMAPP_DEMANDES_SITE_JOURS jours (730). Durées écrites dans la politique de confidentialité du site."""
+    from datetime import timedelta
+
+    from django.conf import settings
+    from django.utils import timezone
+
+    from core.models import DemandeSite
+    from tournee.models import PositionGPS
+
+    maintenant = timezone.now()
+    positions = PositionGPS.objects.filter(moment__lt=maintenant - timedelta(days=settings.LMAPP_POSITIONS_JOURS)).delete()[0]
+    demandes = DemandeSite.objects.filter(recu_le__lt=maintenant - timedelta(days=settings.LMAPP_DEMANDES_SITE_JOURS)).delete()[0]
+    return {"positions": positions, "demandes": demandes}

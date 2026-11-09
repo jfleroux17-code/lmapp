@@ -158,3 +158,26 @@ class AdministrationDemandesTests(TestCase):
         self.client.force_login(self.employe)
         self.assertNotContains(self.client.get("/admin/"), "Demandes reçues à info@")
         self.assertEqual(self.client.get("/admin/core/demandesite/").status_code, 403)
+
+
+class ConservationTests(TestCase):
+    def test_positions_apres_120_jours_et_demandes_apres_2_ans(self):
+        import zlib
+        from datetime import timedelta
+
+        from django.contrib.gis.geos import Point
+        from django.utils import timezone
+
+        from core.models import Entreprise
+        from core.tasks import purger_conservation_chaque_nuit
+        from tournee.models import Operation, PositionGPS
+
+        ent = Entreprise.objects.create(nom="Essai", slug="essai", domaine="essai.exemple.test")
+        op = Operation.objects.create(entreprise=ent)
+        maintenant = timezone.now()
+        for jours in (121, 119):
+            PositionGPS.objects.create(operation=op, position=Point(-74.1, 45.9), moment=maintenant - timedelta(days=jours))
+            DemandeSite.objects.create(uidvalidite=1, uid=jours, recu_le=maintenant - timedelta(days=jours * 6.1), brut=zlib.compress(b"x"))
+        self.assertEqual(purger_conservation_chaque_nuit.func(0), {"positions": 1, "demandes": 1})
+        self.assertEqual(PositionGPS.objects.get().moment.date(), (maintenant - timedelta(days=119)).date())
+        self.assertEqual(DemandeSite.objects.get().uid, 119)

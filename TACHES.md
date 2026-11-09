@@ -148,6 +148,7 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 
 ## Fait
 
+- 9 novembre 2026, en prod : **durées de conservation** (positions GPS effacées après 120 jours, demandes à info@ après 2 ans), écrites dans la politique de confidentialité.
 - 9 novembre 2026, en prod : **boîte `info@ledeneigeur.com` de la plateforme** lue aux 2 minutes, chaque demande gardée dans l'administration (statut, note) et transférée à JF. Premier transfert parti (courriel de configuration de cPanel). Alertes de la surveillance envoyées de `info@` (essai reçu par JF).
 
 - 9 novembre 2026, en prod (essayés en test d'abord) : **relances proposées (C9, option B)**, éteintes par défaut (case « relances proposées chaque matin » dans la fiche de l'entreprise, à allumer avec Louis); **gabarits par défaut** dans la console de JF (administration, « Gabarits par défaut (toutes les entreprises) »), écran « Messages types » des déneigeurs (lecture seule, cloner, revenir au défaut); **photos jointes aux messages (E14)**; **alertes de la surveillance en silence pendant les déploiements** (`outils/silence.sh`). UptimeRobot sur `/sante/` (JF).

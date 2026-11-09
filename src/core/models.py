@@ -340,7 +340,8 @@ class DemandeSite(models.Model):
 
     Lu par le worker aux 2 minutes (core/boite_plateforme.py, en prod seulement), gardé au complet ici
     (compressé) et transféré à JF (PLATEFORME_TRANSFERT_A). Rien n'est marqué lu ni effacé dans la boîte.
-    Suivi par JF dans l'administration (superutilisateur seulement)."""
+    Suivi par JF dans l'administration (superutilisateur seulement). Effacée après LMAPP_DEMANDES_SITE_JOURS
+    jours (2 ans, core.tasks.purger_conservation_chaque_nuit)."""
 
     class Statut(models.TextChoices):
         NOUVELLE = "nouvelle", "Nouvelle"
