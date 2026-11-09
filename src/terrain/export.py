@@ -55,7 +55,13 @@ def export(request):
     if quoi == "paiements":
         paiements = (Paiement.objects.filter(entreprise=request.entreprise, date__gte=du, date__lte=au)
                      .select_related("facture__client").order_by("date", "pk"))
-        return _csv(f"paiements_{suffixe}", ["Date", "Facture", "Client", "Mode", "Montant", "Référence", "Note"], [
-            [f"{p.date:%Y-%m-%d}", p.facture.numero or "Solde antérieur", p.facture.client.nom_affiche, p.get_mode_display(),
-             _argent(p.montant), p.reference, p.note] for p in paiements])
+        from facturation.models import Credit
+
+        lignes = [[f"{p.date:%Y-%m-%d}", p.facture.numero or "Solde antérieur", p.facture.client.nom_affiche, p.get_mode_display(),
+                   _argent(p.montant), p.reference, p.note] for p in paiements]
+        # D7 : l'argent reçu en trop est une entrée d'argent; son application (mode « crédit au compte ») n'en est pas une
+        lignes += [[f"{c.date:%Y-%m-%d}", "Surplus en crédit", c.client.nom_affiche, c.get_mode_display(), _argent(c.montant), c.reference,
+                    c.note] for c in Credit.objects.filter(entreprise=request.entreprise, date__gte=du, date__lte=au).select_related("client")]
+        lignes.sort(key=lambda l: l[0])
+        return _csv(f"paiements_{suffixe}", ["Date", "Facture", "Client", "Mode", "Montant", "Référence", "Note"], lignes)
     return render(request, "terrain/argent/export.html", {"du": du, "au": au, "saison": saison})

@@ -41,11 +41,12 @@ class LigneForm(forms.Form):
 
 
 class PaiementForm(forms.Form):
-    mode = forms.ChoiceField(choices=Paiement.Mode.choices, error_messages={"required": "Choisir le mode de paiement."})
+    mode = forms.ChoiceField(choices=Paiement.MODES_RECUS, error_messages={"required": "Choisir le mode de paiement."})
     montant = MontantField(max_digits=10, decimal_places=2, min_value=Decimal("0.01"))
     reference = forms.CharField(max_length=100, required=False)
     date = forms.DateField(required=False)
     recu = forms.BooleanField(required=False)
+    surplus = forms.BooleanField(required=False)
 
 
 def _facture(request, pk):
@@ -87,7 +88,7 @@ def facture(request, pk):
         "f": f, "client": f.client, "lignes": f.lignes.all(), "paiements": f.paiements.order_by("date", "pk"),
         "ecriture": peut_ecrire(request), "services": _services(request),
         "form_ligne": LigneForm(), "form_paiement": PaiementForm(initial={"montant": f.solde}),
-        "modes": Paiement.Mode.choices, "aujourdhui": timezone.localdate(),
+        "modes": Paiement.MODES_RECUS, "aujourdhui": timezone.localdate(),
         "envois": f.messages.order_by("-cree_le")[:5],
         "cellulaire": telephone.afficher(f.client.cellulaire),
     }
@@ -175,21 +176,21 @@ def paiement(request, pk):
     if f.paiements.filter(montant=d["montant"], mode=d["mode"], cree_le__gte=timezone.now() - timedelta(minutes=1)).exists():
         messages.info(request, "Ce paiement est déjà enregistré.")
         return redirect("terrain:facture", pk=f.pk)
-    p = Paiement(entreprise=request.entreprise, facture=f, montant=d["montant"], mode=d["mode"],
-                 reference=d["reference"], date=d["date"] or timezone.localdate())
+    from facturation import credits
+
     try:
-        with transaction.atomic():
-            Facture.objects.select_for_update().get(pk=f.pk)  # deux paiements en même temps : l'un après l'autre
-            p.full_clean()
-            p.save()
+        p, credit = credits.encaisser(f, d["montant"], d["mode"], d["reference"], d["date"], surplus_permis=d.get("surplus"))
     except ValidationError as e:
         messages.error(request, " ".join(e.messages))
         return redirect("terrain:facture", pk=f.pk)
     from facturation.templatetags.argent import argent
     reste = f.solde
-    messages.success(request, f"{p.get_mode_display()} de {argent(p.montant)} enregistré. "
-                              + ("Facture payée au complet." if reste <= 0 else f"Reste {argent(reste)}."))
-    if d.get("recu"):
+    messages.success(request, f"{dict(Paiement.Mode.choices)[d['mode']]} de {argent(d['montant'])} enregistré. "
+                              + ("Facture payée au complet." if reste <= 0 else f"Reste {argent(reste)}.")
+                              + (f" Surplus de {argent(credit.montant)} gardé en crédit au compte"
+                                 + (f" (reste {argent(credit.restant)} pour les prochaines factures)." if credit.restant > 0 else ", appliqué aux autres factures dues.")
+                                 if credit else ""))
+    if d.get("recu") and p:
         _annoncer_recu(request, [p])
     return redirect("terrain:facture", pk=f.pk)
 
@@ -235,8 +236,9 @@ def comptes(request):
         l["relance"] = relances.get(l["client"].pk)
     tri = request.GET.get("tri", "anciennete")
     lignes.sort(key=(lambda l: -l["du"]) if tri == "montant" else (lambda l: l["depuis"]))
-    encaisse_30j = (Paiement.objects.filter(entreprise=request.entreprise, date__gt=aujourdhui - timedelta(days=30))
-                    .aggregate(s=Sum("montant"))["s"] or ZERO)
+    from facturation import credits
+
+    encaisse_30j = credits.encaisse(request.entreprise, date__gt=aujourdhui - timedelta(days=30))
     return render(request, "terrain/argent/comptes.html", {
         "saison": _bilan_saison(request.entreprise),
         "lignes": lignes, "tri": tri, "total": sum((l["du"] for l in lignes), ZERO),
@@ -254,7 +256,9 @@ def resume_client(client):
 
     qs = client.factures.avec_solde().order_by("-date_facture", "-pk")
     dues = relances.factures_dues(client)
-    resume = {"du": sum((f.solde_du for f in dues), ZERO), "factures_client": qs[:10],
+    from facturation.credits import credit_restant
+
+    resume = {"du": sum((f.solde_du for f in dues), ZERO), "factures_client": qs[:10], "credit": credit_restant(client),
               "contrats": client.contrats.filter(actif=True).select_related("saison").prefetch_related("versements").order_by("-saison__debut")[:2]}
     if dues:
         niveau = relances.niveau_suivant(client, dues)
@@ -355,6 +359,7 @@ def virement(request, pk):
 def _bilan_saison(entreprise):
     """J1 : la saison en un coup d'œil (facturé, encaissé, clients, opérations), de son début à aujourd'hui."""
     from clients.importation import saison_en_cours
+    from facturation import credits
     from tournee.models import Operation, Passage
 
     saison = saison_en_cours(entreprise)
@@ -365,7 +370,7 @@ def _bilan_saison(entreprise):
         "nom": saison.nom, "debut": saison.debut, "fin": saison.fin,
         "facture": factures.aggregate(s=Sum("total"))["s"] or ZERO,
         "taxes": factures.aggregate(s=Sum("tps"))["s"] or ZERO, "tvq": factures.aggregate(s=Sum("tvq"))["s"] or ZERO,
-        "encaisse": Paiement.objects.filter(entreprise=entreprise, **periode).aggregate(s=Sum("montant"))["s"] or ZERO,
+        "encaisse": credits.encaisse(entreprise, **periode),
         "clients": Client.objects.filter(entreprise=entreprise, statut__in=[Client.Statut.ACTIF, Client.Statut.RECOUVREMENT]).count(),
         "operations": Operation.objects.filter(entreprise=entreprise, debut__date__gte=saison.debut, debut__date__lte=saison.fin).count(),
         "passages": Passage.objects.filter(entreprise=entreprise, statut=Passage.Statut.FAIT,

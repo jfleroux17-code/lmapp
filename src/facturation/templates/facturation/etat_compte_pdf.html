@@ -48,7 +48,8 @@
 </table>
 
 <table class="totaux">
-  <tr class="solde"><td>Solde à payer</td><td class="nombre">{{ solde|argent }}</td></tr>
+  {% if solde < 0 %}<tr class="solde"><td>Crédit au compte</td><td class="nombre">{{ solde|argent }}</td></tr>
+  {% else %}<tr class="solde"><td>Solde à payer</td><td class="nombre">{{ solde|argent }}</td></tr>{% endif %}
 </table>
 {% if lignes and solde <= 0 %}<p class="nombre payee">Compte à jour. Merci!</p>{% endif %}
 

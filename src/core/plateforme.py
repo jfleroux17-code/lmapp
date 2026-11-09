@@ -59,7 +59,7 @@ def statistiques(debut, fin):
     )
     f = _par_entreprise(Facture.objects.filter(emise_le__date__gte=debut, emise_le__date__lt=fin, genre=Facture.Genre.FACTURE),
                         factures_emises=Count("pk"), montant_facture=Sum("total"))
-    p = _par_entreprise(Paiement.objects.filter(date__gte=debut, date__lt=fin), paiements=Count("pk"), montant_encaisse=Sum("montant"))
+    p = _par_entreprise(Paiement.objects.filter(date__gte=debut, date__lt=fin).exclude(mode="credit"), paiements=Count("pk"), montant_encaisse=Sum("montant"))  # D7 : un crédit appliqué n'est pas de l'argent reçu
     v = _par_entreprise(VirementInterac.objects.filter(recu_le__date__gte=debut, recu_le__date__lt=fin), virements=Count("pk"))
     o = _par_entreprise(Operation.objects.filter(debut__date__gte=debut, debut__date__lt=fin), operations=Count("pk"))
     pa = _par_entreprise(Passage.objects.filter(heure__date__gte=debut, heure__date__lt=fin), passages=Count("pk"))

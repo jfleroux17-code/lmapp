@@ -584,3 +584,51 @@ class ContratPdfTests(TestCase):
         with mock.patch("facturation.contrat_pdf.rendre", return_value=b"%PDF-1.7 c"):
             e = courriel.construire(m)
         self.assertEqual(next(e.iter_attachments()).get_filename(), f"contrat-2026-2027-{self.c.pk}.pdf")
+
+
+class TropPercuTests(TestCase):
+    """Trop-perçu (D7) : refusé sans la case, sinon crédit appliqué aux autres factures dues, puis à la prochaine émise."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from decimal import Decimal as D
+        from django.contrib.auth import get_user_model
+        from clients.models import Client
+        from core.models import Entreprise, Membre
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai-tp", domaine="tp.exemple.test", prochain_numero_facture=1)
+        cls.c = Client.objects.create(entreprise=cls.ent, nom="Tremblay")
+        cls.louis = get_user_model().objects.create_user("louis-tp", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="operateur")
+
+    def facture(self, montant):
+        from facturation.models import Facture
+        f = Facture.objects.create(entreprise=self.ent, client=self.c)
+        f.lignes.create(description="x", quantite=1, prix_unitaire=montant, taxable=False)
+        f.recalculer()
+        return f
+
+    def test_surplus_applique_puis_a_la_prochaine_facture(self):
+        from decimal import Decimal as D
+        from django.test import override_settings
+        from facturation import credits, etat_compte
+        from facturation.models import Credit, Paiement
+        f1 = self.facture(D("100")); f1.emettre()
+        f2 = self.facture(D("30")); f2.emettre()
+        self.client.force_login(self.louis)
+        h = {"HTTP_HOST": "tp.exemple.test"}
+        with override_settings(ALLOWED_HOSTS=["*"]):
+            self.client.post(f"/factures/{f1.pk}/paiement/", {"mode": "comptant", "montant": "200"}, **h)
+            self.assertFalse(Paiement.objects.exists())  # sans la case : refusé
+            self.client.post(f"/factures/{f1.pk}/paiement/", {"mode": "comptant", "montant": "200", "surplus": "1"}, **h)
+        f1.refresh_from_db(); f2.refresh_from_db()
+        self.assertEqual((f1.solde, f2.solde), (D("0.00"), D("0.00")))
+        cr = Credit.objects.get()
+        self.assertEqual((cr.montant, cr.restant), (D("100.00"), D("70.00")))
+        self.assertEqual(credits.credit_restant(self.c), D("70.00"))
+        f3 = self.facture(D("50")); f3.emettre()
+        f3.refresh_from_db()
+        self.assertEqual(f3.solde, D("0.00"))  # payée par le crédit à l'émission
+        self.assertEqual(credits.credit_restant(self.c), D("20.00"))
+        self.assertEqual(credits.encaisse(self.ent), D("200.00"))  # l'argent reçu compte une seule fois
+        lignes, solde = etat_compte.mouvements(self.c)
+        self.assertEqual(solde, D("-20.00"))  # crédit restant

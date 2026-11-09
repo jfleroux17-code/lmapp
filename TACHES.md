@@ -126,6 +126,7 @@ Après son essai des écrans. Une étape à la fois, chacune en test, montrée �
 - [x] Balises (A11) : **en prod le 9 novembre 2026** (écran « Balises » : à poser, à retirer).
 - [x] Saison suivante copiée de la précédente, prix ajustés en % (B5) : **en prod le 9 novembre 2026**.
 - [x] Contrat en PDF envoyé au client par courriel ou texto (B6) : **en prod le 9 novembre 2026**.
+- [x] Trop-perçu gardé en crédit et appliqué à la facture suivante (D7) : **en prod le 9 novembre 2026**.
 - [x] Tableau de bord de la plateforme (Q1, `/admin/plateforme/`, superutilisateur seulement) : **en prod le 8 novembre 2026** (boîte de Louis : 0,2 Mo sur 2 Go). Segments de textos comptés à l'envoi, quota de la boîte lu à chaque passage.
 - [ ] Site Internet de présentation (Q5) : archive `/srv/lmapp/site.zip` prête le 8 novembre 2026 (liens relatifs, captures au visuel C). Reste pour JF : la déposer dans `public_html`, créer `info@ledeneigeur.com`, valider les durées de conservation de la politique et retirer l'avis « Ébauche ».
 - [ ] Arrivée d'un déneigeur venant d'un logiciel concurrent (Q3) : ~~correspondance des colonnes à l'import~~ (fait le 8 novembre 2026 : entêtes anglais reconnus, `--depuis <logiciel>`, `--correspondance`). Reste : un fichier de correspondance par logiciel, à faire avec un vrai export en main.

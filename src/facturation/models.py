@@ -305,6 +305,9 @@ class Facture(Horodate):
             f.statut = self.Statut.EMISE
             f.emise_le = timezone.now()
             f.save()
+        from facturation.credits import appliquer
+
+        appliquer(self.client)  # D7 : un crédit au compte paie la nouvelle facture
         self.refresh_from_db()
         return self
 
@@ -393,6 +396,9 @@ class Paiement(Horodate):
         CHEQUE = "cheque", "Chèque"
         DEBIT = "debit", "Carte débit"
         CARTE = "carte", "Carte de crédit"
+        CREDIT = "credit", "Crédit au compte"  # D7 : surplus d'un paiement antérieur, pas de l'argent nouveau
+
+    MODES_RECUS = [m for m in Mode.choices if m[0] != "credit"]  # ce que Louis peut choisir à l'écran
 
     entreprise = models.ForeignKey(Entreprise, on_delete=models.PROTECT, related_name="paiements")
     facture = models.ForeignKey(Facture, on_delete=models.PROTECT, related_name="paiements")
@@ -402,6 +408,8 @@ class Paiement(Horodate):
     reference = models.CharField("référence", max_length=100, blank=True, help_text="N° de chèque, référence Interac, etc.")
     note = models.CharField(max_length=200, blank=True)
     recu_envoye_le = models.DateTimeField("reçu envoyé le", null=True, blank=True)
+    credit = models.ForeignKey("Credit", on_delete=models.PROTECT, null=True, blank=True, related_name="applications",
+                               help_text="Mode « crédit au compte » : le crédit utilisé (D7).")
 
     class Meta:
         verbose_name = "paiement"
@@ -421,6 +429,32 @@ class Paiement(Horodate):
         deja = f.paiements.exclude(pk=self.pk).aggregate(s=Sum("montant"))["s"] or ZERO
         if self.montant is not None and self.montant > f.total - deja:
             raise ValidationError({"montant": f"Plus que le solde de la facture ({f.total - deja} $)."})
+
+
+class Credit(Horodate):
+    """Trop-perçu (PRD D7) : argent reçu au-delà de ce que le client devait, gardé à son compte.
+    Il paie ses factures suivantes par des paiements de mode « crédit au compte » (Paiement.credit)."""
+    entreprise = models.ForeignKey(Entreprise, on_delete=models.PROTECT, related_name="credits")
+    client = models.ForeignKey(Client, on_delete=models.PROTECT, related_name="credits")
+    montant = _argent("montant", validators=[MinValueValidator(Decimal("0.01"))])
+    date = models.DateField(default=timezone.localdate)
+    mode = models.CharField("reçu en", max_length=10, choices=Paiement.MODES_RECUS)
+    reference = models.CharField("référence", max_length=100, blank=True)
+    paiement = models.ForeignKey(Paiement, on_delete=models.SET_NULL, null=True, blank=True, related_name="surplus",
+                                 help_text="Le paiement de la facture où l'argent est arrivé en trop.")
+    note = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        verbose_name = "crédit au compte"
+        verbose_name_plural = "crédits au compte"
+        ordering = ["entreprise", "date", "pk"]
+
+    def __str__(self):
+        return f"Crédit de {self.montant} $ ({self.client})"
+
+    @property
+    def restant(self):
+        return self.montant - (self.applications.aggregate(s=Sum("montant"))["s"] or ZERO)
 
 
 class VirementInterac(Horodate):

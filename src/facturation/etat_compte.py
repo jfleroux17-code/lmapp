@@ -16,7 +16,12 @@ def mouvements(client):
     for f in factures:
         quoi = f"Solde antérieur{f' ({f.saison_origine})' if f.saison_origine else ''}" if f.genre == Facture.Genre.SOLDE_OUVERTURE else f"Facture n° {f.numero}"
         lignes.append({"date": f.date_facture, "ordre": (0, f.pk), "quoi": quoi, "debit": f.total, "credit": None})
-    for p in Paiement.objects.filter(facture__in=factures).select_related("facture"):
+    from facturation.models import Credit
+
+    for cr in Credit.objects.filter(client=client):
+        lignes.append({"date": cr.date, "ordre": (1, -cr.pk), "quoi": f"Paiement reçu en trop ({cr.get_mode_display().lower()}), gardé en crédit",
+                       "debit": None, "credit": cr.montant})
+    for p in Paiement.objects.filter(facture__in=factures).exclude(mode=Paiement.Mode.CREDIT).select_related("facture"):
         sur = f"facture n° {p.facture.numero}" if p.facture.numero else "solde antérieur"
         mode = p.get_mode_display()
         mode = mode[:1].lower() + mode[1:]  # « virement Interac » garde sa majuscule

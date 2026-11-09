@@ -130,6 +130,10 @@
           <span class="mb-2 block text-gray-300" x-text="mode == 'cheque' ? 'Numéro du chèque' : 'Référence du virement'"></span>
           <input name="reference" class="champ" maxlength="100" autocomplete="off">
         </label>
+        <label class="flex min-h-12 cursor-pointer items-center gap-3 text-sm text-gray-300">
+          <input type="checkbox" name="surplus" value="1" class="h-6 w-6 accent-[#f5c400]">
+          <span>Le client a payé plus : garder le surplus en crédit au compte</span>
+        </label>
         <details>
           <summary class="flex min-h-12 cursor-pointer items-center text-gray-400">Reçu un autre jour?</summary>
           <input type="date" name="date" class="champ mt-2" max="{{ aujourdhui|date:'Y-m-d' }}">
