@@ -25,7 +25,8 @@ from django.utils import timezone
 
 from clients.models import Adresse, Client, Secteur
 from core.models import VilleDesservie
-from facturation.models import Contrat, Facture, Saison
+from facturation import calculs, credits
+from facturation.models import Contrat, Credit, Facture, Saison, Service
 from core import telephone
 from core.texte import cle, cle_ville
 
@@ -74,13 +75,20 @@ COLONNES = [
     Colonne("facturation_ville", "facturation_ville", "Ville de facturation.", "", "Saint-Jérôme"),
     Colonne("facturation_code_postal", "facturation_code_postal", "Code postal de facturation.", "", "J7Z 1A1"),
     Colonne("notes", "notes", "Notes libres.", "", ""),
-    Colonne("prix_saison", "prix_saison", "Prix entendu pour la saison, avant taxes, en dollars (450 ou 450,00). Crée un contrat dans la saison en cours (la saison doit exister dans l'administration). Au passage : le prix d'un passage.", "450,00", "2400,00", argent=True),
+    Colonne("prix_saison", "prix_saison", "Prix entendu pour la saison, en dollars (450 ou 450,00) : avant taxes, sauf si taxes_incluses = oui. Crée un contrat dans la saison en cours (la saison doit exister dans l'administration). Au passage : le prix d'un passage.", "450,00", "2400,00", argent=True),
     Colonne("type_contrat", "type_contrat", "saisonnier ou au passage (vide = saisonnier). À l'heure ou sur demande : contrat à créer à la main.", "saisonnier", "saisonnier", argent=True),
     Colonne("versements", "versements", "Nombre de versements du contrat saisonnier (1 à 4). Vide : celui de la fiche de l'entreprise. Le 1er est facturé tout de suite (brouillon), les autres aux dates de l'entreprise. Ex. 3 si le client paie en 3 fois.", "", "", argent=True),
+    Colonne("taxes_incluses", "taxes_incluses", "Le prix (et l'extra) comprend déjà les taxes : oui ou non (vide = non, les taxes s'ajoutent). L'import calcule le prix avant taxes qui redonne exactement ce total.", "non", "oui", argent=True),
+    Colonne("service", "service", "Service principal du contrat (ex. Déneigement de l'entrée, Bordage). Créé dans le catalogue s'il n'existe pas. Vide : aucun.", "Déneigement de l'entrée", "Déneigement de l'entrée", argent=True),
+    Colonne("extra_service", "extra_service", "Service ajouté au même contrat (ex. Sablage). Créé dans le catalogue s'il n'existe pas.", "Sablage", "", argent=True),
+    Colonne("extra_prix", "extra_prix", "Prix de l'extra pour la saison, ajouté au prix du contrat (même règle de taxes que prix_saison).", "100,00", "", argent=True),
     Colonne("prix_entendu_texte", "prix_entendu_texte", "Le prix tel qu'entendu avec le client, en mots.", "450 $ en 2 versements", "200 $ par mois, nov. à avril", argent=True),
     Colonne("solde_du", "solde_du", "Montant que le client doit encore des saisons passées, en dollars (taxes déjà comprises). Devient un « solde antérieur » à recevoir.", "", "350,00", argent=True),
     Colonne("solde_saison", "solde_saison", "Saison d'origine du solde dû (ex. 2025-2026).", "", "2025-2026", argent=True),
     Colonne("solde_note", "solde_note", "Note sur le solde dû (interne, jamais montrée au client).", "", "Facture de mars jamais payée", argent=True),
+    Colonne("recu_montant", "recu_montant", "Argent déjà reçu du client cette saison, avant l'app, taxes comprises. Devient un crédit au compte, qui paie la prochaine facture émise (le 1er versement).", "200,00", "", argent=True),
+    Colonne("recu_date", "recu_date", "Date où cet argent a été reçu (AAAA-MM-JJ). Vide : date de l'import.", "2026-11-01", "", argent=True),
+    Colonne("recu_mode", "recu_mode", "comptant, interac, cheque, debit ou carte. Vide : le mode_paiement du client.", "", "", argent=True),
 ]
 PAR_CLE = {c.cle: c for c in COLONNES}
 
@@ -95,6 +103,7 @@ ALIAS = {
     "route": "secteur", "rang": "rang_tournee", "ordre": "rang_tournee", "ordre_tournee": "rang_tournee",
     "paiement": "mode_paiement", "mode_de_paiement": "mode_paiement",
     "prix": "prix_saison", "prix_de_la_saison": "prix_saison",
+    "montant_recu": "recu_montant", "recu": "recu_montant", "deja_paye": "recu_montant", "date_recu": "recu_date", "mode_recu": "recu_mode",
     "solde": "solde_du", "montant_du": "solde_du", "du": "solde_du",
     "nom_complet": "nom", "client": "nom", "nom_du_client": "nom", "entreprise": "organisation", "compagnie": "organisation",
     # Entêtes anglais courants (exports de logiciels canadiens et américains, PRD Q3)
@@ -157,6 +166,12 @@ CHOIX = {
         "recouvrement": "recouvrement", "en_recouvrement": "recouvrement",
         "liste_noire": "liste_noire", "noire": "liste_noire",
     },
+    "recu_mode": {
+        "": "", "comptant": "comptant", "cash": "comptant", "argent": "comptant",
+        "interac": "interac", "virement": "interac", "virement_interac": "interac", "e_transfert": "interac", "v_i": "interac", "vi": "interac",
+        "cheque": "cheque", "cheques": "cheque", "debit": "debit", "carte_debit": "debit",
+        "carte": "carte", "carte_de_credit": "carte", "visa": "carte", "mastercard": "carte",
+    },
     "type_contrat": {
         "": "", "saisonnier": "saisonnier", "saison": "saisonnier", "forfait": "saisonnier",
         "au_passage": "passage", "passage": "passage",
@@ -187,6 +202,8 @@ class Resultat:
     adresses: int = 0
     contrats: int = 0
     soldes: int = 0
+    services: int = 0
+    credits: int = 0
 
 
 # Valeurs telles qu'écrites dans le gabarit, pour les messages d'erreur
@@ -333,7 +350,8 @@ class Ligne:
     adresse: Adresse = None
     secteur_nom: str = ""
     groupe: str = ""
-    argent: dict = field(default_factory=dict)
+    argent: dict = field(default_factory=dict)  # valeurs des colonnes d'argent, telles que lues
+    calcul: dict = field(default_factory=dict)  # tiré de l'argent : prix du contrat, services, reçu (pour l'écriture)
 
     @property
     def description(self):
@@ -351,6 +369,7 @@ class Analyse:
     lignes: list
     secteurs_nouveaux: list
     saison: Saison = None  # saison des contrats créés par l'import
+    services_nouveaux: list = field(default_factory=list)
 
     @property
     def erreurs(self):
@@ -383,11 +402,97 @@ class Analyse:
     def nb_soldes(self):
         return len(self._a_importer("solde_du"))
 
+    @property
+    def recus(self):
+        return self._a_importer("recu_montant")
+
+    @property
+    def statuts(self):
+        """Nombre de clients à créer par statut, pour l'essai à blanc (un ex-client gardé actif saute aux yeux)."""
+        from collections import Counter
+
+        return Counter(l.client.get_statut_display().lower() for l in self.lignes if l.statut == "a_creer")
+
 
 def _messages(erreur):
     if hasattr(erreur, "message_dict"):
         return [f"{champ} : {m}" if champ != "__all__" else m for champ, ms in erreur.message_dict.items() for m in ms]
     return list(erreur.messages)
+
+
+def _verifier_argent(l, entreprise, saison, services_existants, services_nouveaux, g):
+    """Taxes incluses, services et extra du contrat, argent déjà reçu. Remplit l.argent (prix_contrat, prix_texte,
+    services, recu_*) pour l'écriture."""
+    a, c_ = l.argent, l.calcul
+    type_c = a.get("type_contrat") or "saisonnier"
+    contrat = a.get("prix_saison") is not None and type_c in TYPES_IMPORTES
+    saisonnier = contrat and TYPES_IMPORTES[type_c] == Contrat.Type.SAISONNIER
+
+    # Services (catalogue de l'entreprise, créés au besoin)
+    noms = [n for n in (g("service"), g("extra_service")) if n]
+    if noms and not contrat:
+        l.avertissements.append("service ou extra sans contrat (prix_saison) : ignoré")
+    c_["services"] = []
+    for n in noms if contrat else []:
+        cs = _cle(n)
+        c_["services"].append(services_existants.get(cs) or services_nouveaux.setdefault(cs, n))
+
+    # Extra : même contrat, prix ajouté
+    extra = a.get("extra_prix")
+    if extra and not g("extra_service"):
+        l.erreurs.append("extra_prix sans extra_service : nommer le service (ex. Sablage)")
+    if g("extra_service") and contrat and not extra:
+        l.avertissements.append(f"extra « {g('extra_service')} » sans extra_prix : service ajouté au contrat, prix inchangé")
+    if extra and contrat and not saisonnier:
+        l.erreurs.append("extra_prix sur un contrat au passage : à faire à la main")
+        extra = None
+
+    # Prix du contrat, ramené avant taxes au besoin
+    if contrat and a.get("prix_saison") is not None:
+        brut = a["prix_saison"] + (extra or 0)
+        prix = brut
+        incluses = bool(a.get("taxes_incluses"))
+        if incluses and entreprise.inscrit_taxes:
+            nb = (a.get("versements") or entreprise.versements_par_defaut) if saisonnier else 1
+            nb = nb if 1 <= nb <= 4 else 1
+            prix, exact = calculs.prix_avant_taxes(brut, entreprise.taux_tps, entreprise.taux_tvq, nb)
+            if not exact:
+                l.avertissements.append(f"taxes incluses : {brut} $ impossible au cent près (arrondi des taxes), "
+                                        f"prix avant taxes {prix} $")
+        c_["prix_contrat"] = prix
+        texte = a.get("prix_entendu_texte", "")
+        if not texte and (incluses or extra):
+            texte = f"{_argent(a['prix_saison'])}" + (f" + {_argent(extra)} {g('extra_service').lower()}" if extra else "")
+            texte += " taxes incluses" if incluses else " plus taxes"
+        c_["prix_texte"] = texte
+    elif a.get("taxes_incluses"):
+        l.avertissements.append("taxes_incluses sans prix_saison : ignoré")
+
+    # Argent déjà reçu : crédit au compte
+    recu = a.get("recu_montant")
+    if recu:
+        mode = a.get("recu_mode") or CHOIX["recu_mode"].get(_cle(g("mode_paiement")), "")
+        if not mode:
+            l.erreurs.append("recu_montant sans recu_mode (ni mode_paiement) : dire comment l'argent a été reçu")
+        c_["recu_mode_effectif"] = mode
+        quand = a.get("recu_date")
+        aujourdhui = timezone.localdate()
+        if quand is None:
+            quand = aujourdhui
+            l.avertissements.append("recu_montant sans recu_date : date de l'import inscrite")
+        elif quand > aujourdhui:
+            l.erreurs.append(f"recu_date : {quand:%Y-%m-%d} est dans le futur (chèque postdaté : à noter plus tard, pas ici)")
+        elif saison is not None and quand < saison.debut:
+            l.avertissements.append(f"recu_date : {quand:%Y-%m-%d}, avant la saison {saison} (pas compté dans son bilan)")
+        c_["recu_date_effective"] = quand
+        if not contrat and not a.get("solde_du"):
+            l.avertissements.append(f"{_argent(recu)} reçus sans contrat ni solde : restent en crédit au compte")
+        if a.get("solde_du"):
+            l.avertissements.append("argent reçu et solde antérieur : le reçu paie d'abord le solde antérieur (le plus vieux)")
+
+
+def _argent(m):
+    return f"{m:.2f}".replace(".", ",").replace(",00", "") + " $"
 
 
 def analyser(fichier, entreprise, correspondance=None):
@@ -414,6 +519,8 @@ def analyser(fichier, entreprise, correspondance=None):
     secteurs_existants = {_cle(s.nom): s.nom for s in Secteur.objects.filter(entreprise=entreprise)}
     secteurs_nouveaux = {}
     ville_defaut = VilleDesservie.par_defaut_de(entreprise.pk)
+    services_existants = {_cle(sv.nom): sv.nom for sv in Service.objects.filter(entreprise=entreprise)}
+    services_nouveaux = {}
     villes_servies = {cle_ville(v.nom): v.nom for v in VilleDesservie.objects.filter(entreprise=entreprise)}
     cellulaires_base = set(Client.objects.filter(entreprise=entreprise).exclude(cellulaire="").values_list("cellulaire", flat=True))
     adresses_base = {_cle_adresse(a, v) for a, v in Adresse.objects.filter(entreprise=entreprise).values_list("ligne1", "ville")}
@@ -432,9 +539,11 @@ def analyser(fichier, entreprise, correspondance=None):
         conv = {}
         for k, fonction in (("borne_fontaine", _oui_non), ("entree_en_pente", _oui_non), ("consentement_commercial", _oui_non),
                             ("mode_paiement", _choix), ("canal", _choix), ("langue", _choix), ("statut", _choix), ("type_contrat", _choix),
-                            ("consentement_date", _date), ("rang_tournee", _entier), ("versements", _entier), ("prix_saison", _montant), ("solde_du", _montant)):
+                            ("consentement_date", _date), ("rang_tournee", _entier), ("versements", _entier), ("prix_saison", _montant), ("solde_du", _montant),
+                            ("taxes_incluses", _oui_non), ("extra_prix", _montant), ("recu_montant", _montant), ("recu_date", _date),
+                            ("recu_mode", _choix)):
             try:
-                conv[k] = fonction(brut.get(k, "") if k == "consentement_date" else g(k), k)
+                conv[k] = fonction(brut.get(k, "") if k in ("consentement_date", "recu_date") else g(k), k)
             except ValueError as e:
                 l.erreurs.append(str(e))
 
@@ -455,6 +564,8 @@ def analyser(fichier, entreprise, correspondance=None):
                                      f"{len(entreprise.liste_dates_versements())} date(s) de versement")
         elif "type_contrat" in l.argent:
             l.avertissements.append("type_contrat sans prix_saison : pas de contrat créé")
+        if not l.erreurs:  # valeurs mal écrites : déjà en erreur, rien à calculer
+            _verifier_argent(l, entreprise, saison, services_existants, services_nouveaux, g)
         if l.argent.get("solde_du") == 0:
             del l.argent["solde_du"]
 
@@ -550,7 +661,10 @@ def analyser(fichier, entreprise, correspondance=None):
 
     utilises = {_cle(l.secteur_nom) for l in lignes if l.statut in ("a_creer", "adresse_seulement") and l.secteur_nom}
     nouveaux = [nom for cs, nom in secteurs_nouveaux.items() if cs in utilises]
-    return Analyse(fichier, colonnes, inconnues, [], lignes, nouveaux, saison)
+    importees = [l for l in lignes if l.statut in ("a_creer", "adresse_seulement")]
+    services_utilises = {_cle(n) for l in importees for n in l.calcul.get("services", [])}
+    return Analyse(fichier, colonnes, inconnues, [], lignes, nouveaux, saison,
+                   [nom for cs, nom in services_nouveaux.items() if cs in services_utilises])
 
 
 # ---------------------------------------------------------------------------
@@ -574,8 +688,15 @@ def appliquer(analyse, entreprise, sauter_erreurs=False):
         for s in Secteur.objects.filter(entreprise=entreprise):
             secteurs.setdefault(_cle(s.nom), s)
 
-        clients_par_groupe = {}
         r = Resultat()
+        services = {_cle(sv.nom): sv for sv in Service.objects.filter(entreprise=entreprise)}
+        prochain = (Service.objects.filter(entreprise=entreprise).order_by("-ordre").values_list("ordre", flat=True).first() or 0) + 1
+        for nom in analyse.services_nouveaux:
+            services[_cle(nom)] = Service.objects.create(entreprise=entreprise, nom=nom[:100], ordre=prochain)
+            prochain += 1
+            r.services += 1
+
+        clients_par_groupe = {}
         for l in analyse.lignes:
             if l.statut == "a_creer":
                 l.client.save()
@@ -595,7 +716,8 @@ def appliquer(analyse, entreprise, sauter_erreurs=False):
             type_c = TYPES_IMPORTES.get(a.get("type_contrat") or "saisonnier")
             if a.get("prix_saison") is not None and type_c and analyse.saison is not None:
                 c = Contrat.objects.create(entreprise=entreprise, client=client, adresse=l.adresse, saison=analyse.saison,
-                                           type=type_c, prix=a["prix_saison"], prix_texte=a.get("prix_entendu_texte", "")[:300])
+                                           type=type_c, prix=l.calcul["prix_contrat"], prix_texte=l.calcul.get("prix_texte", "")[:300])
+                c.services.set([services[_cle(n)] for n in l.calcul.get("services", []) if _cle(n) in services])
                 if type_c == Contrat.Type.SAISONNIER:
                     c.creer_echeancier_par_defaut(a.get("versements"))  # B3 : 1er versement à l'approbation (l'import)
                 r.contrats += 1
@@ -603,4 +725,11 @@ def appliquer(analyse, entreprise, sauter_erreurs=False):
                 Facture.solde_ouverture(client, a["solde_du"], saison_origine=a.get("solde_saison", "")[:20],
                                         note=a.get("solde_note", ""))
                 r.soldes += 1
+            if a.get("recu_montant"):
+                # Argent reçu avant l'app : crédit au compte, appliqué tout de suite à ce qui est dû (solde antérieur),
+                # sinon à la prochaine facture émise (Facture.emettre), le 1er versement
+                Credit.objects.create(entreprise=entreprise, client=client, montant=a["recu_montant"], date=l.calcul["recu_date_effective"],
+                                      mode=l.calcul["recu_mode_effectif"], note="Reçu avant l'app (import)")
+                credits.appliquer(client)
+                r.credits += 1
     return r

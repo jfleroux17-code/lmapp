@@ -155,6 +155,92 @@ class ImportationTests(TestCase):
         self.assertEqual([v.date_prevue for v in cote.versements.all()][1:], [d(2027, 1, 15), d(2027, 2, 15)])
         self.assertEqual({v.montant for v in cote.versements.all()}, {Decimal("500.00")})
 
+    def _saison_et_taxes(self):
+        from datetime import date as d
+        from facturation.models import Saison
+
+        Entreprise.objects.filter(pk=self.ent.pk).update(versements_par_defaut=2, dates_versements="15/01 15/02", inscrit_taxes=True,
+                                                         taux_tps=Decimal("5"), taux_tvq=Decimal("9.975"))
+        self.ent.refresh_from_db()
+        Saison.objects.create(entreprise=self.ent, nom="2026-2027", debut=d(2020, 11, 1), fin=d(2099, 4, 30))
+
+    def test_taxes_incluses_redonnent_le_montant_exact(self):
+        from facturation.models import Contrat
+
+        self._saison_et_taxes()
+        a = self._analyser(_csv("nom;adresse;ville;prix_saison;taxes_incluses;versements\n"
+                                "Roy;1 rue A;X;792;oui;\nCôté;2 rue A;X;1200;oui;3\nGagnon;3 rue A;X;500;non;\n"))
+        self.assertEqual([l.erreurs for l in a.lignes], [[], [], []])
+        importation.appliquer(a, self.ent)
+        for nom, total in (("Roy", "792.00"), ("Côté", "1200.00")):
+            c = Contrat.objects.get(client__nom=nom)
+            self.assertEqual(sum(v.facturer().total for v in c.versements.all()), Decimal(total), nom)
+            self.assertIn("taxes incluses", c.prix_texte)
+        self.assertEqual(Contrat.objects.get(client__nom="Gagnon").prix, Decimal("500.00"))  # plus taxes : inchangé
+
+    def test_extra_sur_le_meme_contrat(self):
+        from facturation.models import Contrat, Service
+
+        self._saison_et_taxes()
+        Service.objects.create(entreprise=self.ent, nom="Déneigement de l'entrée")
+        a = self._analyser(_csv("nom;adresse;ville;prix_saison;service;extra_service;extra_prix\n"
+                                "Bélanger;1 rue A;X;792;déneigement de l'entrée;Sablage;200\nRoy;2 rue A;X;400;;;50\n"))
+        self.assertIn("extra_prix sans extra_service", " ".join(a.lignes[1].erreurs))
+        a = self._analyser(_csv("nom;adresse;ville;prix_saison;service;extra_service;extra_prix\n"
+                                "Bélanger;1 rue A;X;792;déneigement de l'entrée;Sablage;200\n"))
+        self.assertEqual(a.services_nouveaux, ["Sablage"])
+        r = importation.appliquer(a, self.ent)
+        c = Contrat.objects.get()
+        self.assertEqual((c.prix, c.prix_texte, r.services), (Decimal("992.00"), "792 $ + 200 $ sablage plus taxes", 1))
+        self.assertEqual(sorted(c.services.values_list("nom", flat=True)), ["Déneigement de l'entrée", "Sablage"])
+
+    def test_argent_deja_recu_en_credit(self):
+        from facturation import credits
+        from facturation.models import Contrat, Credit, Paiement
+
+        self._saison_et_taxes()
+        a = self._analyser(_csv("nom;adresse;ville;prix_saison;taxes_incluses;mode_paiement;recu_montant;recu_date;recu_mode\n"
+                                "Desrosiers;1 rue A;X;792;oui;interac;280;2026-11-02;\n"
+                                "Roy;2 rue A;X;400;;;100;;\n"
+                                "Côté;3 rue A;X;400;;;100;2099-01-01;comptant\n"))
+        self.assertEqual(a.lignes[0].erreurs, [])
+        self.assertIn("recu_mode", " ".join(a.lignes[1].erreurs))
+        self.assertIn("dans le futur", " ".join(a.lignes[2].erreurs))
+        r = importation.appliquer(a, self.ent, sauter_erreurs=True)
+        self.assertEqual(r.credits, 1)
+        cr = Credit.objects.get()
+        self.assertEqual((cr.montant, cr.mode, str(cr.date)), (Decimal("280.00"), "interac", "2026-11-02"))
+        self.assertEqual(credits.encaisse(self.ent), Decimal("280.00"))
+        f = Contrat.objects.get().versements.first().facturer()
+        f.emettre()
+        f.refresh_from_db()
+        self.assertEqual(f.paiements.get().mode, Paiement.Mode.CREDIT)
+        self.assertEqual(f.solde, Decimal("396.00") - Decimal("280.00"))
+
+    def test_commande_essai_a_blanc_puis_appliquer(self):
+        """La commande elle-même (pas seulement le module) : essai à blanc, puis --appliquer."""
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        self._saison_et_taxes()
+        chemin = _csv("nom;adresse;ville;statut;prix_saison;taxes_incluses;extra_service;extra_prix;recu_montant;recu_mode\n"
+                      "Roy;1 rue A;X;;792;oui;Sablage;200;280;interac\nCôté;2 rue A;X;inactif;;;;;;\n")
+        sortie = StringIO()
+        call_command("importer_clients", str(chemin), "--entreprise", "essai", stdout=sortie)
+        texte = sortie.getvalue()
+        for attendu in ("1 actif, 1 inactif", "Taxes incluses : 1 contrat(s)", "Services ajoutés au catalogue : Sablage",
+                        "Déjà reçu : 1 client(s), 280 $", "ESSAI À BLANC"):
+            self.assertIn(attendu, texte)
+        self.assertFalse(Client.objects.exists())
+        sortie = StringIO()
+        call_command("importer_clients", str(chemin), "--entreprise", "essai", "--appliquer", stdout=sortie)
+        self.assertIn("2 client(s), 2 adresse(s), 1 contrat(s), 0 solde(s) antérieur(s), 1 service(s) ajouté(s), 1 montant(s)", sortie.getvalue())
+
+    def test_decompte_des_statuts(self):
+        a = self._analyser(_csv("nom;adresse;ville;statut\nRoy;1 rue A;X;\nCôté;2 rue A;X;inactif\nGagnon;3 rue A;X;actif\n"))
+        self.assertEqual(dict(a.statuts), {"actif": 2, "inactif": 1})
+
     def test_excel_avec_numero_en_nombre(self):
         from openpyxl import Workbook
         wb = Workbook()

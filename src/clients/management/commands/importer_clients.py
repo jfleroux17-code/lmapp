@@ -78,15 +78,31 @@ class Command(BaseCommand):
         if nb_contrats:
             from collections import Counter
 
-            from core.models import Entreprise
-
-            ent = Entreprise.objects.get(slug=o["entreprise"]) if o.get("entreprise") else None
+            ent = entreprise
             par_nb = Counter(l.argent.get("versements") or ent.versements_par_defaut for l in a._a_importer("prix_saison")
                              if l.argent.get("type_contrat", "saisonnier") == "saisonnier")
-            dates = " et ".join(f"{j:02d}/{m:02d}" for j, m in ent.liste_dates_versements()) if ent else ""
             for nb, combien in sorted(par_nb.items()):
+                dates = " et ".join(f"{j:02d}/{m:02d}" for j, m in ent.liste_dates_versements()[:nb - 1])
                 w(f"         Échéancier : {combien} contrat(s) en {nb} versement(s) (1er à l'import, en brouillon"
-                  f"{', puis ' + dates if nb > 1 and dates else ''}).")
+                  f"{', puis ' + dates if dates else ''}).")
+
+        if a.statuts:
+            w("         Statuts des clients à créer : " + ", ".join(f"{n} {st}" for st, n in sorted(a.statuts.items(), key=lambda x: -x[1]))
+              + " (vérifier qu'aucun ex-client n'est « actif »).")
+        incluses = [l for l in a._a_importer("prix_saison") if l.argent.get("taxes_incluses") and "prix_contrat" in l.calcul]
+        if incluses:
+            w(f"         Taxes incluses : {len(incluses)} contrat(s), prix ramené avant taxes (ex. ligne {incluses[0].numero} : "
+              f"{importation._argent(incluses[0].argent['prix_saison'] + (incluses[0].argent.get('extra_prix') or 0))} devient "
+              f"{importation._argent(incluses[0].calcul['prix_contrat'])} avant taxes).")
+        extras = a._a_importer("extra_prix")
+        if extras:
+            w(f"         Extras : {len(extras)} contrat(s) avec un service ajouté (prix additionné au contrat).")
+        if a.services_nouveaux:
+            w(f"         Services ajoutés au catalogue : {', '.join(a.services_nouveaux)}.")
+        if a.recus:
+            total = sum(l.argent["recu_montant"] for l in a.recus)
+            w(f"         Déjà reçu : {len(a.recus)} client(s), {importation._argent(total)} au total, en crédit au compte "
+              "(paie la 1re facture émise; compté comme reçu à sa date).")
 
         if not o["appliquer"]:
             w(self.style.WARNING("ESSAI À BLANC : rien n'a été enregistré. Relancer avec --appliquer pour importer."))
@@ -95,4 +111,5 @@ class Command(BaseCommand):
             r = importation.appliquer(a, entreprise, sauter_erreurs=o["sauter_erreurs"])
         except ValueError as e:
             raise CommandError(str(e))
-        w(self.style.SUCCESS(f"Importé : {r.clients} client(s), {r.adresses} adresse(s), {r.contrats} contrat(s), {r.soldes} solde(s) antérieur(s)."))
+        w(self.style.SUCCESS(f"Importé : {r.clients} client(s), {r.adresses} adresse(s), {r.contrats} contrat(s), {r.soldes} solde(s) antérieur(s), "
+                                   f"{r.services} service(s) ajouté(s), {r.credits} montant(s) déjà reçu(s) en crédit."))

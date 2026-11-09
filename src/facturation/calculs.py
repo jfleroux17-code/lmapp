@@ -25,3 +25,23 @@ def repartir(total, n):
     part = (total / n).quantize(CENT, rounding=ROUND_DOWN)
     parts = [part] * (n - 1)
     return parts + [total - sum(parts)]
+
+
+def prix_avant_taxes(total, taux_tps, taux_tvq, versements=1):
+    """Prix « taxes incluses » ramené avant taxes : (prix, exact).
+
+    Cherche le prix avant taxes dont les factures (un versement par facture, taxes arrondies sur chacune, comme
+    Contrat.creer_echeancier puis Versement.facturer) redonnent exactement `total`. Sinon (l'arrondi l'empêche) :
+    le plus proche, et exact = False."""
+    total = arrondir(total)
+    taux = (Decimal(taux_tps) + Decimal(taux_tvq)) / 100
+
+    def total_facture(prix):
+        return sum((p + sum(taxes(p, taux_tps, taux_tvq)) for p in repartir(prix, versements)), Decimal("0"))
+
+    depart = arrondir(total / (1 + taux))
+    candidats = [depart + CENT * d for d in (0, -1, 1, -2, 2, -3, 3)]
+    for prix in candidats:
+        if prix >= 0 and total_facture(prix) == total:
+            return prix, True
+    return min((p for p in candidats if p >= 0), key=lambda p: abs(total_facture(p) - total)), False
