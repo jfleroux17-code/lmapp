@@ -51,3 +51,16 @@ def facture_publique(request, jeton):
 
 def facture_publique_pdf(request, jeton):
     return _prive(_pdf(_publique(request, jeton)))
+
+
+@membre_requis
+def etat_compte_pdf(request, pk):
+    """État de compte d'un client de l'entreprise du domaine (C10)."""
+    from clients.models import Client
+    from facturation import etat_compte
+
+    client = get_object_or_404(Client.objects.select_related("entreprise"), pk=pk, entreprise=request.entreprise)
+    r = HttpResponse(etat_compte.rendre(client), content_type="application/pdf")
+    r["Content-Disposition"] = f'inline; filename="etat-de-compte-{client.pk}.pdf"'
+    r["Cache-Control"] = "private, no-store"
+    return r

@@ -3,38 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>{% if solde_ouverture %}Solde antérieur{% elif f.numero %}Facture {{ f.numero }}{% else %}Brouillon{% endif %}, {{ ent.nom }}</title>
-<style>
-  @page { size: letter; margin: 18mm 16mm 20mm;
-          @bottom-center { content: "{{ ent.nom_legal|default:ent.nom|escapejs }}  ·  page " counter(page) " de " counter(pages); font-family: "Liberation Sans", "DejaVu Sans", sans-serif; font-size: 8pt; color: #777; } }
-  body { font-family: "Liberation Sans", "DejaVu Sans", sans-serif; font-size: 10pt; color: #1a1a1a; line-height: 1.35; }
-  .entete { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #f5c400; padding-bottom: 8mm; }
-  .entreprise h1 { font-size: 18pt; margin: 0 0 1mm; }
-  .entreprise .legal { color: #555; margin-bottom: 2mm; }
-  .titre { text-align: right; }
-  .titre h2 { font-size: 20pt; margin: 0; letter-spacing: 1px; }
-  .titre table { margin-left: auto; margin-top: 2mm; }
-  .titre td { padding: 0.5mm 0 0.5mm 4mm; }
-  .titre td:first-child { color: #555; }
-  .parties { display: flex; gap: 10mm; margin: 8mm 0 6mm; }
-  .parties div { flex: 1; }
-  .etiquette { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px; color: #777; margin-bottom: 1mm; }
-  table.lignes { width: 100%; border-collapse: collapse; }
-  .lignes th { text-align: left; font-size: 8.5pt; text-transform: uppercase; color: #555; border-bottom: 1px solid #999; padding: 2mm 1.5mm; }
-  .lignes td { padding: 2mm 1.5mm; border-bottom: 1px solid #ddd; vertical-align: top; }
-  .nombre, .lignes th.nombre { text-align: right; white-space: nowrap; }
-  .lignes .col { width: 26mm; }
-  .totaux { width: 82mm; margin: 4mm 0 0 auto; border-collapse: collapse; }
-  .totaux td { padding: 1.2mm 1.5mm; }
-  .petit { font-size: 8pt; color: #666; }
-  .totaux .grand td { font-size: 12pt; font-weight: bold; border-top: 2px solid #1a1a1a; padding-top: 2mm; }
-  .totaux .solde td { font-size: 12pt; font-weight: bold; background: #fff6cc; }
-  .bloc { margin-top: 8mm; padding: 3mm 4mm; border-left: 3px solid #f5c400; background: #fafafa; }
-  .bloc p { margin: 0 0 1.5mm; }
-  .note { white-space: pre-line; }
-  .tampon { position: fixed; top: 95mm; left: 0; right: 0; text-align: center; font-size: 64pt; font-weight: bold;
-            color: rgba(200, 30, 30, 0.16); transform: rotate(-24deg); }
-  .payee { color: #1d7a36; font-weight: bold; }
-</style>
+{% include "facturation/_style_pdf.html" %}
 </head>
 <body>
 {% if brouillon %}<div class="tampon">BROUILLON</div>{% elif annulee %}<div class="tampon">ANNULÉE</div>{% endif %}

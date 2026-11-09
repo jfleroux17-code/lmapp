@@ -121,6 +121,7 @@
     <div class="carte divide-y divide-bordure">
       {% for f in factures_client %}{% include "terrain/argent/_ligne_facture.html" %}{% endfor %}
     </div>
+    <a href="{% url 'facturation:etat_compte' client.pk %}" class="mt-2 inline-flex min-h-12 items-center text-accent" target="_blank" rel="noopener">État de compte (PDF)</a>
   {% endif %}
 </section>
 

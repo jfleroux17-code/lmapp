@@ -406,3 +406,47 @@ class BilanSaisonTests(TestCase):
         self.assertEqual((b["nom"], b["facture"], b["encaisse"], b["clients"], b["taxes"], b["tvq"]),
                          ("Saison test", D("114.98"), D("50.00"), 1, D("5.00"), D("9.98")))
         self.assertContains(page, "Saison Saison test")
+
+
+class EtatCompteTests(TestCase):
+    """État de compte (C10) : factures émises et paiements dans l'ordre, solde courant, annulées exclues."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from datetime import date as d
+        from decimal import Decimal as D
+        from django.contrib.auth import get_user_model
+        from clients.models import Client
+        from core.models import Entreprise, Membre
+        from facturation.models import Facture, Paiement
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai-ec", domaine="ec.exemple.test", prochain_numero_facture=10)
+        cls.c = Client.objects.create(entreprise=cls.ent, prenom="Ginette", nom="Tremblay")
+        Facture.solde_ouverture(cls.c, D("50.00"), saison_origine="2025-2026", date_facture=d(2026, 11, 1))
+        f = Facture.objects.create(entreprise=cls.ent, client=cls.c, date_facture=d(2026, 11, 2))
+        f.lignes.create(description="Saison", quantite=1, prix_unitaire=D("300.00"), taxable=False)
+        f.recalculer()
+        f.emettre()
+        Paiement.objects.create(entreprise=cls.ent, facture=f, date=d(2026, 11, 5), montant=D("100.00"), mode="comptant")
+        a = Facture.objects.create(entreprise=cls.ent, client=cls.c)
+        a.lignes.create(description="Erreur", quantite=1, prix_unitaire=D("999.00"), taxable=False)
+        a.recalculer()
+        a.emettre()
+        a.annuler("Erreur de saisie")
+        cls.louis = get_user_model().objects.create_user("louis-ec", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="operateur")
+
+    def test_mouvements_et_solde(self):
+        from decimal import Decimal as D
+        from facturation import etat_compte
+        lignes, solde = etat_compte.mouvements(self.c)
+        self.assertEqual([l["quoi"] for l in lignes], ["Solde antérieur (2025-2026)", "Facture n° 10", "Paiement, comptant (facture n° 10)"])
+        self.assertEqual([l["solde"] for l in lignes], [D("50.00"), D("350.00"), D("250.00")])
+        self.assertEqual(solde, D("250.00"))
+
+    def test_pdf_pour_les_membres(self):
+        from django.test import override_settings
+        self.client.force_login(self.louis)
+        with override_settings(ALLOWED_HOSTS=["*"]):
+            r = self.client.get(f"/clients/{self.c.pk}/etat-de-compte/", HTTP_HOST="ec.exemple.test")
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.content.startswith(b"%PDF"))

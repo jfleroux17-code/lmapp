@@ -1,0 +1,66 @@
+{% load argent %}<!DOCTYPE html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<title>État de compte, {{ client.nom_affiche }}, {{ ent.nom }}</title>
+{% include "facturation/_style_pdf.html" %}
+</head>
+<body>
+<div class="entete">
+  <div class="entreprise">
+    <h1>{{ ent.nom }}</h1>
+    {% if ent.nom_legal and ent.nom_legal != ent.nom %}<div class="legal">{{ ent.nom_legal }}</div>{% endif %}
+    {% if ent.adresse_ligne1 %}{{ ent.adresse_ligne1 }}<br>{% endif %}
+    {% if ent.adresse_ligne2 %}{{ ent.adresse_ligne2 }}<br>{% endif %}
+    {% if ent.ville %}{{ ent.ville }} {{ ent.province }}  {{ ent.code_postal }}<br>{% endif %}
+    {% if ent.telephone %}{{ telephone_affiche }}<br>{% endif %}
+    {% if ent.courriel %}{{ ent.courriel }}{% endif %}
+  </div>
+  <div class="titre">
+    <h2>ÉTAT DE COMPTE</h2>
+    <table><tr><td>Au</td><td><strong>{{ date|date:"j F Y" }}</strong></td></tr></table>
+  </div>
+</div>
+
+<div class="parties">
+  <div>
+    <div class="etiquette">Client</div>
+    <strong>{{ client.nom_affiche }}</strong><br>
+    {% for l in adresse %}{{ l }}<br>{% endfor %}
+  </div>
+</div>
+
+<table class="lignes">
+  <thead><tr><th>Date</th><th>Description</th><th class="nombre col">Facturé</th><th class="nombre col">Payé</th><th class="nombre col">Solde</th></tr></thead>
+  <tbody>
+  {% for l in lignes %}
+    <tr>
+      <td style="white-space: nowrap">{{ l.date|date:"j F Y" }}</td>
+      <td>{{ l.quoi }}</td>
+      <td class="nombre">{% if l.debit is not None %}{{ l.debit|argent }}{% endif %}</td>
+      <td class="nombre">{% if l.credit is not None %}{{ l.credit|argent }}{% endif %}</td>
+      <td class="nombre">{{ l.solde|argent }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="5">Aucune facture.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<table class="totaux">
+  <tr class="solde"><td>Solde à payer</td><td class="nombre">{{ solde|argent }}</td></tr>
+</table>
+{% if lignes and solde <= 0 %}<p class="nombre payee">Compte à jour. Merci!</p>{% endif %}
+
+{% if solde > 0 %}
+<div class="bloc">
+  <p><strong>Pour payer</strong></p>
+  {% if ent.interac_courriel or ent.interac_instructions %}
+    <p>Virement Interac{% if ent.interac_courriel %} à <strong>{{ ent.interac_courriel }}</strong>{% endif %}, en indiquant les numéros de facture.</p>
+    {% if ent.interac_instructions %}<p class="note">{{ ent.interac_instructions }}</p>{% endif %}
+  {% endif %}
+  <p>Chèque à l'ordre de «&nbsp;{{ ent.nom_legal|default:ent.nom }}&nbsp;». Comptant accepté.</p>
+</div>
+{% endif %}
+</body>
+</html>
