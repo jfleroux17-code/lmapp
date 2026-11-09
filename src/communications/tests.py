@@ -946,3 +946,48 @@ class FacturePubliqueTests(TestCase):
         f = Facture.solde_ouverture(c, D("50.00"))
         with self.assertRaises(ValidationError):
             envoyer_facture(f, "texto")
+
+
+@override_settings(ALLOWED_HOSTS=["*"])
+class AppelNoteTests(TestCase):
+    """Appels notés à la main (E6) : dans le fil du client, rien d'envoyé, demande possible."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.ent = Entreprise.objects.create(nom="Entretiens Essai", slug="essai", domaine=HOTE)
+        cls.c = Client.objects.create(entreprise=cls.ent, prenom="Ginette", nom="Tremblay", cellulaire="+15145550123")
+        U = get_user_model()
+        cls.louis = U.objects.create_user("louis", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="operateur")
+        cls.lecteur = U.objects.create_user("comptable", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.lecteur, entreprise=cls.ent, role="lecture")
+
+    def test_appel_recu_note_dans_la_fiche(self):
+        self.client.force_login(self.louis)
+        with mock.patch("communications.tasks.envoyer_message.defer") as defer:
+            r = self.client.post(f"/clients/{self.c.pk}/appel/", {"sens": "recu", "resume": "Demande si on passe ce soir."}, HTTP_HOST=HOTE)
+        self.assertRedirects(r, f"/clients/{self.c.pk}/", fetch_redirect_response=False)
+        defer.assert_not_called()
+        m = Message.objects.get(client=self.c)
+        self.assertEqual((m.canal, m.genre, m.sens, m.statut, m.lu, m.expediteur), ("appel", "appel", "entrant", "recu", True, "+15145550123"))
+        r = self.client.get(f"/clients/{self.c.pk}/", HTTP_HOST=HOTE)
+        self.assertContains(r, "Appel reçu")
+        self.assertContains(r, "Demande si on passe ce soir.")
+
+    def test_appel_fait_puis_demande(self):
+        self.client.force_login(self.louis)
+        r = self.client.post(f"/clients/{self.c.pk}/appel/", {"sens": "fait", "resume": "Oublié hier, je repasse.", "demande": "1"}, HTTP_HOST=HOTE)
+        m = Message.objects.get(client=self.c)
+        self.assertEqual((m.sens, m.statut), ("sortant", "envoye"))
+        self.assertRedirects(r, f"/demandes/nouvelle/?message={m.pk}", fetch_redirect_response=False)
+        r = self.client.post("/demandes/nouvelle/", {"message": m.pk, "genre": "oubli", "description": m.contenu}, HTTP_HOST=HOTE)
+        from demandes.models import Demande
+        self.assertEqual(Demande.objects.get().source, "appel")
+
+    def test_resume_obligatoire_et_lecture_seule_refusee(self):
+        self.client.force_login(self.louis)
+        self.client.post(f"/clients/{self.c.pk}/appel/", {"sens": "recu", "resume": "  "}, HTTP_HOST=HOTE)
+        self.assertFalse(Message.objects.exists())
+        self.client.force_login(self.lecteur)
+        r = self.client.post(f"/clients/{self.c.pk}/appel/", {"sens": "recu", "resume": "x"}, HTTP_HOST=HOTE)
+        self.assertEqual(r.status_code, 403)

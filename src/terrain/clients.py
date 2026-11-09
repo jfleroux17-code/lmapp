@@ -8,6 +8,8 @@ from django import forms
 from django.contrib import messages
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
 
 from clients.models import Adresse, Client, Secteur
 from core.acces import ecriture_requise, modification_clients_requise
@@ -201,3 +203,30 @@ def ecrire(request, pk):
         "client": client, "canaux": canaux, "signature": ent.signature_messages or ent.nom,
         "choisi": request.POST.get("canal") or (client.canal_prefere if client.canal_prefere in dict(canaux) else (canaux[0][0] if canaux else "")),
     })
+
+
+@ecriture_requise
+def noter_appel(request, pk):
+    """Appel noté à la main (E6) : reçu ou fait, avec un résumé. Rien n'est envoyé; l'appel paraît dans le fil du client.
+    « Noter et créer une demande » mène à la demande, texte proposé (oubli, plainte, etc.)."""
+    from communications.models import Genre, Message
+
+    client = get_object_or_404(Client, pk=pk, entreprise=request.entreprise)
+    if request.method == "POST":
+        sens = Message.Sens.SORTANT if request.POST.get("sens") == "fait" else Message.Sens.ENTRANT
+        resume = request.POST.get("resume", "").strip()
+        if not resume:
+            messages.error(request, "Écrire un résumé de l'appel.")
+        else:
+            numero = client.cellulaire or client.telephone_autre
+            m = Message.objects.create(
+                entreprise=request.entreprise, client=client, genre=Genre.APPEL, canal=Message.Canal.APPEL, sens=sens,
+                expediteur=numero if sens == Message.Sens.ENTRANT else "", destinataire=numero if sens == Message.Sens.SORTANT else "",
+                statut=Message.Statut.RECU if sens == Message.Sens.ENTRANT else Message.Statut.ENVOYE,
+                envoye_le=timezone.now(), lu=True, contenu=resume)
+            if request.POST.get("demande"):
+                return redirect(f"{reverse('terrain:nouvelle_demande')}?message={m.pk}")
+            messages.success(request, "Appel noté.")
+            return redirect("terrain:fiche", pk=client.pk)
+    return render(request, "terrain/clients/appel.html", {"client": client, "sens": request.POST.get("sens", "recu"),
+                                                          "resume": request.POST.get("resume", "")})

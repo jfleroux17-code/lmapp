@@ -1,0 +1,22 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Noter un appel : {{ client.nom_affiche }}{% endblock %}
+{% block contenu %}
+<h1 class="mb-4 text-2xl font-bold">Noter un appel</h1>
+<p class="mb-4 text-gray-300">{{ client.nom_affiche }}</p>
+<form method="post" class="space-y-4" x-data="{ sens: '{{ sens }}', envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+  <div class="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Appel">
+    <label class="flex min-h-14 cursor-pointer items-center justify-center rounded-xl border-2 px-4 font-semibold" :class="sens === 'recu' ? 'border-accent text-accent' : 'border-bordure'">
+      <input type="radio" name="sens" value="recu" class="sr-only" x-model="sens">Le client a appelé
+    </label>
+    <label class="flex min-h-14 cursor-pointer items-center justify-center rounded-xl border-2 px-4 font-semibold" :class="sens === 'fait' ? 'border-accent text-accent' : 'border-bordure'">
+      <input type="radio" name="sens" value="fait" class="sr-only" x-model="sens">J'ai appelé
+    </label>
+  </div>
+  <label class="block"><span class="mb-2 block text-gray-300">Résumé de l'appel</span>
+    <textarea name="resume" rows="5" class="champ py-3" required placeholder="Ce qui a été dit ou entendu">{{ resume }}</textarea>
+  </label>
+  <button class="gros-bouton bg-accent text-nuit" :class="{ 'opacity-60': envoi }">Noter l'appel</button>
+  <button name="demande" value="1" class="gros-bouton border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">Noter et créer une demande</button>
+  <a href="{% url 'terrain:fiche' client.pk %}" class="gros-bouton border-2 border-bordure text-gray-300">Annuler</a>
+</form>
+{% endblock %}

@@ -10,7 +10,8 @@ from communications.models import Message
 from core.acces import ecriture_requise, membre_requis, peut_ecrire
 from demandes.models import Demande
 
-SOURCE_PAR_CANAL = {Message.Canal.TEXTO: Demande.Source.TEXTO, Message.Canal.COURRIEL: Demande.Source.COURRIEL}
+SOURCE_PAR_CANAL = {Message.Canal.TEXTO: Demande.Source.TEXTO, Message.Canal.COURRIEL: Demande.Source.COURRIEL,
+                    Message.Canal.APPEL: Demande.Source.APPEL}
 
 
 @membre_requis

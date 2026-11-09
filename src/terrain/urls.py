@@ -11,6 +11,7 @@ urlpatterns = [
     path("clients/nouveau/", clients.nouveau, name="nouveau_client"),
     path("clients/<int:pk>/modifier/", clients.modifier, name="modifier_client"),
     path("clients/<int:pk>/ecrire/", clients.ecrire, name="ecrire"),
+    path("clients/<int:pk>/appel/", clients.noter_appel, name="noter_appel"),
     path("clients/<int:client_pk>/adresses/nouvelle/", clients.adresse, name="nouvelle_adresse"),
     path("clients/<int:client_pk>/adresses/<int:pk>/", clients.adresse, name="modifier_adresse"),
     path("adresses/<int:pk>/position/", clients.position, name="position_adresse"),

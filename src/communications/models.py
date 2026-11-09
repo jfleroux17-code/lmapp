@@ -24,6 +24,7 @@ class Genre(models.TextChoices):
     RECU_PAIEMENT = "recu_paiement", "Reçu de paiement"
     GROUPE_SERVICE = "groupe_service", "Avis à plusieurs clients"
     GROUPE_COMMERCIAL = "groupe_comm", "Message commercial"
+    APPEL = "appel", "Appel noté"
 
 
 RELANCES = [Genre.RELANCE_1, Genre.RELANCE_2, Genre.RELANCE_3]
@@ -69,6 +70,7 @@ class Message(Horodate):
     class Canal(models.TextChoices):
         TEXTO = "texto", "Texto"
         COURRIEL = "courriel", "Courriel"
+        APPEL = "appel", "Appel"  # noté à la main par le déneigeur (E6), rien n'est envoyé
 
     class Statut(models.TextChoices):
         PREPARE = "prepare", "Préparé, pas envoyé"
