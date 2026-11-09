@@ -26,6 +26,7 @@ class ImapInfo(FauxImap):
 class FauxSmtp:
     envoyes = []
     panne = False
+    refuse_jointes = False
 
     def __init__(self, *a, **k):
         if FauxSmtp.panne:
@@ -41,6 +42,8 @@ class FauxSmtp:
         assert (u, p) == ("info@exemple.test", "secret$info")
 
     def send_message(self, m):
+        if FauxSmtp.refuse_jointes and any(True for _ in m.iter_attachments()):
+            raise smtplib.SMTPDataError(550, b"Attached file has disallowed extension.")
         FauxSmtp.envoyes.append(m)
 
 
@@ -48,7 +51,7 @@ class FauxSmtp:
                    PLATEFORME_IMAP_MOT_DE_PASSE="secret$info", PLATEFORME_TRANSFERT_A="jf@exemple.test", COURRIEL_LECTURE_ACTIVE=True)
 class BoitePlateformeTests(TestCase):
     def setUp(self):
-        FauxSmtp.envoyes, FauxSmtp.panne = [], False
+        FauxSmtp.envoyes, FauxSmtp.panne, FauxSmtp.refuse_jointes = [], False, False
 
     def passer(self, imap):
         from core.tasks import lire_boite_plateforme_aux_2_minutes
@@ -73,11 +76,20 @@ class BoitePlateformeTests(TestCase):
         self.assertEqual((t["To"], t["Reply-To"], t["Subject"]), ("jf@exemple.test", "Marc Gagnon <marc@example.com>", "[info@] Votre logiciel"))
         self.assertIn("80 clients", t.get_body(("plain",)).get_content())
         jointe, = t.iter_attachments()
-        self.assertEqual(jointe.get_content_type(), "message/rfc822")
+        self.assertEqual((jointe.get_filename(), jointe.get_content_type(), jointe.get_content()), ("liste.pdf", "application/pdf", b"%PDF"))
         self.assertEqual(self.passer(imap), {"nouvelles": 0, "transferees": 0})  # pas de doublon
         imap.dossiers["INBOX"][6] = _courriel(de="autre@example.com", corps="Prix?").as_bytes()
         self.assertEqual(self.passer(imap), {"nouvelles": 1, "transferees": 1})
         self.assertEqual(DemandeSite.objects.count(), 2)
+
+    def test_piece_jointe_refusee_renvoye_sans_elle(self):
+        e = _courriel(de="a@example.com", corps="Voir le fichier")
+        e.add_attachment(b"x", maintype="application", subtype="octet-stream", filename="truc.exe")
+        FauxSmtp.refuse_jointes = True
+        self.assertEqual(self.passer(ImapInfo({"INBOX": {1: e.as_bytes()}})), {"nouvelles": 1, "transferees": 1})
+        t, = FauxSmtp.envoyes
+        self.assertEqual(list(t.iter_attachments()), [])
+        self.assertIn("refusées par le serveur", t.get_content())
 
     def test_messages_automatiques_gardes_sans_transfert(self):
         imap = ImapInfo({"INBOX": {

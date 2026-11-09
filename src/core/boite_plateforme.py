@@ -3,9 +3,10 @@
 Le worker la lit aux 2 minutes (en prod seulement, COURRIEL_LECTURE_ACTIVE) :
   1. chaque nouveau courriel de la réception est gardé au complet dans la base (DemandeSite, compressé);
      la boîte est ouverte en lecture seule, avec BODY.PEEK : rien n'est marqué lu, déplacé ni effacé;
-  2. il est transféré à JF (PLATEFORME_TRANSFERT_A) : résumé, texte, et le courriel d'origine joint
-     (pièces jointes comprises); « Répondre » vise l'expéditeur. Transfert raté : nouvel essai au passage
-     suivant, 5 essais au plus.
+  2. il est transféré à JF (PLATEFORME_TRANSFERT_A) : résumé, texte et pièces jointes d'origine; « Répondre »
+     vise l'expéditeur. Pas de .eml joint : le serveur de courriel le refuse. Une pièce jointe refusée par le
+     serveur (5xx) : renvoyé sans les pièces jointes, avec une note (le courriel complet se télécharge dans
+     l'administration). Transfert raté : nouvel essai au passage suivant, 5 essais au plus.
 Pas de transfert pour les messages automatiques (rebonds, réponses d'absence, Auto-Submitted) ni pour nos
 propres envois : un rebond de transfert ne doit pas revenir en boucle.
 """
@@ -73,7 +74,7 @@ def analyser(octets):
     }
 
 
-def courriel_de_transfert(d):
+def courriel_de_transfert(d, avec_jointes=True):
     m = EmailMessage()
     m["From"] = formataddr(("Le Déneigeur (info@)", settings.PLATEFORME_IMAP_UTILISATEUR))
     m["To"] = settings.PLATEFORME_TRANSFERT_A
@@ -83,6 +84,8 @@ def courriel_de_transfert(d):
     m["Message-ID"] = make_msgid(domain=settings.PLATEFORME_IMAP_UTILISATEUR.split("@")[-1])
     m["Auto-Submitted"] = "auto-generated"  # un répondeur automatique ne doit pas répondre au transfert
     jointes = f"Pièces jointes : {', '.join(d.pieces_jointes)}\n" if d.pieces_jointes else ""
+    if d.pieces_jointes and not avec_jointes:
+        jointes += "(refusées par le serveur de courriel : télécharger le courriel complet dans l'administration)\n"
     m.set_content(
         f"Nouvelle demande reçue à {settings.PLATEFORME_IMAP_UTILISATEUR}.\n\n"
         f"De : {d.nom + ' ' if d.nom else ''}<{d.expediteur}>\n"
@@ -90,8 +93,13 @@ def courriel_de_transfert(d):
         f"Sujet : {d.sujet}\n{jointes}\n"
         f"{d.texte or '(pas de texte)'}\n\n"
         f"Répondre à ce courriel écrit directement à l'expéditeur. Suivi : administration, "
-        f"« Demandes reçues à info@ » (no {d.pk}). Le courriel d'origine est joint.\n")
-    m.add_attachment(d.octets(), maintype="message", subtype="rfc822", filename="courriel-origine.eml")
+        f"« Demandes reçues à info@ » (no {d.pk}), où le courriel complet se télécharge.\n")
+    if avec_jointes:
+        msg = BytesParser(policy=policy.default).parsebytes(d.octets())
+        for p in msg.iter_attachments():
+            if p.get_filename():
+                maintype, subtype = p.get_content_type().split("/")
+                m.add_attachment(p.get_payload(decode=True) or b"", maintype=maintype, subtype=subtype, filename=p.get_filename())
     return m
 
 
@@ -102,7 +110,13 @@ def transferer(d):
         with smtplib.SMTP_SSL(settings.SMTP_HOTE, settings.SMTP_PORT, local_hostname=settings.COURRIEL_HELO,
                               context=ssl.create_default_context(), timeout=30) as s:
             s.login(settings.PLATEFORME_IMAP_UTILISATEUR, settings.PLATEFORME_IMAP_MOT_DE_PASSE)
-            s.send_message(courriel_de_transfert(d))
+            try:
+                s.send_message(courriel_de_transfert(d))
+            except smtplib.SMTPDataError as e:
+                if not (d.pieces_jointes and 500 <= e.smtp_code < 600):
+                    raise
+                log.warning("demande %s : pièces jointes refusées (%s), envoi sans elles", d.pk, e.smtp_error[:150])
+                s.send_message(courriel_de_transfert(d, avec_jointes=False))
     except (OSError, smtplib.SMTPException) as e:
         DemandeSite.objects.filter(pk=d.pk).update(essais_transfert=d.essais_transfert + 1, erreur_transfert=str(e)[:300])
         log.warning("demande %s : transfert pas parti (%s)", d.pk, e)
