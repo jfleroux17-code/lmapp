@@ -31,8 +31,8 @@ Mise à jour : 8 novembre 2026.
 - [x] Premier courriel d'essai à JF (8 novembre 2026) : SPF, DKIM et DMARC « pass », mais arrivé dans les pourriels (domaine neuf, DNS inverse générique). IP sur aucune liste noire vérifiée.
 - [ ] JF : dans Gmail, « non-spam », ajouter `louis@ledeneigeur.com` aux contacts et répondre au courriel d'essai. Facultatif : Google Postmaster Tools pour `ledeneigeur.com` (valeur TXT à donner à Claude Code).
 - [x] Twilio : compte payant, numéro 450-300-1166, `TWILIO_ACCOUNT_SID` et `TWILIO_AUTH_TOKEN` dans les deux `.env` (8 novembre 2026). Premier texto d'essai livré au cellulaire de JF, depuis le test.
-- [ ] SMTP2GO : sous-compte de Louis, domaine `ledeneigeur.com` vérifié (SPF, DKIM, DMARC chez Cloudflare), `SMTP2GO_API_KEY` dans les `.env`.
-- [ ] Boîte IMAP (proposé : `info@ledeneigeur.com`), MX chez Cloudflare, accès dans les `.env`.
+- [x] ~~SMTP2GO~~ : abandonné le 8 novembre 2026 (décision de JF), remplacé par le serveur de courriel de JF.
+- [x] ~~Boîte IMAP `info@`~~ : remplacée par `louis@ledeneigeur.com` (une boîte par déneigeur), en place.
 - [ ] Stripe : seulement si des clients veulent payer par carte (question 8 de Louis).
 
 ### Serveur (rien d'urgent)
