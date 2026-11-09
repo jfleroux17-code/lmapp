@@ -81,6 +81,28 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
 
+  # Surveillance (PRD 6.7) : à part du worker, pour pouvoir signaler un worker bloqué. Voir core/surveillance.py.
+  # Réseaux : interne (base), edge (vérifier le site à travers Caddy), sortie (alertes par Twilio et courriel).
+  # Aucun port publié. Lit le témoin des sauvegardes en lecture seule.
+  surveillance:
+    image: lmapp:latest
+    restart: unless-stopped
+    command: ["python", "manage.py", "surveiller"]
+    env_file: .env
+    depends_on:
+      - db
+    volumes:
+      - ./sauvegardes:/sauvegardes:ro
+    networks:
+      - interne
+      - edge
+      - sortie
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
   # Sauvegarde de la base toutes les 12 heures (PRD K3) : voir outils/sauvegarde_nocturne.sh.
   # Écrit dans /srv/lmapp/sauvegardes, que COVE copie hors de ld1.
   sauvegarde:
