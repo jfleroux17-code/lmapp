@@ -27,7 +27,7 @@
     </div>
   {% if ecriture %}
     <div class="sticky bottom-0 -mx-4 border-t border-bordure bg-nuit/95 px-4 py-3 backdrop-blur" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
-      <button class="gros-bouton bg-accent text-nuit" :class="{ 'opacity-60': envoi || n === 0 }">Envoyer <span x-text="n">{{ propositions|length }}</span> relance<span x-show="n > 1">s</span></button>
+      <button class="gros-bouton bg-accent text-nuit" :class="{ 'opacity-60': envoi || n === 0 }"><span x-text="'Envoyer ' + n + ' relance' + (n > 1 ? 's' : '')">Envoyer {{ propositions|length }} relance{{ propositions|length|pluralize }}</span></button>
     </div>
   </form>
   {% for p in propositions %}<form id="reporter-{{ p.client.pk }}" method="post" action="{% url 'terrain:reporter_relance' p.client.pk %}" class="hidden">{% csrf_token %}</form>{% endfor %}
