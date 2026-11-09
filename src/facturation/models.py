@@ -227,6 +227,8 @@ class Facture(Horodate):
     raison_annulation = models.CharField("raison de l'annulation", max_length=200, blank=True)
     # Lien public de la facture (L1), difficile à deviner
     jeton = models.CharField(max_length=40, unique=True, default=_jeton, editable=False)
+    consultee_le = models.DateTimeField("ouverte par le client le", null=True, blank=True,
+                                        help_text="Première ouverture du lien public par quelqu'un qui n'est pas connecté.")
 
     objects = FactureQuerySet.as_manager()
 
@@ -244,6 +246,10 @@ class Facture(Horodate):
         if self.genre == self.Genre.SOLDE_OUVERTURE:
             return f"Solde d'ouverture {self.saison_origine or ''} : {self.client}".replace("  ", " ")
         return f"Facture n° {self.numero}" if self.numero else f"Brouillon ({self.client})"
+
+    def lien_public(self):
+        """Lien à donner au client (L1) : voir la facture sans compte. Le jeton est la seule clé : ne pas l'afficher ailleurs."""
+        return f"https://{self.entreprise.domaine}/f/{self.jeton}/"
 
     @property
     def modifiable(self):

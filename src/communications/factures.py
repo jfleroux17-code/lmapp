@@ -1,4 +1,4 @@
-"""Envoi d'une facture par courriel au client, PDF joint (PRD C4)."""
+"""Envoi d'une facture au client (PRD C4) : par courriel, PDF joint; par texto, avec le lien public de la facture (L1)."""
 from django.core.exceptions import ValidationError
 from django.utils import formats
 
@@ -27,16 +27,36 @@ def _texte(f):
     return "\n\n".join(lignes)
 
 
+def _texto(f):
+    """Court : le montant, l'échéance et le lien vers la page de la facture (le PDF s'y télécharge)."""
+    ent = f.entreprise
+    if f.genre == Facture.Genre.SOLDE_OUVERTURE:
+        quoi = f"le solde de votre compte : {argent(f.solde)}"
+    else:
+        quoi = f"votre facture n° {f.numero} : {argent(f.total)}"
+        if f.solde != f.total:
+            quoi += f", solde à payer {argent(f.solde)}"
+    echeance = f", à payer au plus tard le {formats.date_format(f.date_echeance, 'j F')}" if f.date_echeance and f.solde > 0 else ""
+    return f"Bonjour {f.client.nom_affiche}, voici {quoi}{echeance}. Pour la voir : {f.lien_public()}\n{ent.signature_messages or ent.nom}"
+
+
 def sujet(f):
     if f.genre == Facture.Genre.SOLDE_OUVERTURE:
         return f"Solde de votre compte : {f.entreprise.nom}"
     return f"Facture n° {f.numero} : {f.entreprise.nom}"
 
 
-def envoyer_facture(f):
-    """Crée le message (PDF joint) et le confie à l'envoi. La facture doit être émise et le client avoir un courriel."""
+def envoyer_facture(f, canal=Message.Canal.COURRIEL):
+    """Crée le message et le confie à l'envoi. La facture doit être émise, et le client avoir un courriel
+    (PDF joint) ou un cellulaire (lien vers la facture)."""
     if f.statut != Facture.Statut.EMISE:
         raise ValidationError("Seule une facture émise peut être envoyée.")
+    if canal == Message.Canal.TEXTO:
+        if not f.client.cellulaire:
+            raise ValidationError("Ce client n'a pas de cellulaire.")
+        m = Message.objects.create(entreprise=f.entreprise, client=f.client, genre=Genre.FACTURE, canal=canal,
+                                   destinataire=f.client.cellulaire, contenu=_texto(f), facture=f)
+        return envoi.envoyer(m)
     if not f.client.courriel:
         raise ValidationError("Ce client n'a pas d'adresse courriel.")
     m = Message.objects.create(entreprise=f.entreprise, client=f.client, genre=Genre.FACTURE, canal=Message.Canal.COURRIEL,

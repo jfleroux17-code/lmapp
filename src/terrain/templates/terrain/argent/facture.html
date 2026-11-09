@@ -63,10 +63,19 @@
             @submit="if (envoi || !confirm('Envoyer la facture à {{ client.courriel|escapejs }}?')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
         <button class="gros-bouton mb-4 border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">Envoyer par courriel{% if envois %} de nouveau{% endif %}</button>
       </form>
-    {% else %}
-      <p class="mb-4 text-sm text-gray-400">Pas de courriel dans la fiche du client : impossible d'envoyer la facture.</p>
+    {% endif %}
+    {% if client.cellulaire %}
+      <form method="post" action="{% url 'terrain:envoyer_facture' f.pk %}" x-data="{ envoi: false }"
+            @submit="if (envoi || !confirm('Envoyer le lien de la facture par texto au {{ cellulaire|escapejs }}?')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+        <input type="hidden" name="canal" value="texto">
+        <button class="gros-bouton mb-4 border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">Envoyer par texto{% if envois %} de nouveau{% endif %}</button>
+      </form>
+    {% endif %}
+    {% if not client.courriel and not client.cellulaire %}
+      <p class="mb-4 text-sm text-gray-400">Ni courriel ni cellulaire dans la fiche du client : impossible d'envoyer la facture.</p>
     {% endif %}
   {% endif %}
+  {% if f.consultee_le %}<p class="mb-4 text-sm text-ok">Ouverte par le client le {{ f.consultee_le|date:"j F, H \h i" }}.</p>{% endif %}
   {% if envois %}
     <div class="carte mb-4 divide-y divide-bordure">
       {% for m in envois %}

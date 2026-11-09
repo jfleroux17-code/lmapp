@@ -17,6 +17,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from clients.models import Client
+from core import telephone
 from core.acces import ecriture_requise, membre_requis, peut_ecrire
 from facturation.models import Facture, LigneFacture, Paiement, Service
 
@@ -88,6 +89,7 @@ def facture(request, pk):
         "form_ligne": LigneForm(), "form_paiement": PaiementForm(initial={"montant": f.solde}),
         "modes": Paiement.Mode.choices, "aujourdhui": timezone.localdate(),
         "envois": f.messages.order_by("-cree_le")[:5],
+        "cellulaire": telephone.afficher(f.client.cellulaire),
     }
     return render(request, "terrain/argent/facture.html", contexte)
 
@@ -265,12 +267,15 @@ def resume_client(client):
 @require_POST
 @ecriture_requise
 def envoyer_facture(request, pk):
-    """Envoi de la facture au client par courriel, PDF joint (C4). Le worker envoie; le statut paraît sur la facture."""
+    """Envoi de la facture au client (C4) : par courriel, PDF joint, ou par texto, avec le lien de la facture (L1).
+    Le worker envoie; le statut paraît sur la facture."""
     from communications.factures import envoyer_facture as envoyer
+    from communications.models import Message
 
     f = _facture(request, pk)
+    canal = Message.Canal.TEXTO if request.POST.get("canal") == "texto" else Message.Canal.COURRIEL
     try:
-        m = envoyer(f)
+        m = envoyer(f, canal)
     except ValidationError as e:
         messages.error(request, " ".join(e.messages))
         return redirect("terrain:facture", pk=f.pk)

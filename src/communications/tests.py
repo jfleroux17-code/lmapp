@@ -875,3 +875,74 @@ class EnvoiGroupeTests(TestCase):
         self.assertContains(r, "2 messages en route.")
         self.assertEqual(sorted(Message.objects.values_list("canal", "genre")), [("courriel", "groupe_service"), ("texto", "groupe_service")])
         self.assertEqual(Message.objects.get(canal="courriel").sujet, "Tempête")
+
+
+@override_settings(ALLOWED_HOSTS=["*"])
+class FacturePubliqueTests(TestCase):
+    """Lien public de la facture (L1) et envoi de la facture par texto (C4)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from facturation.models import Facture
+        cls.ent = Entreprise.objects.create(nom="Entretiens Essai", slug="essai", domaine=HOTE, envois_actifs=True,
+                                            numero_texto="+14505550199", interac_courriel="paiement@example.com",
+                                            prochain_numero_facture=57, signature_messages="Entretiens Essai")
+        cls.autre = Entreprise.objects.create(nom="Autre", slug="autre", domaine="autre.exemple.test")
+        cls.c = Client.objects.create(entreprise=cls.ent, prenom="Ginette", nom="Tremblay", cellulaire="+15145550123")
+        cls.f = Facture.objects.create(entreprise=cls.ent, client=cls.c)
+        cls.f.lignes.create(description="Déneigement de l'entrée", quantite=1, prix_unitaire=D("400.00"), taxable=False)
+        cls.f.recalculer()
+        cls.f.emettre()
+        cls.brouillon = Facture.objects.create(entreprise=cls.ent, client=cls.c)
+        U = get_user_model()
+        cls.louis = U.objects.create_user("louis", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="operateur")
+
+    def url(self, f, pdf=False):
+        return f"/f/{f.jeton}/" + ("pdf/" if pdf else "")
+
+    def test_page_publique_sans_compte(self):
+        r = self.client.get(self.url(self.f), HTTP_HOST=HOTE)
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "Facture n° 57")
+        self.assertContains(r, "paiement@example.com")
+        self.assertEqual(r["Cache-Control"], "private, no-store")
+        self.assertEqual(r["Referrer-Policy"], "no-referrer")
+        self.f.refresh_from_db()
+        self.assertIsNotNone(self.f.consultee_le)
+
+    def test_louis_connecte_ne_compte_pas_comme_ouverture(self):
+        self.client.force_login(self.louis)
+        self.client.get(self.url(self.f), HTTP_HOST=HOTE)
+        self.f.refresh_from_db()
+        self.assertIsNone(self.f.consultee_le)
+
+    def test_refus_brouillon_autre_domaine_jeton_inconnu(self):
+        self.assertEqual(self.client.get(self.url(self.brouillon), HTTP_HOST=HOTE).status_code, 404)
+        self.assertEqual(self.client.get(self.url(self.f), HTTP_HOST="autre.exemple.test").status_code, 404)
+        self.assertEqual(self.client.get("/f/pas-le-bon-jeton/", HTTP_HOST=HOTE).status_code, 404)
+
+    def test_pdf_public(self):
+        with mock.patch("facturation.pdf.rendre", return_value=b"%PDF-1.7 essai"):
+            r = self.client.get(self.url(self.f, pdf=True), HTTP_HOST=HOTE)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r["Content-Type"], "application/pdf")
+
+    @override_settings(TWILIO_ACCOUNT_SID="AC-essai", TWILIO_AUTH_TOKEN="jeton", LMAPP_DESTINATAIRES_TEST=["+15145550123"])
+    def test_envoi_par_texto_avec_le_lien(self):
+        self.client.force_login(self.louis)
+        with mock.patch("communications.tasks.envoyer_message.defer"), self.captureOnCommitCallbacks(execute=True):
+            r = self.client.post(f"/factures/{self.f.pk}/courriel/", {"canal": "texto"}, HTTP_HOST=HOTE)
+        self.assertEqual(r.status_code, 302)
+        m = Message.objects.get(facture=self.f)
+        self.assertEqual((m.canal, m.destinataire, m.statut), ("texto", "+15145550123", "en_file"))
+        self.assertIn(f"https://{HOTE}/f/{self.f.jeton}/", m.contenu)
+        self.assertIn("400,00", m.contenu)
+
+    def test_texto_sans_cellulaire_refuse(self):
+        from communications.factures import envoyer_facture
+        c = Client.objects.create(entreprise=self.ent, prenom="Sans", nom="Cell")
+        from facturation.models import Facture
+        f = Facture.solde_ouverture(c, D("50.00"))
+        with self.assertRaises(ValidationError):
+            envoyer_facture(f, "texto")
