@@ -75,6 +75,18 @@ class Command(BaseCommand):
           f"{len(a.existantes)} ligne(s) déjà en base, {len(a.erreurs)} ligne(s) en erreur.")
         if nb_contrats or nb_soldes:
             w(f"         {nb_contrats} contrat(s) et {nb_soldes} solde(s) antérieur(s) à créer.")
+        if nb_contrats:
+            from collections import Counter
+
+            from core.models import Entreprise
+
+            ent = Entreprise.objects.get(slug=o["entreprise"]) if o.get("entreprise") else None
+            par_nb = Counter(l.argent.get("versements") or ent.versements_par_defaut for l in a._a_importer("prix_saison")
+                             if l.argent.get("type_contrat", "saisonnier") == "saisonnier")
+            dates = " et ".join(f"{j:02d}/{m:02d}" for j, m in ent.liste_dates_versements()) if ent else ""
+            for nb, combien in sorted(par_nb.items()):
+                w(f"         Échéancier : {combien} contrat(s) en {nb} versement(s) (1er à l'import, en brouillon"
+                  f"{', puis ' + dates if nb > 1 and dates else ''}).")
 
         if not o["appliquer"]:
             w(self.style.WARNING("ESSAI À BLANC : rien n'a été enregistré. Relancer avec --appliquer pour importer."))

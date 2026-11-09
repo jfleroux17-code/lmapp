@@ -106,6 +106,19 @@ class Entreprise(Horodate):
     )
     relances_avisees_le = models.DateField("relances avisées le", null=True, blank=True, editable=False)
 
+    # Échéancier des contrats saisonniers (PRD B3, C5) : 1er versement à l'approbation, les autres aux dates ci-dessous
+    versements_par_defaut = models.PositiveSmallIntegerField(
+        "versements par défaut", default=1, validators=[MinValueValidator(1), MaxValueValidator(4)],
+        help_text="Nombre de versements d'un nouveau contrat saisonnier (import, administration), sauf indication contraire.")
+    dates_versements = models.CharField(
+        "dates des versements suivants", max_length=60, blank=True,
+        help_text="Jour/mois, séparés par des espaces, ex. « 15/01 15/02 ». Le 1er versement est à l'approbation du contrat; "
+                  "avec 2 versements, le 2e est à la 1re date; avec 3, aux deux premières.")
+    jours_avance_versement = models.PositiveSmallIntegerField(
+        "jours d'avance des factures de versement", default=0, validators=[MaxValueValidator(30)],
+        help_text="La facture d'un versement est préparée (en brouillon) ce nombre de jours avant sa date, "
+                  "ex. 5 : le 10 janvier pour le 15. Le cellulaire est avisé; rien ne part sans une tape.")
+
     # Paiement Interac (PRD D4)
     interac_courriel = models.EmailField("courriel Interac", blank=True)
     interac_instructions = models.TextField(
@@ -121,7 +134,27 @@ class Entreprise(Horodate):
     def __str__(self):
         return self.nom
 
+    def liste_dates_versements(self):
+        """[(jour, mois)] des versements après le premier, d'après « 15/01 15/02 ». ValueError si mal écrit."""
+        from datetime import date
+
+        dates = []
+        for morceau in self.dates_versements.replace(",", " ").replace(";", " ").split():
+            try:
+                jour, mois = (int(x) for x in morceau.split("/"))
+                date(2028, mois, jour)  # année bissextile : 29/02 accepté
+            except ValueError:
+                raise ValueError(f"« {morceau} » : écrire jour/mois, ex. 15/01.") from None
+            dates.append((jour, mois))
+        return dates
+
     def clean(self):
+        from django.core.exceptions import ValidationError
+
+        try:
+            self.liste_dates_versements()
+        except ValueError as e:
+            raise ValidationError({"dates_versements": str(e)}) from e
         self.telephone = telephone.normaliser(self.telephone)
         self.numero_texto = telephone.normaliser(self.numero_texto)
         self.code_postal = self.code_postal.upper().replace(" ", "")

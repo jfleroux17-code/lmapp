@@ -1,6 +1,7 @@
 """Tâches du volet argent, exécutées par le worker (Procrastinate)."""
 import logging
 
+from django.db import transaction
 from django.utils import timezone
 from procrastinate.contrib.django import app
 
@@ -15,13 +16,28 @@ def facturer_versements_dus(aujourdhui=None):
     Seulement des brouillons : rien n'est émis ni envoyé sans Louis. Relançable
     sans danger (un versement déjà facturé est sauté).
     """
+    from datetime import timedelta
+
+    from core.models import Entreprise
+    from core.tasks import notifier_plus_tard
+
     aujourdhui = aujourdhui or timezone.localdate()
-    dus = (Versement.objects.filter(facture=None, date_prevue__lte=aujourdhui, contrat__actif=True)
-           .select_related("contrat__entreprise", "contrat__client", "contrat__saison").order_by("date_prevue", "pk"))
     n = 0
-    for v in dus:
-        v.facturer()
-        n += 1
+    for ent in Entreprise.objects.filter(active=True):
+        # Préparées d'avance (ex. 5 jours : le 10 janvier pour le 15), payables à la date prévue
+        limite = aujourdhui + timedelta(days=ent.jours_avance_versement)
+        dus = (Versement.objects.filter(facture=None, date_prevue__lte=limite, contrat__actif=True, contrat__entreprise=ent)
+               .select_related("contrat__entreprise", "contrat__client", "contrat__saison").order_by("date_prevue", "pk"))
+        n_ent = 0
+        with transaction.atomic():
+            for v in dus:
+                v.facturer()
+                n_ent += 1
+            if n_ent:
+                notifier_plus_tard(ent.pk, "Factures de versement prêtes",
+                                   f"{n_ent} facture{'s' if n_ent > 1 else ''} de versement à vérifier et envoyer. Rien ne part sans vous.",
+                                   url="/factures/versements/")
+        n += n_ent
     if n:
         log.info("versements dus : %s brouillon(s) de facture créé(s)", n)
     return n

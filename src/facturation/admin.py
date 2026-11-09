@@ -40,7 +40,30 @@ class ContratAdmin(admin.ModelAdmin):
     autocomplete_fields = ["client", "adresse"]
     filter_horizontal = ["services"]
     inlines = [VersementEnLigne]
-    actions = ["facturer_versements_dus"]
+    actions = ["facturer_versements_dus", "echeancier_2", "echeancier_3"]
+
+    def _echeancier(self, request, queryset, nombre):
+        from django.core.exceptions import ValidationError
+
+        faits, refus = 0, []
+        for c in queryset.select_related("entreprise", "saison", "client"):
+            try:
+                c.creer_echeancier_par_defaut(nombre)
+                faits += 1
+            except ValidationError as e:
+                refus.append(f"{c.client} : {' '.join(e.messages)}")
+        if faits:
+            self.message_user(request, f"{faits} échéancier(s) en {nombre} versements (1er aujourd'hui, puis aux dates de l'entreprise).")
+        for r in refus:
+            self.message_user(request, r, messages.ERROR)
+
+    @admin.action(description="Échéancier en 2 versements (1er aujourd'hui, dates de l'entreprise)")
+    def echeancier_2(self, request, queryset):
+        self._echeancier(request, queryset, 2)
+
+    @admin.action(description="Échéancier en 3 versements (1er aujourd'hui, dates de l'entreprise)")
+    def echeancier_3(self, request, queryset):
+        self._echeancier(request, queryset, 3)
 
     @admin.action(description="Créer les factures (brouillons) des versements dus aujourd'hui ou avant")
     def facturer_versements_dus(self, request, queryset):

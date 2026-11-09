@@ -76,6 +76,7 @@ COLONNES = [
     Colonne("notes", "notes", "Notes libres.", "", ""),
     Colonne("prix_saison", "prix_saison", "Prix entendu pour la saison, avant taxes, en dollars (450 ou 450,00). Crée un contrat dans la saison en cours (la saison doit exister dans l'administration). Au passage : le prix d'un passage.", "450,00", "2400,00", argent=True),
     Colonne("type_contrat", "type_contrat", "saisonnier ou au passage (vide = saisonnier). À l'heure ou sur demande : contrat à créer à la main.", "saisonnier", "saisonnier", argent=True),
+    Colonne("versements", "versements", "Nombre de versements du contrat saisonnier (1 à 4). Vide : celui de la fiche de l'entreprise. Le 1er est facturé tout de suite (brouillon), les autres aux dates de l'entreprise. Ex. 3 si le client paie en 3 fois.", "", "", argent=True),
     Colonne("prix_entendu_texte", "prix_entendu_texte", "Le prix tel qu'entendu avec le client, en mots.", "450 $ en 2 versements", "200 $ par mois, nov. à avril", argent=True),
     Colonne("solde_du", "solde_du", "Montant que le client doit encore des saisons passées, en dollars (taxes déjà comprises). Devient un « solde antérieur » à recevoir.", "", "350,00", argent=True),
     Colonne("solde_saison", "solde_saison", "Saison d'origine du solde dû (ex. 2025-2026).", "", "2025-2026", argent=True),
@@ -431,7 +432,7 @@ def analyser(fichier, entreprise, correspondance=None):
         conv = {}
         for k, fonction in (("borne_fontaine", _oui_non), ("entree_en_pente", _oui_non), ("consentement_commercial", _oui_non),
                             ("mode_paiement", _choix), ("canal", _choix), ("langue", _choix), ("statut", _choix), ("type_contrat", _choix),
-                            ("consentement_date", _date), ("rang_tournee", _entier), ("prix_saison", _montant), ("solde_du", _montant)):
+                            ("consentement_date", _date), ("rang_tournee", _entier), ("versements", _entier), ("prix_saison", _montant), ("solde_du", _montant)):
             try:
                 conv[k] = fonction(brut.get(k, "") if k == "consentement_date" else g(k), k)
             except ValueError as e:
@@ -445,6 +446,13 @@ def analyser(fichier, entreprise, correspondance=None):
         if l.argent.get("prix_saison") is not None:
             if type_c not in TYPES_IMPORTES:
                 l.avertissements.append(f"contrat {PERMIS_AFFICHES.get(type_c, type_c)} : à créer à la main dans l'administration")
+            elif TYPES_IMPORTES[type_c] == Contrat.Type.SAISONNIER:
+                nb = l.argent.get("versements") or entreprise.versements_par_defaut
+                if not 1 <= nb <= 4:
+                    l.erreurs.append(f"versements : {nb}, il en faut de 1 à 4")
+                elif len(entreprise.liste_dates_versements()) < nb - 1:
+                    l.erreurs.append(f"versements : {nb}, mais la fiche de l'entreprise n'a que "
+                                     f"{len(entreprise.liste_dates_versements())} date(s) de versement")
         elif "type_contrat" in l.argent:
             l.avertissements.append("type_contrat sans prix_saison : pas de contrat créé")
         if l.argent.get("solde_du") == 0:
@@ -586,8 +594,10 @@ def appliquer(analyse, entreprise, sauter_erreurs=False):
             a = l.argent
             type_c = TYPES_IMPORTES.get(a.get("type_contrat") or "saisonnier")
             if a.get("prix_saison") is not None and type_c and analyse.saison is not None:
-                Contrat.objects.create(entreprise=entreprise, client=client, adresse=l.adresse, saison=analyse.saison,
-                                       type=type_c, prix=a["prix_saison"], prix_texte=a.get("prix_entendu_texte", "")[:300])
+                c = Contrat.objects.create(entreprise=entreprise, client=client, adresse=l.adresse, saison=analyse.saison,
+                                           type=type_c, prix=a["prix_saison"], prix_texte=a.get("prix_entendu_texte", "")[:300])
+                if type_c == Contrat.Type.SAISONNIER:
+                    c.creer_echeancier_par_defaut(a.get("versements"))  # B3 : 1er versement à l'approbation (l'import)
                 r.contrats += 1
             if a.get("solde_du"):
                 Facture.solde_ouverture(client, a["solde_du"], saison_origine=a.get("solde_saison", "")[:20],

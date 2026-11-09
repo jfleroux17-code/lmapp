@@ -132,6 +132,28 @@ class Contrat(Horodate):
     def lien_public(self):
         return f"https://{self.entreprise.domaine}/c/{self.jeton}/"
 
+    def dates_par_defaut(self, nombre=None, approbation=None):
+        """Dates de l'échéancier selon la fiche de l'entreprise (B3) : le 1er versement à l'approbation (aujourd'hui
+        par défaut), les suivants aux dates de l'entreprise dans la saison (jamais avant l'approbation)."""
+        import calendar
+        from datetime import date
+
+        ent = self.entreprise
+        nombre = nombre or ent.versements_par_defaut
+        approbation = approbation or timezone.localdate()
+        suivantes = ent.liste_dates_versements()[:nombre - 1]
+        if len(suivantes) < nombre - 1:
+            raise ValidationError(f"{nombre} versements : il faut {nombre - 1} date(s) de versement dans la fiche de l'entreprise.")
+        dates = [approbation]
+        for jour, mois in suivantes:
+            annee = self.saison.debut.year + (1 if mois < self.saison.debut.month else 0)
+            d = date(annee, mois, min(jour, calendar.monthrange(annee, mois)[1]))  # 29/02 : 28 les autres années
+            dates.append(max(d, approbation))
+        return dates
+
+    def creer_echeancier_par_defaut(self, nombre=None, approbation=None):
+        return self.creer_echeancier(self.dates_par_defaut(nombre, approbation))
+
     def creer_echeancier(self, dates):
         """Versements égaux du prix aux dates données (B3 : 1 à 4 versements). Remplace les versements pas encore facturés."""
         if self.type != self.Type.SAISONNIER:
@@ -146,7 +168,7 @@ class Contrat(Horodate):
 
 
 class Versement(models.Model):
-    """Un versement prévu au contrat (B3); facturé à sa date (C5)."""
+    """Un versement prévu au contrat (B3); facturé à sa date, ou Entreprise.jours_avance_versement jours avant (C5)."""
 
     contrat = models.ForeignKey(Contrat, on_delete=models.CASCADE, related_name="versements")
     rang = models.PositiveSmallIntegerField()

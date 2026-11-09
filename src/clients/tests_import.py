@@ -138,6 +138,23 @@ class ImportationTests(TestCase):
         self.assertEqual(Facture.objects.get(client__nom="Gagnon").total, Decimal("80.50"))
         self.assertFalse(Facture.objects.filter(client__nom="Côté").exists())  # solde à 0 : rien
 
+    def test_echeancier_cree_avec_le_contrat(self):
+        from datetime import date as d
+        from facturation.models import Contrat, Saison
+
+        Entreprise.objects.filter(pk=self.ent.pk).update(versements_par_defaut=2, dates_versements="15/01 15/02")
+        self.ent.refresh_from_db()
+        Saison.objects.create(entreprise=self.ent, nom="2026-2027", debut=d(2026, 11, 1), fin=d(2027, 4, 30))
+        a = self._analyser(_csv("nom;adresse;ville;prix_saison;versements\nRoy;1 rue A;X;450;\nCôté;2 rue A;X;1500;3\nGagnon;3 rue A;X;900;4\n"))
+        self.assertIn("la fiche de l'entreprise n'a que 2 date(s)", " ".join(a.lignes[2].erreurs))
+        a = self._analyser(_csv("nom;adresse;ville;prix_saison;versements\nRoy;1 rue A;X;450;\nCôté;2 rue A;X;1500;3\n"))
+        importation.appliquer(a, self.ent)
+        roy, cote = Contrat.objects.get(client__nom="Roy"), Contrat.objects.get(client__nom="Côté")
+        self.assertEqual([(v.date_prevue.month, v.montant) for v in roy.versements.all()][1:], [(1, Decimal("225.00"))])
+        self.assertEqual(roy.versements.count(), 2)
+        self.assertEqual([v.date_prevue for v in cote.versements.all()][1:], [d(2027, 1, 15), d(2027, 2, 15)])
+        self.assertEqual({v.montant for v in cote.versements.all()}, {Decimal("500.00")})
+
     def test_excel_avec_numero_en_nombre(self):
         from openpyxl import Workbook
         wb = Workbook()

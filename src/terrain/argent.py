@@ -213,6 +213,7 @@ def factures(request):
     qs = Facture.objects.filter(entreprise=request.entreprise).select_related("client").avec_solde()
     return render(request, "terrain/argent/factures.html", {
         "brouillons": qs.filter(statut=Facture.Statut.BROUILLON).order_by("date_facture", "pk"),
+        "versements_prets": _versements_prets(request.entreprise).count(),
         "recentes": qs.exclude(statut=Facture.Statut.BROUILLON).order_by("-date_facture", "-pk")[:50],
     })
 
@@ -247,6 +248,7 @@ def comptes(request):
         "brouillons": Facture.objects.filter(entreprise=request.entreprise, statut=Facture.Statut.BROUILLON).count(),
         "modifier_clients": peut_modifier_clients(request),
         "relances_pretes": _relances_pretes(request.entreprise),
+        "versements_prets": _versements_prets(request.entreprise).count(),
     })
 
 
@@ -461,3 +463,66 @@ def envoyer_contrat(request, pk):
         else:
             messages.error(request, f"{m.get_statut_display()} : {m.erreur}")
     return redirect("terrain:fiche", pk=c.client_id)
+
+
+def _versements_prets(entreprise):
+    return (Facture.objects.filter(entreprise=entreprise, statut=Facture.Statut.BROUILLON, versement__isnull=False)
+            .select_related("client", "versement__contrat__saison").order_by("date_echeance", "client__nom", "pk"))
+
+
+@membre_requis
+def versements_a_envoyer(request):
+    """C5 : factures de versement préparées d'avance (brouillons), toutes cochées; une tape les émet et les envoie
+    au client par son canal préféré (courriel : PDF joint; texto : lien)."""
+    from communications.relances import canaux
+
+    lignes = []
+    for f in _versements_prets(request.entreprise):
+        c = canaux(f.client)
+        lignes.append({"f": f, "canaux": " et ".join(x.label.lower() for x in c) if c else ""})
+    return render(request, "terrain/argent/versements.html", {"lignes": lignes, "ecriture": peut_ecrire(request)})
+
+
+@require_POST
+@ecriture_requise
+def envoyer_versements(request):
+    """Émet et envoie les factures de versement cochées. Sans coordonnées : émise quand même, à remettre en main propre."""
+    from communications.factures import envoyer_facture as envoyer
+    from communications.relances import canaux
+
+    cochees = set(request.POST.getlist("facture"))
+    emises, parties, problemes = 0, 0, []
+    for f in _versements_prets(request.entreprise):
+        if str(f.pk) not in cochees:
+            continue
+        try:
+            f.emettre()
+        except ValidationError as e:
+            problemes.append(f"{f.client.nom_affiche} : {' '.join(e.messages)}")
+            continue
+        emises += 1
+        choix = canaux(f.client)
+        if not choix:
+            problemes.append(f"{f.client.nom_affiche} : facture n° {f.numero} émise, mais pas de courriel ni de cellulaire (à remettre en main propre).")
+        envoyee = False
+        for canal in choix:
+            try:
+                m = envoyer(f, canal)
+            except ValidationError as e:
+                problemes.append(f"{f.client.nom_affiche} : {' '.join(e.messages)}")
+                continue
+            if m.statut == m.Statut.EN_FILE:
+                envoyee = True
+            else:
+                problemes.append(f"{f.client.nom_affiche}, {m.get_canal_display().lower()} pas envoyé : {m.erreur or m.get_statut_display().lower()}")
+        parties += envoyee
+    if emises:
+        s = "s" if emises > 1 else ""
+        envoi = (f"{parties} en route vers {'les clients' if parties > 1 else 'le client'}" if parties
+                 else "aucune envoyée (voir ci-dessous)")
+        messages.success(request, f"{emises} facture{s} émise{s}, {envoi}.")
+    for p in problemes:
+        messages.error(request, p)
+    if not emises and not problemes:
+        messages.info(request, "Aucune facture choisie.")
+    return redirect("terrain:versements_a_envoyer")
