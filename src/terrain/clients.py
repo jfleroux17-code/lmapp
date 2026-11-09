@@ -7,12 +7,14 @@ code postal, même entreprise); une adresse nouvelle ou déplacée est géocodé
 from django import forms
 from django.contrib import messages
 from django.db import transaction
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
-from clients.models import Adresse, Client, Secteur
-from core.acces import ecriture_requise, modification_clients_requise
+from clients.models import Adresse, Client, PhotoAdresse, Secteur
+from core.acces import ecriture_requise, membre_requis, modification_clients_requise
 from core.telephone import afficher
 
 CHAMP = "champ"
@@ -230,3 +232,45 @@ def noter_appel(request, pk):
             return redirect("terrain:fiche", pk=client.pk)
     return render(request, "terrain/clients/appel.html", {"client": client, "sens": request.POST.get("sens", "recu"),
                                                           "resume": request.POST.get("resume", "")})
+
+
+# Photo de l'entrée (A5)
+
+@require_POST
+@ecriture_requise
+def ajouter_photo(request, pk):
+    a = get_object_or_404(Adresse, pk=pk, entreprise=request.entreprise)
+    f = request.FILES.get("photo")
+    if f is None:
+        messages.error(request, "Aucune photo reçue.")
+    elif f.size > PhotoAdresse.MAX_OCTETS:
+        messages.error(request, "Photo trop lourde (plus de 8 Mo).")
+    else:
+        octets = f.read()
+        mime = PhotoAdresse.type_de(octets[:16])
+        if mime is None:
+            messages.error(request, "Ce fichier n'est pas une photo (JPEG, PNG, WebP ou HEIC).")
+        else:
+            PhotoAdresse.objects.create(entreprise=request.entreprise, adresse=a, image=octets, type_mime=mime,
+                                        taille=len(octets), prise_par=request.user)
+            messages.success(request, "Photo ajoutée.")
+    return redirect("terrain:fiche", pk=a.client_id)
+
+
+@membre_requis
+def photo(request, pk):
+    p = get_object_or_404(PhotoAdresse, pk=pk, entreprise=request.entreprise)
+    r = HttpResponse(bytes(p.image), content_type=p.type_mime)
+    r["Cache-Control"] = "private, max-age=604800, immutable"  # une photo ne change jamais
+    r["X-Content-Type-Options"] = "nosniff"
+    return r
+
+
+@require_POST
+@ecriture_requise
+def retirer_photo(request, pk):
+    p = get_object_or_404(PhotoAdresse.objects.select_related("adresse"), pk=pk, entreprise=request.entreprise)
+    client_id = p.adresse.client_id
+    p.delete()
+    messages.success(request, "Photo retirée.")
+    return redirect("terrain:fiche", pk=client_id)

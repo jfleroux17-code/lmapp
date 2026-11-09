@@ -178,3 +178,57 @@ class EffacementLoi25Tests(TestCase):
             self.assertIsNone(Client.objects.get(pk=self.sans.pk).efface_le)
             self.client.post("/admin/clients/client/", {**donnees, "confirmer": "oui"})
         self.assertIsNotNone(Client.objects.get(pk=self.sans.pk).efface_le)
+
+
+class PhotoEntreeTests(TestCase):
+    """Photo de l'entrée (A5) : gardée dans la base, servie aux membres, type vérifié par les octets."""
+    JPEG = b"\xff\xd8\xff\xe0" + b"0" * 100
+
+    @classmethod
+    def setUpTestData(cls):
+        from django.contrib.auth import get_user_model
+        from core.models import Membre
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai-ph", domaine="ph.exemple.test")
+        cls.autre = Entreprise.objects.create(nom="Autre", slug="autre-ph", domaine="autre-ph.exemple.test")
+        cls.c = Client.objects.create(entreprise=cls.ent, nom="Tremblay")
+        cls.a = Adresse.objects.create(entreprise=cls.ent, client=cls.c, ligne1="120, rue des Essais", ville="Sainte-Adèle")
+        U = get_user_model()
+        cls.louis = U.objects.create_user("louis-ph", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="operateur")
+
+    def envoyer(self, contenu, nom="entree.jpg"):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import override_settings
+        with override_settings(ALLOWED_HOSTS=["*"]):
+            return self.client.post(f"/adresses/{self.a.pk}/photos/", {"photo": SimpleUploadedFile(nom, contenu)}, HTTP_HOST="ph.exemple.test")
+
+    def test_ajout_affichage_et_retrait(self):
+        from django.test import override_settings
+        from clients.models import PhotoAdresse
+        self.client.force_login(self.louis)
+        self.envoyer(self.JPEG)
+        p = PhotoAdresse.objects.get()
+        self.assertEqual((p.type_mime, p.taille, p.entreprise_id), ("image/jpeg", len(self.JPEG), self.ent.pk))
+        with override_settings(ALLOWED_HOSTS=["*"]):
+            r = self.client.get(f"/photos/{p.pk}/", HTTP_HOST="ph.exemple.test")
+            self.assertEqual((r.status_code, r["Content-Type"], r.content), (200, "image/jpeg", self.JPEG))
+            self.assertContains(self.client.get(f"/clients/{self.c.pk}/", HTTP_HOST="ph.exemple.test"), f"/photos/{p.pk}/")
+            self.assertEqual(self.client.get(f"/photos/{p.pk}/", HTTP_HOST="autre-ph.exemple.test").status_code, 403)  # pas membre de cette entreprise
+            self.client.logout()
+            self.assertEqual(self.client.get(f"/photos/{p.pk}/", HTTP_HOST="ph.exemple.test").status_code, 302)
+            self.client.force_login(self.louis)
+            self.client.post(f"/photos/{p.pk}/retirer/", HTTP_HOST="ph.exemple.test")
+        self.assertFalse(PhotoAdresse.objects.exists())
+
+    def test_fichier_qui_nest_pas_une_photo(self):
+        from clients.models import PhotoAdresse
+        self.client.force_login(self.louis)
+        self.envoyer(b"<html>pas une photo</html>", nom="photo.jpg")
+        self.assertFalse(PhotoAdresse.objects.exists())
+
+    def test_effacement_loi25_retire_les_photos(self):
+        from clients.effacement import effacer
+        from clients.models import PhotoAdresse
+        PhotoAdresse.objects.create(entreprise=self.ent, adresse=self.a, image=self.JPEG, type_mime="image/jpeg", taille=10)
+        effacer(self.c)
+        self.assertFalse(PhotoAdresse.objects.exists())

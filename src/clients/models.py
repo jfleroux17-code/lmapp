@@ -226,3 +226,38 @@ class Adresse(Horodate):
             raise ValidationError("L'adresse et le client doivent appartenir à la même entreprise.")
         if self.secteur_id and self.entreprise_id and self.secteur.entreprise_id != self.entreprise_id:
             raise ValidationError({"secteur": "Ce secteur appartient à une autre entreprise."})
+
+
+class PhotoAdresse(models.Model):
+    """Photo de l'entrée (PRD A5), gardée dans la base (donc dans les sauvegardes), servie aux membres seulement.
+    Le cellulaire la réduit (environ 1600 px, JPEG) avant l'envoi : Pillow n'est pas une dépendance de l'app."""
+    TYPES = {b"\xff\xd8\xff": "image/jpeg", b"\x89PNG": "image/png"}
+    MAX_OCTETS = 8 * 1024 * 1024
+
+    entreprise = models.ForeignKey(Entreprise, on_delete=models.PROTECT, related_name="photos_adresses")
+    adresse = models.ForeignKey(Adresse, on_delete=models.CASCADE, related_name="photos")
+    image = models.BinaryField()
+    type_mime = models.CharField(max_length=20)
+    taille = models.PositiveIntegerField(help_text="Octets.")
+    prise_par = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "photo de l'entrée"
+        verbose_name_plural = "photos de l'entrée"
+        ordering = ["-cree_le"]
+
+    def __str__(self):
+        return f"Photo de {self.adresse} ({self.cree_le:%Y-%m-%d})"
+
+    @classmethod
+    def type_de(cls, debut):
+        """Type d'image d'après ses premiers octets (jamais d'après le nom ou ce que dit le navigateur)."""
+        for signature, mime in cls.TYPES.items():
+            if debut.startswith(signature):
+                return mime
+        if debut[:4] == b"RIFF" and debut[8:12] == b"WEBP":
+            return "image/webp"
+        if debut[4:12] in (b"ftypheic", b"ftypheix", b"ftypmif1", b"ftyphevc"):
+            return "image/heic"
+        return None

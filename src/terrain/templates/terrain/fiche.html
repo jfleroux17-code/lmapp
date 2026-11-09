@@ -1,6 +1,39 @@
 {% extends "terrain/base.html" %}
 {% load argent %}
 {% block titre %}{{ client.nom_affiche }}{% endblock %}
+{% block tete %}
+<script>
+  // Photo de l'entrée (A5) : réduite dans le cellulaire (1600 px au plus, JPEG) avant l'envoi; sinon, l'original part tel quel
+  document.addEventListener("alpine:init", () => {
+    Alpine.data("photoEntree", () => ({
+      envoi: false,
+      async envoyer(form) {
+        const fichier = form.photo.files[0];
+        if (!fichier || this.envoi) return;
+        this.envoi = true;
+        let donnees = new FormData(form);
+        try {
+          const image = await createImageBitmap(fichier);
+          const echelle = Math.min(1, 1600 / Math.max(image.width, image.height));
+          const toile = document.createElement("canvas");
+          toile.width = Math.round(image.width * echelle);
+          toile.height = Math.round(image.height * echelle);
+          toile.getContext("2d").drawImage(image, 0, 0, toile.width, toile.height);
+          const blob = await new Promise((ok) => toile.toBlob(ok, "image/jpeg", 0.82));
+          if (blob) donnees.set("photo", blob, "entree.jpg");
+        } catch (e) { /* format illisible par le navigateur : on envoie l'original */ }
+        try {
+          const r = await fetch(form.action, { method: "POST", body: donnees, credentials: "same-origin" });
+          window.location.href = r.redirected ? r.url : window.location.href;
+        } catch (e) {
+          this.envoi = false;
+          alert("Pas de réseau : la photo n'est pas partie. Réessayer plus tard.");
+        }
+      },
+    }));
+  });
+</script>
+{% endblock %}
 {% block contenu %}
 <a href="{% url 'terrain:accueil' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Clients</a>
 
@@ -43,6 +76,23 @@
       </ul>
     {% endif %}
 
+    {% for p in a.photos %}
+      <figure class="mb-3">
+        <a href="{% url 'terrain:photo' p.pk %}" target="_blank" rel="noopener"><img src="{% url 'terrain:photo' p.pk %}" alt="Entrée, photo du {{ p.cree_le|date:'j F Y' }}" class="max-h-72 w-full rounded-xl object-cover" loading="lazy"></a>
+        <figcaption class="mt-1 flex items-center justify-between gap-3 text-sm text-gray-400">Photo du {{ p.cree_le|date:"j F Y" }}
+          {% if ecriture %}<form method="post" action="{% url 'terrain:retirer_photo' p.pk %}" @submit="if (!confirm('Retirer cette photo?')) $event.preventDefault()">{% csrf_token %}<button class="min-h-12 px-2 text-gray-400 underline">Retirer</button></form>{% endif %}
+        </figcaption>
+      </figure>
+    {% endfor %}
+    {% if ecriture %}
+      <form method="post" enctype="multipart/form-data" action="{% url 'terrain:ajouter_photo' a.objet.pk %}" class="mb-3" x-data="photoEntree" @submit.prevent="envoyer($el)">{% csrf_token %}
+        <label class="gros-bouton cursor-pointer border-2 border-bordure" :class="{ 'opacity-60': envoi }">
+          <span x-text="envoi ? 'Envoi de la photo...' : '+ Photo de l\'entrée'">+ Photo de l'entrée</span>
+          <input type="file" name="photo" accept="image/*" capture="environment" class="sr-only" @change="envoyer($el.form)">
+        </label>
+        <noscript><button class="gros-bouton mt-2 border-2 border-bordure">Envoyer la photo</button></noscript>
+      </form>
+    {% endif %}
     <div class="grid grid-cols-3 gap-2">
       {% for nom, lien in a.navigation %}
         <a href="{{ lien }}" class="flex min-h-14 items-center justify-center rounded-xl border-2 border-bordure px-2 text-center text-sm font-semibold active:bg-bordure" rel="noopener">{{ nom }}</a>

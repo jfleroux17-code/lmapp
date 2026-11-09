@@ -3,7 +3,7 @@
 On ne détruit pas la fiche : les factures émises doivent être gardées six ans (lois fiscales),
 avec le nom et l'adresse de facturation. On efface tout le reste :
   - coordonnées (cellulaire, autre téléphone, courriel), notes, consentement;
-  - particularités du terrain, position et notes de passage de ses adresses (rendues inactives);
+  - particularités du terrain, photos de l'entrée, position et notes de passage de ses adresses (rendues inactives);
   - contenu de ses messages et copies intégrales des courriels archivés;
   - description des demandes.
 Sans facture émise, le nom, l'organisation et les adresses (facturation et service) partent aussi.
@@ -16,6 +16,7 @@ EFFACE = "[effacé à la demande du client]"
 
 
 def effacer(client):
+    from clients.models import PhotoAdresse
     from communications.models import ArchiveCourriel
     from facturation.models import Facture
     from tournee.models import Passage
@@ -33,6 +34,7 @@ def effacer(client):
         bilan["demandes"] = client.demandes.update(description=EFFACE, contact="", reglement="")
 
         adresses = client.adresses.all()
+        bilan["photos"] = PhotoAdresse.objects.filter(adresse__in=adresses).delete()[0]
         Passage.objects.filter(adresse__in=adresses).update(note="")
         champs = dict(active=False, ou_mettre_neige="", obstacles="", borne_fontaine=False, entree_en_pente=False, consignes="",
                       position=None, position_source="", geocodage_note="")
