@@ -18,7 +18,7 @@ from django.views.decorators.http import require_POST
 
 from clients.models import Client
 from core import telephone
-from core.acces import ecriture_requise, membre_requis, peut_ecrire
+from core.acces import ecriture_requise, membre_requis, peut_ecrire, peut_modifier_clients
 from facturation.models import Facture, LigneFacture, Paiement, Service
 
 ZERO = Decimal("0.00")
@@ -243,6 +243,7 @@ def comptes(request):
         "plus_de_60": sum((l["du"] for l in lignes if l["jours"] > 60), ZERO),
         "encaisse_30j": encaisse_30j,
         "brouillons": Facture.objects.filter(entreprise=request.entreprise, statut=Facture.Statut.BROUILLON).count(),
+        "modifier_clients": peut_modifier_clients(request),
     })
 
 

@@ -477,3 +477,53 @@ class ExportComptableTests(EtatCompteTests):
     def test_paiements_csv_et_page(self):
         self.assertIn("100,00", self.get(quoi="paiements").content.decode("utf-8-sig"))
         self.assertContains(self.get(), "Export pour le comptable")
+
+
+class NouvelleSaisonTests(TestCase):
+    """Saison suivante (B5) : clients actifs seulement, prix ajustés et arrondis, échéancier reporté d'un an."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from datetime import date as d
+        from decimal import Decimal as D
+        from django.contrib.auth import get_user_model
+        from clients.models import Client
+        from core.models import Entreprise, Membre
+        from facturation.models import Contrat, Saison
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai-ns", domaine="ns.exemple.test")
+        cls.s = Saison.objects.create(entreprise=cls.ent, nom="2026-2027", debut=d(2026, 11, 1), fin=d(2027, 4, 30))
+        actif = Client.objects.create(entreprise=cls.ent, nom="Actif")
+        parti = Client.objects.create(entreprise=cls.ent, nom="Parti", statut="inactif")
+        c = Contrat.objects.create(entreprise=cls.ent, client=actif, saison=cls.s, prix=D("450.00"))
+        c.creer_echeancier([d(2026, 11, 1), d(2027, 1, 15)])
+        Contrat.objects.create(entreprise=cls.ent, client=parti, saison=cls.s, prix=D("300.00"))
+        cls.louis = get_user_model().objects.create_user("louis-ns", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="admin")
+
+    def test_prix_et_arrondis(self):
+        from decimal import Decimal as D
+        from facturation.nouvelle_saison import nouveau_prix
+        self.assertEqual(nouveau_prix(D("450"), D("3")), D("464.00"))  # 463,50 arrondi au dollar
+        self.assertEqual(nouveau_prix(D("450"), D("3"), "cinq"), D("465.00"))
+        self.assertEqual(nouveau_prix(D("450"), D("3"), "cent"), D("463.50"))
+
+    def test_creation_par_l_ecran(self):
+        from datetime import date as d
+        from decimal import Decimal as D
+        from django.test import override_settings
+        from facturation.models import Contrat, Saison
+        self.client.force_login(self.louis)
+        h = {"HTTP_HOST": "ns.exemple.test"}
+        with override_settings(ALLOWED_HOSTS=["*"]):
+            r = self.client.get("/comptes/saison-suivante/?pourcent=3", **h)
+            self.assertContains(r, "2027-2028")
+            self.assertContains(r, "1 laissé de côté")
+            self.client.post("/comptes/saison-suivante/", {"pourcent": "3", "arrondi": "dollar"}, **h)
+            r = self.client.post("/comptes/saison-suivante/", {"pourcent": "3", "arrondi": "dollar"}, **h)  # deuxième fois : refusée
+        n = Saison.objects.get(entreprise=self.ent, nom="2027-2028")
+        self.assertEqual((n.debut, n.fin), (d(2027, 11, 1), d(2028, 4, 30)))
+        c = Contrat.objects.get(saison=n)
+        self.assertEqual(c.prix, D("464.00"))
+        self.assertEqual([v.date_prevue for v in c.versements.all()], [d(2027, 11, 1), d(2028, 1, 15)])
+        self.assertEqual(sum(v.montant for v in c.versements.all()), D("464.00"))
+        self.assertEqual(Saison.objects.filter(entreprise=self.ent).count(), 2)
