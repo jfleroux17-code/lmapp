@@ -30,7 +30,7 @@ Mise à jour : 9 novembre 2026.
 - [x] DKIM de `ledeneigeur.com` (sélecteur `default`) publié chez Cloudflare (8 novembre 2026).
 - [x] DNS inverse de 216.46.12.228 vers `woww.joxs.net` : fait par Beanfield le 9 novembre 2026 (vérifié dans les deux sens, chez Cloudflare et Google).
 - [x] Premier courriel d'essai à JF (8 novembre 2026) : SPF, DKIM et DMARC « pass », mais arrivé dans les pourriels (domaine neuf, DNS inverse générique). IP sur aucune liste noire vérifiée.
-- [ ] JF : dans Gmail, « non-spam », ajouter `louis@ledeneigeur.com` aux contacts et répondre au courriel d'essai. Facultatif : Google Postmaster Tools pour `ledeneigeur.com` (valeur TXT à donner à Claude Code).
+- [x] Gmail : courriel d'essai marqué « non-spam », `louis@ledeneigeur.com` ajouté aux contacts (JF, 9 novembre 2026). Facultatif plus tard : Google Postmaster Tools pour `ledeneigeur.com`.
 - [x] Twilio : compte payant, numéro 450-300-1166, `TWILIO_ACCOUNT_SID` et `TWILIO_AUTH_TOKEN` dans les deux `.env` (8 novembre 2026). Premier texto d'essai livré au cellulaire de JF, depuis le test.
 - [x] **JF : deuxième numéro Twilio, réservé à la plateforme** : +1 450 234-7550, acheté le 9 novembre 2026. Mis dans `LMAPP_ALERTES_TEXTO_DE` de la prod par Claude Code, texto d'essai parti (`surveiller --essai-texto`).
 - [x] ~~SMTP2GO~~ : abandonné le 8 novembre 2026 (décision de JF), remplacé par le serveur de courriel de JF.
