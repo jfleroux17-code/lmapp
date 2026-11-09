@@ -1,6 +1,7 @@
 """Écrans des demandes des clients (PRD H1, H2) : liste, nouvelle demande (à la main ou depuis un message reçu), suivi."""
 from django.contrib import messages
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
@@ -28,6 +29,9 @@ def liste(request):
 @membre_requis
 def demande(request, pk):
     d = get_object_or_404(Demande.objects.select_related("client", "adresse", "message"), pk=pk, entreprise=request.entreprise)
+    if d.vue_le is None:
+        d.vue_le = timezone.now()
+        Demande.objects.filter(pk=d.pk).update(vue_le=d.vue_le)
     return render(request, "terrain/demandes/demande.html", {"d": d, "ecriture": peut_ecrire(request), "statuts": Demande.Statut,
                                                             "payeurs": Demande._meta.get_field("paye_par").choices})
 

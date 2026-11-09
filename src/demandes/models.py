@@ -49,6 +49,8 @@ class Demande(Horodate):
     prevue_le = models.DateField("prévue le", null=True, blank=True)
     reglement = models.TextField("ce qui a été fait", blank=True)
     reglee_le = models.DateTimeField("réglée le", null=True, blank=True)
+    # Première ouverture dans l'app : vide = pastille rouge dans l'en-tête, ouverte mais pas réglée = orange
+    vue_le = models.DateTimeField("ouverte le", null=True, blank=True)
     # Dossier de dommage (H3)
     entente = models.TextField("entente de réparation", blank=True, help_text="Dommage : ce qui a été convenu avec le client.")
     cout = models.DecimalField("coût de la réparation", max_digits=10, decimal_places=2, null=True, blank=True)

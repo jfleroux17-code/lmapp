@@ -21,4 +21,6 @@ def messages_non_lus(request):
 
     return {"non_lus": Message.objects.filter(entreprise=ent, sens=Message.Sens.ENTRANT, lu=False).count(),
             "virements_a_confirmer": VirementInterac.objects.filter(entreprise=ent, statut=VirementInterac.Statut.A_TRAITER).count(),
-            "demandes_urgentes": Demande.objects.filter(entreprise=ent, urgent=True).exclude(statut=Demande.Statut.REGLEE).count()}
+            # Demandes : rouge = pas encore ouvertes (pas réglées), orange = ouvertes mais toujours « Ouverte »
+            "demandes_non_lues": Demande.objects.filter(entreprise=ent, vue_le__isnull=True).exclude(statut=Demande.Statut.REGLEE).count(),
+            "demandes_a_traiter": Demande.objects.filter(entreprise=ent, vue_le__isnull=False, statut=Demande.Statut.OUVERTE).count()}

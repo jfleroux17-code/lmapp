@@ -15,7 +15,7 @@ Mise à jour : 9 novembre 2026.
 ### Ce qui bloque la suite
 
 - [x] Créer ses comptes administrateur (prod et test).
-- [x] App essayée sur l'iPhone de JF, en test (9 novembre 2026) : écran d'accueil, notifications (essai reçu), position pendant la tournée (précision 4 à 6 m). Corrigé à la suite : adresse en premier dans la tournée, champ de date des demandes qui débordait, bouton Messages toujours visible (enveloppe), page de secours au lieu d'un écran blanc pendant un redémarrage.
+- [x] App essayée sur l'iPhone de JF, en test (9 novembre 2026) : écran d'accueil, notifications (essai reçu), position pendant la tournée (précision 4 à 6 m). Corrigé à la suite : adresse en premier dans la tournée, champ de date des demandes qui débordait, bouton Messages toujours visible (enveloppe), page de secours au lieu d'un écran blanc pendant un redémarrage. Puis : nom de l'entreprise sur sa propre ligne, bouton Demandes (porte-voix) rouge pour une demande pas encore ouverte, orange pour une ouverte pas réglée.
 - [x] Fiche de Louis créée en prod (Louis Méthot Déneigement, `louis`, `louis.ledeneigeur.com`, Sainte-Adèle 8 km, centre rempli).
 - [x] Sainte-Adèle cochée « ville par défaut » dans la fiche de Louis.
 - [x] Utilisateur `louis` créé, membre « Opérateur » (entre dans l'app, pas dans l'administration).

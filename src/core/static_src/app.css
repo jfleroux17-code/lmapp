@@ -16,6 +16,7 @@
   --font-weight-semibold: 700;
   --color-accent: #f5c400;   /* jaune de signalisation */
   --color-danger: #ff6b6b;
+  --color-orange: #ff9a3c;   /* demandes ouvertes mais pas réglées */
   --color-ok: #3fb950;
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
 }

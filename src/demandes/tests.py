@@ -38,9 +38,19 @@ class DemandesTests(TestCase):
         d = Demande.objects.get()
         self.assertEqual((d.client, d.adresse, d.genre, d.urgent, d.source, d.message), (self.c, self.a2, "oubli", True, "courriel", m))
         self.assertContains(r, "Demande notée : oublié à la tournée.")
-        self.assertContains(self.client.get("/"), "! 1")  # urgente : pastille dans l'en-tête
+        # Ouverte en suivant la redirection : pastille orange (ouverte, pas réglée), plus rouge
+        self.assertIsNotNone(Demande.objects.get().vue_le)
+        self.assertContains(self.client.get("/"), 'aria-label="Demandes : 1 à régler"')
         self.assertContains(self.client.get(f"/messages/{m.pk}/"), "Demande : oublié à la tournée")
         self.assertContains(self.client.get(f"/clients/{self.c.pk}/"), "Oublié ce matin")
+
+    def test_pastille_rouge_puis_orange_puis_rien(self):
+        d = Demande.objects.create(entreprise=self.ent, client=self.c, genre="service", description="Bordage svp")
+        self.assertContains(self.client.get("/"), 'aria-label="Demandes : 1 pas encore ouverte"')
+        self.client.get(f"/demandes/{d.pk}/")
+        self.assertContains(self.client.get("/"), 'aria-label="Demandes : 1 à régler"')
+        d.changer_statut(Demande.Statut.PLANIFIEE)
+        self.assertContains(self.client.get("/"), 'aria-label="Demandes"')
 
     def test_nouveau_client_inconnu(self):
         self.client.post("/demandes/nouvelle/", {"genre": "nouveau", "contact": "Marc, 450 555-0199", "description": "Prix pour une entrée double"})
