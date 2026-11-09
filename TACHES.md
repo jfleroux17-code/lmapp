@@ -93,7 +93,8 @@ Après son essai des écrans. Une étape à la fois, chacune en test, montrée �
 - [x] Icône de l'app (flocon jaune, générique) : iPhone, manifeste PWA, onglet. En prod le 7 novembre 2026.
 - [x] Avant l'ouverture à toutes les IP : limiter les essais de connexion (fait le 7 novembre 2026 : blocage temporaire après 10 échecs par IP ou 20 par nom d'utilisateur en 15 minutes, `/connexion/` et `/admin/`).
 - [x] `/admin/` réservé aux IP de JF et HSTS, dans Caddy (7 novembre 2026). Pour l'instant : IP de la maison seulement.
-- [x] **Ouverture du 443 à tous : faite le 9 novembre 2026** (règles NAT séparées par JF : 443 public, 22 dans `_SLAPP`; balayages « avant » et « après » conformes; essais au cellulaire conformes). Reste : coller à Claude Code le `print` des règles NAT pour le dossier.
+- [x] **Ouverture du 443 à tous : faite le 9 novembre 2026** (règles NAT séparées par JF : 443 public, 22 dans `_SLAPP`; balayages « avant » et « après » conformes; essais au cellulaire conformes).
+- [ ] JF (facultatif) : règle NAT désactivée « QNAP Danik » qui vise encore l'IP de ld1 (`172.16.4.100:8899`) : la supprimer ou changer sa destination.
 - [x] Twilio, numéro 450-300-1166, « A message comes in » vers `https://louis.ledeneigeur.com/webhooks/twilio/textos/` (POST), configuré par JF. **Réception des textos vérifiée en prod le 9 novembre 2026** : texto « Bonjour » de JF reçu (signature valide, 200), dans les Messages de Louis, non lu.
 - [x] Désabonnement par texto (E11) vérifié en prod le 9 novembre 2026, avec un client fictif au cellulaire de JF : « ARRÊT » désabonne (réponse en français reçue par JF), « COMMENCER » réabonne. Client fictif et les 5 textos d'essai effacés le jour même (journal vidé pour ce client).
 - [x] Numéro de texto d'affaires 450-300-1166 inscrit dans la fiche de Louis en prod (9 novembre 2026, go de JF), pour la réception. Envois réels toujours éteints. `TWILIO_URL_STATUT` dans le `.env` de la prod (suivi de livraison).

@@ -62,6 +62,29 @@ chain=dstnat action=dst-nat to-addresses=172.16.4.100 protocol=tcp dst-address=2
 /ip firewall nat set <n2> dst-port=22,443
 ```
 
+### Règles en place (relevées par JF le 9 novembre 2026)
+
+Seules les règles NAT qui visent ld1 sont reprises ici; les autres règles du routeur ne concernent pas LMAPP et
+restent hors de ce dépôt.
+
+```
+31    ;;; permettre SSH vers lmapp JF _SLAPP
+      chain=dstnat action=dst-nat to-addresses=172.16.4.100 protocol=tcp
+      dst-address=216.46.12.226 src-address-list=_SLAPP dst-port=22
+
+32    ;;; permettre 443 wan vers lmapp JF
+      chain=dstnat action=dst-nat to-addresses=172.16.4.100 to-ports=443 protocol=tcp
+      dst-address=216.46.12.226 dst-port=443
+```
+
+Conforme à la décision : 443 ouvert à tous, 22 limité à `_SLAPP`. Le commentaire diffère de celui proposé plus haut :
+pour revenir en arrière, désactiver la règle 32 (`/ip firewall nat disable 32`, après un `print` pour confirmer le
+numéro) plutôt que le `remove [find comment=...]`.
+
+À noter : une ancienne règle **désactivée** (« QNAP Danik », `216.46.29.156:48899` vers `172.16.4.100:8899`) vise
+encore l'IP de ld1. Rien n'écoute sur 8899 dans ld1 et ufw le bloquerait, mais si elle était réactivée par erreur, le
+port arriverait sur ld1. Proposé : la supprimer, ou lui changer de destination, au choix de JF.
+
 ### Frontal Caddy (`edge/Caddyfile`, état actuel)
 
 | Nom | Où ça va | Restriction |
