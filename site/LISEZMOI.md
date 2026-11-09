@@ -3,7 +3,7 @@
 Site statique (HTML et CSS, aucune base de données, aucun script), servi par Caddy depuis ld1.
 
 Avant la mise en ligne :
-1. Remplacer `CONTACT_A_CONFIRMER` (index.html, confidentialite.html) par l'adresse de contact choisie par JF.
+1. ~~Contact~~ : fait le 8 novembre 2026 (SLAPP Technologies Inc., siège à Sainte-Thérèse, 514 360-3227). Reste : une adresse courriel de contact, si JF en veut une.
 2. Faire valider la politique de confidentialité (responsable, durées) et retirer l'avis « Ébauche ».
 3. Savoir ce qui est servi aujourd'hui à la racine de `ledeneigeur.com` (proxy Cloudflare vers 69.16.231.58).
 
