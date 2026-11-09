@@ -35,6 +35,12 @@
 	}
 	encode zstd gzip
 
+	# Taille des envois plafonnée à 10 Mo (décision de JF, 8 novembre 2026) : la plus grosse requête
+	# légitime est une photo de l'entrée (8 Mo au plus, environ 300 Ko une fois réduite).
+	request_body {
+		max_size 10MB
+	}
+
 	header {
 		-Server
 		X-Content-Type-Options nosniff
@@ -59,8 +65,12 @@ louis.ledeneigeur.com {
 	reverse_proxy lmapp-prod-app:8000
 }
 
+# Test réservé aux IP de JF (même liste que /admin/), exception à la règle « filtrage au routeur seulement »
+# acceptée par JF le 8 novembre 2026 : personne d'autre que lui n'a affaire au test.
 test.ledeneigeur.com {
 	import commun
+	@pas_jf not remote_ip {$LMAPP_IPS_ADMIN}
+	respond @pas_jf "Accès refusé." 403
 	reverse_proxy lmapp-test-app:8000
 }
 
