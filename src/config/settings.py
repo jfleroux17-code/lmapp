@@ -105,6 +105,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "core.middleware.EntrepriseMiddleware",
+    "core.journal.JournalMiddleware",
     "core.middleware.AdminAdresseNeutreMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -191,6 +192,8 @@ AUTHENTICATION_BACKENDS = ["core.connexions.AuthentificationLimitee"]
 LMAPP_CONNEXION_MAX_IP = int(env("LMAPP_CONNEXION_MAX_IP", "10"))
 LMAPP_CONNEXION_MAX_COMPTE = int(env("LMAPP_CONNEXION_MAX_COMPTE", "20"))
 LMAPP_CONNEXION_FENETRE_MIN = int(env("LMAPP_CONNEXION_FENETRE_MIN", "15"))
+# Journal des actions (K4) : durée de conservation, en jours
+LMAPP_JOURNAL_JOURS = int(env("LMAPP_JOURNAL_JOURS", "730"))
 
 LOGGING = {
     "version": 1,

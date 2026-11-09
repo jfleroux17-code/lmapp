@@ -267,3 +267,37 @@ class IncidentConfidentialite(models.Model):
 
     def __str__(self):
         return f"{self.constate_le:%Y-%m-%d} : {self.description[:60]}"
+
+
+class JournalAction(models.Model):
+    """Journal des actions (PRD K4) : qui a créé, modifié ou supprimé quoi, champ par champ (avant, après).
+    Rempli automatiquement (core/journal.py); consultation dans l'administration seulement, rien ne s'y modifie.
+    Gardé LMAPP_JOURNAL_JOURS jours (730 par défaut); vidé pour un client effacé à sa demande (Loi 25)."""
+
+    class Action(models.TextChoices):
+        CREATION = "creation", "Création"
+        MODIFICATION = "modification", "Modification"
+        SUPPRESSION = "suppression", "Suppression"
+        EFFACEMENT = "effacement", "Effacement (Loi 25)"
+
+    moment = models.DateTimeField(auto_now_add=True, db_index=True)
+    # Sans contrainte en base : le journal survit à ce qu'il décrit (une entreprise ou un utilisateur supprimé)
+    entreprise = models.ForeignKey(Entreprise, on_delete=models.DO_NOTHING, db_constraint=False, null=True, blank=True, related_name="+")
+    utilisateur = models.ForeignKey("auth.User", on_delete=models.DO_NOTHING, db_constraint=False, null=True, blank=True, related_name="+")
+    nom_utilisateur = models.CharField("par", max_length=150, help_text="« système » : worker, tâche ou commande.")
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    action = models.CharField(max_length=12, choices=Action.choices)
+    modele = models.CharField("type", max_length=60)
+    objet_id = models.BigIntegerField(null=True)
+    objet = models.CharField(max_length=200)
+    client_id = models.BigIntegerField(null=True, blank=True, db_index=True, help_text="Client concerné, s'il y en a un.")
+    changements = models.JSONField(default=dict, blank=True, help_text="{champ: [avant, après]}")
+
+    class Meta:
+        verbose_name = "action (journal)"
+        verbose_name_plural = "journal des actions"
+        ordering = ["-moment", "-pk"]
+        indexes = [models.Index(fields=["entreprise", "-moment"], name="journal_entreprise_moment")]
+
+    def __str__(self):
+        return f"{self.get_action_display()} : {self.modele} « {self.objet} »"

@@ -5,7 +5,8 @@ avec le nom et l'adresse de facturation. On efface tout le reste :
   - coordonnées (cellulaire, autre téléphone, courriel), notes, consentement;
   - particularités du terrain, photos de l'entrée, position et notes de passage de ses adresses (rendues inactives);
   - contenu de ses messages et copies intégrales des courriels archivés;
-  - description des demandes.
+  - description des demandes;
+  - anciennes valeurs gardées dans le journal des actions (K4).
 Sans facture émise, le nom, l'organisation et les adresses (facturation et service) partent aussi.
 Les brouillons de facture sont supprimés. Irréversible : fait depuis l'administration, après confirmation.
 """
@@ -52,4 +53,7 @@ def effacer(client):
             client.facturation_province = client.facturation_code_postal = ""
         client.efface_le = timezone.now()
         client.save()
+        from core import journal
+
+        journal.effacer_client(client)  # les anciennes valeurs (téléphones, notes) ne restent pas dans le journal
     return bilan

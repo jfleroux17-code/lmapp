@@ -2,7 +2,8 @@ from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.gis.geos import Point
 
-from core.models import AbonnementNotification, EchecConnexion, Entreprise, IncidentConfidentialite, Membre, VilleDesservie
+from core.models import (AbonnementNotification, EchecConnexion, Entreprise, IncidentConfidentialite, JournalAction, Membre,
+                         VilleDesservie)
 
 _titre = "LMAPP : administration"
 if settings.LMAPP_ENV != "prod":
@@ -115,6 +116,38 @@ class IncidentConfidentialiteAdmin(admin.ModelAdmin):
     @admin.display(description="description")
     def resume(self, obj):
         return obj.description[:80]
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(JournalAction)
+class JournalActionAdmin(admin.ModelAdmin):
+    """Journal des actions (K4) : consultation seulement."""
+    list_display = ["moment", "nom_utilisateur", "action", "modele", "objet", "resume", "entreprise"]
+    list_filter = ["action", "modele", "entreprise", "nom_utilisateur"]
+    search_fields = ["objet", "nom_utilisateur", "=objet_id", "=client_id"]
+    date_hierarchy = "moment"
+    readonly_fields = ["moment", "entreprise", "nom_utilisateur", "ip", "action", "modele", "objet_id", "objet", "client_id", "detail"]
+    exclude = ["utilisateur", "changements"]
+
+    @admin.display(description="champs")
+    def resume(self, obj):
+        return ", ".join(list(obj.changements)[:6]) + (" ..." if len(obj.changements) > 6 else "")
+
+    @admin.display(description="changements (avant → après)")
+    def detail(self, obj):
+        from django.utils.html import format_html_join
+
+        return format_html_join("", "<div><strong>{}</strong> : {} → {}</div>",
+                                ((k, "(vide)" if a in (None, "") else a, "(vide)" if b in (None, "") else b)
+                                 for k, (a, b) in obj.changements.items())) or "(rien)"
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return request.method in ("GET", "HEAD")  # la fiche s'affiche, rien ne s'enregistre
 
     def has_delete_permission(self, request, obj=None):
         return False

@@ -22,3 +22,19 @@ def notifier_plus_tard(entreprise_id, titre, corps, url="/"):
 
     if notifications.configure():
         transaction.on_commit(lambda: notifier.defer(entreprise_id=entreprise_id, titre=titre, corps=corps, url=url))
+
+
+# 7 h UTC = 2 h à Sainte-Adèle (3 h en été)
+@app.periodic(cron="0 7 * * *")
+@app.task(queue="facturation", queueing_lock="purger_journal")
+def purger_journal_chaque_nuit(timestamp):
+    """Journal des actions (K4) : on ne garde que LMAPP_JOURNAL_JOURS jours (Loi 25 : pas plus longtemps que nécessaire)."""
+    from datetime import timedelta
+
+    from django.conf import settings
+    from django.utils import timezone
+
+    from core.models import JournalAction
+
+    limite = timezone.now() - timedelta(days=settings.LMAPP_JOURNAL_JOURS)
+    return JournalAction.objects.filter(moment__lt=limite).delete()[0]
