@@ -8,7 +8,7 @@
     {% elif m.sens == "entrant" %}
       <span class="pastille {% if not m.lu %}bg-accent text-nuit{% else %}bg-bordure text-gray-300{% endif %}">{% if not m.lu %}Nouveau{% else %}Reçu{% endif %}</span>
     {% else %}
-      <span class="pastille {% if m.statut == 'envoye' %}bg-ok/20 text-ok{% elif m.statut == 'echec' %}bg-danger/20 text-danger{% else %}bg-bordure text-gray-300{% endif %}">{% if m.statut == "prepare" %}Préparé{% elif m.statut == "bloque" %}Bloqué{% elif m.statut == "en_file" %}En file{% else %}{{ m.get_statut_display }}{% endif %}</span>
+      <span class="pastille {% if m.statut == 'envoye' %}bg-ok/20 text-ok{% elif m.statut == 'echec' %}bg-danger/20 text-danger{% else %}bg-bordure text-gray-300{% endif %}">{% if m.statut == "prepare" %}Préparé{% elif m.statut == "bloque" %}Bloqué{% elif m.statut == "en_file" %}En file{% elif m.livre_le %}Livré{% else %}{{ m.get_statut_display }}{% endif %}</span>
     {% endif %}
   </div>
   <div class="mb-1 text-sm text-gray-400">{% if m.canal == "appel" %}Noté à la main{% elif m.sens == "entrant" %}Reçu par {{ m.get_canal_display|lower }}{% else %}{% if avec_client %}{{ m.get_genre_display }} · {% endif %}{{ m.get_canal_display|lower }}{% endif %} · {{ m.cree_le|date:"j F, H \h i" }}</div>

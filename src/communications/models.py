@@ -110,6 +110,10 @@ class Message(Horodate):
     erreur = models.CharField(max_length=300, blank=True)
     fournisseur_id = models.CharField("identifiant chez le fournisseur", max_length=64, blank=True)
     segments = models.PositiveSmallIntegerField(default=0, help_text="Textos : segments facturés par Twilio.")
+    livre_le = models.DateTimeField("livré le", null=True, blank=True, help_text="Textos : livraison confirmée par l'opérateur (E13).")
+    cout = models.DecimalField("coût", max_digits=8, decimal_places=5, null=True, blank=True,
+                               help_text="Textos : prix facturé par Twilio, relevé après l'envoi (E13).")
+    cout_devise = models.CharField(max_length=3, blank=True)
 
     class Meta:
         verbose_name = "message"

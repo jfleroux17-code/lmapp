@@ -38,3 +38,18 @@ def envoyer_texto(de, a, texte):
         raise Indisponible(f"Twilio injoignable : {e.reason}") from e
     except TimeoutError as e:
         raise Incertain("Pas de réponse de Twilio : vérifier dans la console Twilio avant de renvoyer.") from e
+
+
+def prix(sid):
+    """(prix positif en Decimal, devise) d'un message (E13), ou None si Twilio ne l'a pas encore établi."""
+    from decimal import Decimal
+
+    compte, jeton = settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN
+    cle = base64.b64encode(f"{compte}:{jeton}".encode()).decode()
+    req = Request(f"{settings.TWILIO_API}/2010-04-01/Accounts/{compte}/Messages/{sid}.json",
+                  headers={"Authorization": f"Basic {cle}", "User-Agent": "LMAPP"})
+    with urlopen(req, timeout=20) as r:
+        d = json.load(r)
+    if d.get("price") in (None, ""):
+        return None
+    return abs(Decimal(str(d["price"]))), (d.get("price_unit") or "USD")[:3]

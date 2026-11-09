@@ -105,6 +105,9 @@ def statut_texto(request):
     if not signature_valide(request):
         return HttpResponseForbidden("Signature invalide.")
     sid, statut = request.POST.get("MessageSid", ""), request.POST.get("MessageStatus", "")
+    if sid and statut == "delivered":  # E13 : livraison confirmée par l'opérateur
+        Message.objects.filter(fournisseur_id=sid, canal=Message.Canal.TEXTO, sens=Message.Sens.SORTANT, livre_le=None).update(
+            livre_le=timezone.now(), modifie_le=timezone.now())
     if sid and statut in ("failed", "undelivered"):
         code = request.POST.get("ErrorCode", "")
         Message.objects.filter(fournisseur_id=sid, canal=Message.Canal.TEXTO, sens=Message.Sens.SORTANT).update(

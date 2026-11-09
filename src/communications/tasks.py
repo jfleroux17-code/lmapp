@@ -57,3 +57,31 @@ def lire_boite_aux_2_minutes(timestamp):
     if n:
         log.info("boîte de %s : %s courriel(s) reçu(s)", ent, n)
     return n
+
+
+@app.periodic(cron="17 * * * *")
+@app.task(queue="communications", queueing_lock="relever_couts")
+def relever_couts_chaque_heure(timestamp):
+    """E13 : prix de chaque texto (envoyé ou reçu), établi par Twilio quelques minutes après; 7 jours au plus."""
+    from datetime import timedelta
+
+    from django.conf import settings
+    from django.utils import timezone
+
+    from communications import twilio
+    from communications.models import Message
+
+    if not (settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN):
+        return 0
+    maintenant = timezone.now()
+    n = 0
+    for m in (Message.objects.filter(canal=Message.Canal.TEXTO, cout=None, cree_le__gte=maintenant - timedelta(days=7),
+                                     cree_le__lte=maintenant - timedelta(minutes=10)).exclude(fournisseur_id="")[:200]):
+        try:
+            r = twilio.prix(m.fournisseur_id)
+        except Exception:  # noqa: BLE001 : on réessaiera à l'heure suivante
+            continue
+        if r:
+            Message.objects.filter(pk=m.pk).update(cout=r[0], cout_devise=r[1])
+            n += 1
+    return n

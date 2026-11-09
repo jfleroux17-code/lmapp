@@ -996,3 +996,39 @@ class AppelNoteTests(TestCase):
         self.client.force_login(self.lecteur)
         r = self.client.post(f"/clients/{self.c.pk}/appel/", {"sens": "recu", "resume": "x"}, HTTP_HOST=HOTE)
         self.assertEqual(r.status_code, 403)
+
+
+class LivraisonEtCoutTests(TestCase):
+    """E13 : livraison confirmée par Twilio, coût relevé après l'envoi, totaux dans le tableau de la plateforme."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai-co", domaine=HOTE, numero_texto="+14503001166")
+        cls.m = Message.objects.create(entreprise=cls.ent, genre="manuel", canal="texto", destinataire="+15145550123", contenu="x",
+                                       statut="envoye", fournisseur_id="SMcout1")
+
+    def test_livraison(self):
+        import base64, hashlib, hmac as _hmac
+        url = f"https://{HOTE}/webhooks/twilio/statut/"
+        p = {"MessageSid": "SMcout1", "MessageStatus": "delivered"}
+        sig = base64.b64encode(_hmac.new(b"jeton", (url + "".join(k + p[k] for k in sorted(p))).encode(), hashlib.sha1).digest()).decode()
+        with override_settings(ALLOWED_HOSTS=["*"], TWILIO_AUTH_TOKEN="jeton"):
+            self.client.post("/webhooks/twilio/statut/", p, HTTP_HOST=HOTE, HTTP_X_TWILIO_SIGNATURE=sig, secure=True)
+        self.m.refresh_from_db()
+        self.assertIsNotNone(self.m.livre_le)
+
+    @override_settings(TWILIO_ACCOUNT_SID="AC", TWILIO_AUTH_TOKEN="t", TWILIO_API="https://api.exemple.test")
+    def test_releve_du_cout_et_plateforme(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from communications.tasks import relever_couts_chaque_heure
+        from core import plateforme
+        Message.objects.filter(pk=self.m.pk).update(cree_le=timezone.now() - timedelta(hours=1))
+        reponse = io.BytesIO(json.dumps({"price": "-0.01660", "price_unit": "USD"}).encode())
+        with mock.patch("communications.twilio.urlopen", return_value=mock.MagicMock(__enter__=lambda s: reponse, __exit__=lambda *a: None)):
+            self.assertEqual(relever_couts_chaque_heure(timestamp=0), 1)
+        self.m.refresh_from_db()
+        self.assertEqual((self.m.cout, self.m.cout_devise), (D("0.01660"), "USD"))
+        lignes, total = plateforme.statistiques(timezone.localdate() - timedelta(days=1), timezone.localdate() + timedelta(days=1))
+        l = next(x for x in lignes if x["entreprise"] == self.ent)
+        self.assertEqual((l["cout_textos"], l["cout_numero"]), (D("0.01660"), D("1.15")))

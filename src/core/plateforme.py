@@ -11,6 +11,8 @@ courriels et des textos, tarifs à venir). Compte ce qui est vraiment parti ou a
 """
 from datetime import date
 
+from django.conf import settings
+
 from django.db.models import Count, Max, Q, Sum
 
 from clients.models import Client
@@ -22,6 +24,8 @@ from tournee.models import Operation, Passage
 COLONNES = [
     ("courriels_envoyes", "Courriels envoyés"), ("courriels_recus", "Courriels reçus"),
     ("textos_envoyes", "Textos envoyés"), ("segments", "Segments de textos"), ("textos_recus", "Textos reçus"),
+    ("textos_livres", "Textos livrés (confirmés)"), ("cout_textos", "Coût des textos chez Twilio ($ US)"),
+    ("cout_numero", "Numéro Twilio ($ US par mois)"),
     ("echecs", "Envois en échec"),
     ("factures_emises", "Factures émises"), ("montant_facture", "Montant facturé ($)"),
     ("factures_envoyees", "Factures envoyées par courriel"), ("relances", "Relances envoyées"),
@@ -53,6 +57,8 @@ def statistiques(debut, fin):
         textos_envoyes=Count("pk", filter=Q(canal="texto", sens="sortant") & parti),
         segments=Sum("segments", filter=Q(canal="texto", sens="sortant") & parti),
         textos_recus=Count("pk", filter=Q(canal="texto", sens="entrant")),
+        textos_livres=Count("pk", filter=Q(canal="texto", sens="sortant") & ~Q(livre_le=None)),
+        cout_textos=Sum("cout", filter=Q(canal="texto")),
         echecs=Count("pk", filter=Q(statut=Message.Statut.ECHEC)),
         factures_envoyees=Count("pk", filter=Q(genre=Genre.FACTURE) & parti),
         relances=Count("pk", filter=Q(genre__in=RELANCES) & parti),
@@ -78,6 +84,7 @@ def statistiques(debut, fin):
         ligne["boite_permise_mo"] = round(boite.quota_max_ko / 1024) if boite and boite.quota_max_ko else None
         ligne["boite_pourcent"] = (round(100 * boite.quota_utilise_ko / boite.quota_max_ko) if boite and boite.quota_max_ko
                                    and boite.quota_utilise_ko is not None else None)
+        ligne["cout_numero"] = settings.LMAPP_COUT_NUMERO_TWILIO if ent.numero_texto else ZERO
         ligne["archives_mo"] = round((a.get(ent.pk, {}).get("archives") or 0) / 1024 / 1024, 1)
         for k, _ in COLONNES:
             if ligne.get(k) is None and k not in ("derniere_connexion", "boite_utilisee_mo", "boite_permise_mo"):

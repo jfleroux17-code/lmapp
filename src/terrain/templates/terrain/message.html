@@ -9,7 +9,8 @@
   </div>
   {% if m.sujet %}<h1 class="mb-3 text-xl font-bold">{{ m.sujet }}</h1>{% endif %}
   <div class="whitespace-pre-line break-words text-gray-100">{{ m.contenu }}</div>
-  {% if m.sens != "entrant" and m.canal != "appel" %}<p class="mt-3 text-sm text-gray-400">{{ m.get_statut_display }}{% if m.erreur %} : {{ m.erreur }}{% endif %}</p>{% endif %}
+  {% if m.sens != "entrant" and m.canal != "appel" %}<p class="mt-3 text-sm text-gray-400">{{ m.get_statut_display }}{% if m.livre_le %}, livré le {{ m.livre_le|date:"j F, H \h i" }}{% endif %}{% if m.erreur %} : {{ m.erreur }}{% endif %}</p>{% endif %}
+  {% if m.canal == "texto" and m.segments or m.cout is not None %}<p class="mt-1 text-sm text-gray-500">{% if m.segments %}{{ m.segments }} segment{{ m.segments|pluralize }}{% endif %}{% if m.cout is not None %} · coût {{ m.cout|floatformat:4 }} $ {{ m.cout_devise }}{% endif %}</p>{% endif %}
 </div>
 {% if m.client %}<a href="{% url 'terrain:fiche' m.client.pk %}" class="gros-bouton mb-3 border-2 border-bordure">Fiche de {{ m.client.nom_affiche }}</a>
 {% elif m.sens == "entrant" %}<p class="mb-3 text-sm text-gray-400">Expéditeur inconnu : aucun client n'a cette adresse courriel.</p>{% endif %}

@@ -192,6 +192,10 @@ AUTHENTICATION_BACKENDS = ["core.connexions.AuthentificationLimitee"]
 LMAPP_CONNEXION_MAX_IP = int(env("LMAPP_CONNEXION_MAX_IP", "10"))
 LMAPP_CONNEXION_MAX_COMPTE = int(env("LMAPP_CONNEXION_MAX_COMPTE", "20"))
 LMAPP_CONNEXION_FENETRE_MIN = int(env("LMAPP_CONNEXION_FENETRE_MIN", "15"))
+# Coût mensuel d'un numéro Twilio (tableau de la plateforme, PRD Q) : 1,15 $ US le 8 novembre 2026
+from decimal import Decimal as _D  # noqa: E402
+
+LMAPP_COUT_NUMERO_TWILIO = _D(env("LMAPP_COUT_NUMERO_TWILIO", "1.15"))
 # Surveillance (PRD 6.7) : à qui les alertes, et seuils
 LMAPP_ALERTES_TEXTO = env("LMAPP_ALERTES_TEXTO", "")
 LMAPP_ALERTES_TEXTO_DE = env("LMAPP_ALERTES_TEXTO_DE", "")
