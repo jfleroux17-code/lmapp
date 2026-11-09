@@ -63,3 +63,13 @@ test.ledeneigeur.com {
 	import commun
 	reverse_proxy lmapp-test-app:8000
 }
+
+# Administration à une adresse neutre (PRD Q6), sans nom de déneigeur. Rien d'autre n'y répond.
+# La prod a LMAPP_HOTE_ADMIN=admin.ledeneigeur.com : /admin/ ne répond plus que sur ce nom.
+# La restriction aux IP de JF (import commun) s'applique ici aussi.
+admin.ledeneigeur.com {
+	import commun
+	@hors_admin not path /admin /admin/* /static/*
+	respond @hors_admin "Introuvable." 404
+	reverse_proxy lmapp-prod-app:8000
+}

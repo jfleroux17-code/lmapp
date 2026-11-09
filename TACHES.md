@@ -112,7 +112,7 @@ Après son essai des écrans. Une étape à la fois, chacune en test, montrée �
 - [x] Tableau de bord de la plateforme (Q1, `/admin/plateforme/`, superutilisateur seulement) : **en prod le 8 novembre 2026** (boîte de Louis : 0,2 Mo sur 2 Go). Segments de textos comptés à l'envoi, quota de la boîte lu à chaque passage.
 - [ ] Site Internet de présentation (Q5) : **site fait le 8 novembre 2026** dans `site/` (accueil : fonctions, captures, prix 495 $ plus l'usage, questions, contact; politique de confidentialité en ébauche). Reste : adresse de contact (JF), validation de la politique, puis mise en ligne avec le « go » de JF (DNS de la racine, Caddy, 443 ouvert au public; voir `site/LISEZMOI.md`).
 - [ ] Arrivée d'un déneigeur venant d'un logiciel concurrent (Q3) : ~~correspondance des colonnes à l'import~~ (fait le 8 novembre 2026 : entêtes anglais reconnus, `--depuis <logiciel>`, `--correspondance`). Reste : un fichier de correspondance par logiciel, à faire avec un vrai export en main.
-- [ ] Ajout d'un déneigeur en quelques minutes (Q4) : ~~commande~~ `ajouter_deneigeur` faite le 8 novembre 2026 (en prod). Reste avant le 2e déneigeur : l'administration à `admin.ledeneigeur.com` (Q6) : côté app prêt (`LMAPP_HOTE_ADMIN`), il manque l'enregistrement DNS et le bloc Caddy (« go » de JF).
+- [x] Ajout d'un déneigeur en quelques minutes (Q4) : commande `ajouter_deneigeur` (en prod), et administration à `admin.ledeneigeur.com` (Q6) **en prod le 8 novembre 2026** (DNS par JF, bloc Caddy, `/admin/` de `louis` en 404).
 - [ ] Facturation des entreprises par l'app (Q2), quand les tarifs seront fixés.
 - [ ] Test de restauration chaque mois (`sh outils/tester_restauration.sh`), prochain vers le 7 décembre 2026.
 
