@@ -18,6 +18,7 @@
 </div>
 {% if plus_de_60 %}<p class="mb-4 text-danger">Dont {{ plus_de_60|argent }} depuis plus de 60 jours.</p>{% endif %}
 {% if virements_a_confirmer %}<a href="{% url 'terrain:virements' %}" class="mb-4 block rounded-2xl bg-ok/15 p-4 font-semibold text-ok">{{ virements_a_confirmer }} virement{{ virements_a_confirmer|pluralize }} Interac à confirmer ›</a>{% else %}<a href="{% url 'terrain:virements' %}" class="mb-4 block text-sm text-gray-400">Virements Interac reçus ›</a>{% endif %}
+<a href="{% url 'terrain:export_comptable' %}" class="mb-4 block text-sm text-gray-400">Export pour le comptable (Excel) ›</a>
 {% if brouillons %}<a href="{% url 'terrain:factures' %}" class="mb-4 block rounded-2xl bg-accent/15 p-4 text-accent">{{ brouillons }} brouillon{{ brouillons|pluralize }} pas encore émis ›</a>{% endif %}
 
 <div class="mb-3 grid grid-cols-2 gap-2">

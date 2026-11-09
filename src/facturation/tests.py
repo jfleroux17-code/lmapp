@@ -450,3 +450,30 @@ class EtatCompteTests(TestCase):
             r = self.client.get(f"/clients/{self.c.pk}/etat-de-compte/", HTTP_HOST="ec.exemple.test")
         self.assertEqual(r.status_code, 200)
         self.assertTrue(r.content.startswith(b"%PDF"))
+
+
+class ExportComptableTests(EtatCompteTests):
+    """Export pour le comptable (C12) : CSV pour Excel, annulées comprises, brouillons exclus, lecture seule permise."""
+
+    def get(self, **params):
+        from django.test import override_settings
+        from django.contrib.auth import get_user_model
+        from core.models import Membre
+        u, _ = get_user_model().objects.get_or_create(username="comptable-ec")
+        Membre.objects.get_or_create(utilisateur=u, entreprise=self.ent, defaults={"role": "lecture"})
+        self.client.force_login(u)
+        with override_settings(ALLOWED_HOSTS=["*"]):
+            return self.client.get("/comptes/export/", {"du": "2026-01-01", "au": "2027-12-31", **params}, HTTP_HOST="ec.exemple.test")
+
+    def test_factures_csv(self):
+        r = self.get(quoi="factures")
+        texte = r.content.decode("utf-8-sig")
+        lignes = texte.strip().splitlines()
+        self.assertEqual(lignes[0].split(";")[0], "Numéro")
+        self.assertEqual(len(lignes), 4)  # solde antérieur, facture 10, facture annulée 11
+        self.assertIn("300,00", texte)
+        self.assertIn("Erreur de saisie", texte)
+
+    def test_paiements_csv_et_page(self):
+        self.assertIn("100,00", self.get(quoi="paiements").content.decode("utf-8-sig"))
+        self.assertContains(self.get(), "Export pour le comptable")
