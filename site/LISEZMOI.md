@@ -19,8 +19,8 @@ personnels : Jean-François Leroux (confirmé par JF).
 3. cPanel, Gestionnaire de fichiers : `public_html`, Téléverser `site.zip`, puis Extraire. `index.html` doit se
    retrouver directement dans `public_html` (pas dans un sous-dossier).
 
-Avant de l'annoncer : faire valider les durées de conservation de la politique de confidentialité et retirer l'avis
-« Ébauche » en haut de `confidentialite.html`.
+En ligne depuis le 9 novembre 2026. Politique de confidentialité validée par JF le même jour : si une durée de
+conservation change dans l'app, la changer aussi dans `confidentialite.html`.
 
 ## Captures
 
