@@ -83,7 +83,7 @@ numéro) plutôt que le `remove [find comment=...]`.
 
 À noter : une ancienne règle **désactivée** (« QNAP Danik », `216.46.29.156:48899` vers `172.16.4.100:8899`) vise
 encore l'IP de ld1. Rien n'écoute sur 8899 dans ld1 et ufw le bloquerait, mais si elle était réactivée par erreur, le
-port arriverait sur ld1. Proposé : la supprimer, ou lui changer de destination, au choix de JF.
+port arriverait sur ld1. **Supprimée par JF le 9 novembre 2026.**
 
 ### Frontal Caddy (`edge/Caddyfile`, état actuel)
 
