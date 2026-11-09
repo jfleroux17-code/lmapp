@@ -116,3 +116,65 @@ class ReinitialiserTests(TestCase):
         self.assertEqual(Client.objects.filter(entreprise__slug="essai").count(), 10)
         self.assertTrue(Client.objects.filter(nom="Garder").exists())
         self.assertFalse(Adresse.objects.filter(entreprise__slug="essai").exclude(ville="Sainte-Adèle").exists())
+
+
+class EffacementLoi25Tests(TestCase):
+    """Demande de suppression (K5) : coordonnées et contenus effacés, factures émises gardées."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from decimal import Decimal
+        from communications.models import ArchiveCourriel, Message
+        from demandes.models import Demande
+        from facturation.models import Facture
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai-eff", domaine="eff.exemple.test")
+        cls.avec = Client.objects.create(entreprise=cls.ent, prenom="Ginette", nom="Tremblay", cellulaire="+15145550123",
+                                         courriel="g@example.com", notes="Chien méchant")
+        a = Adresse.objects.create(entreprise=cls.ent, client=cls.avec, ligne1="120, rue des Essais", ville="Sainte-Adèle", consignes="Code 1234")
+        f = Facture.objects.create(entreprise=cls.ent, client=cls.avec, adresse=a)
+        f.lignes.create(description="Déneigement", quantite=1, prix_unitaire=Decimal("100.00"), taxable=False)
+        f.recalculer()
+        f.emettre()
+        Facture.objects.create(entreprise=cls.ent, client=cls.avec)  # brouillon
+        m = Message.objects.create(entreprise=cls.ent, client=cls.avec, genre="recu", canal="courriel", sens="entrant",
+                                   expediteur="g@example.com", sujet="Allo", contenu="Mon code est 1234", statut="recu")
+        ArchiveCourriel.objects.create(entreprise=cls.ent, dossier="INBOX", uidvalidite=1, uid=1, taille=3, empreinte="x", brut=b"abc", message=m)
+        Demande.objects.create(entreprise=cls.ent, client=cls.avec, description="Plainte détaillée", contact="Voisin")
+        cls.sans = Client.objects.create(entreprise=cls.ent, prenom="Paul", nom="Sansfacture", cellulaire="+15145550124")
+        Adresse.objects.create(entreprise=cls.ent, client=cls.sans, ligne1="1, rue Privée", ville="Sainte-Adèle")
+
+    def test_avec_factures_le_nom_reste(self):
+        from clients.effacement import EFFACE, effacer
+        from communications.models import ArchiveCourriel
+        b = effacer(self.avec)
+        c = Client.objects.get(pk=self.avec.pk)
+        self.assertEqual((c.cellulaire, c.courriel, c.notes, c.nom, c.statut), ("", "", "", "Tremblay", "inactif"))
+        self.assertIsNotNone(c.efface_le)
+        a = c.adresses.get()
+        self.assertEqual((a.ligne1, a.consignes, a.active), ("120, rue des Essais", "", False))
+        self.assertEqual(c.factures.count(), 1)  # brouillon supprimé, facture émise gardée
+        self.assertEqual(c.messages.get().contenu, EFFACE)
+        self.assertEqual(c.messages.get().expediteur, "")
+        self.assertFalse(ArchiveCourriel.objects.exists())
+        self.assertEqual(c.demandes.get().contact, "")
+        self.assertTrue(b["factures_gardees"])
+
+    def test_sans_facture_tout_part(self):
+        from clients.effacement import effacer
+        effacer(self.sans)
+        c = Client.objects.get(pk=self.sans.pk)
+        self.assertEqual((c.prenom, c.nom, c.cellulaire), ("", "Client effacé", ""))
+        self.assertEqual(c.adresses.get().ligne1, "Adresse effacée")
+
+    def test_action_admin_demande_confirmation(self):
+        from django.contrib.auth import get_user_model
+        from django.test import override_settings
+        jf = get_user_model().objects.create_superuser("jf", password="x" * 12)
+        self.client.force_login(jf)
+        donnees = {"action": "effacer_a_la_demande", "_selected_action": [self.sans.pk]}
+        with override_settings(ALLOWED_HOSTS=["*"]):
+            r = self.client.post("/admin/clients/client/", donnees)
+            self.assertContains(r, "Irréversible")
+            self.assertIsNone(Client.objects.get(pk=self.sans.pk).efface_le)
+            self.client.post("/admin/clients/client/", {**donnees, "confirmer": "oui"})
+        self.assertIsNotNone(Client.objects.get(pk=self.sans.pk).efface_le)

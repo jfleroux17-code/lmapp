@@ -237,3 +237,33 @@ class AbonnementNotification(models.Model):
 
     def __str__(self):
         return f"{self.utilisateur} ({self.appareil[:40]})"
+
+
+class IncidentConfidentialite(models.Model):
+    """Registre des incidents de confidentialité (Loi 25, art. 3.8; PRD K5).
+
+    Tout accès, utilisation, communication ou perte de renseignements personnels non autorisé est inscrit,
+    même sans risque de préjudice sérieux. Risque sérieux : aviser la Commission d'accès à l'information
+    et les personnes touchées avec diligence. Garder chaque inscription au moins 5 ans après le constat."""
+    entreprise = models.ForeignKey(Entreprise, on_delete=models.PROTECT, null=True, blank=True, related_name="incidents",
+                                   help_text="Vide : incident touchant toute la plateforme (toutes les entreprises).")
+    survenu_le = models.DateField("survenu le", null=True, blank=True, help_text="Vide si la date est inconnue.")
+    constate_le = models.DateField("constaté le")
+    description = models.TextField(help_text="Ce qui s'est passé, et comment on l'a su.")
+    renseignements = models.TextField("renseignements visés", help_text="Quels renseignements (noms, adresses, téléphones, etc.).")
+    personnes = models.PositiveIntegerField("nombre de personnes touchées", null=True, blank=True, help_text="Vide si inconnu.")
+    risque_serieux = models.BooleanField("risque de préjudice sérieux", default=False)
+    evaluation = models.TextField("évaluation du risque", blank=True, help_text="Sensibilité, conséquences possibles, probabilité d'usage malveillant.")
+    mesures = models.TextField("mesures prises", blank=True, help_text="Pour réduire le risque et éviter que ça se reproduise.")
+    cai_avisee_le = models.DateField("Commission d'accès à l'information avisée le", null=True, blank=True)
+    personnes_avisees_le = models.DateField("personnes touchées avisées le", null=True, blank=True)
+    cree_le = models.DateTimeField(auto_now_add=True)
+    modifie_le = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "incident de confidentialité"
+        verbose_name_plural = "registre des incidents de confidentialité"
+        ordering = ["-constate_le", "-pk"]
+
+    def __str__(self):
+        return f"{self.constate_le:%Y-%m-%d} : {self.description[:60]}"

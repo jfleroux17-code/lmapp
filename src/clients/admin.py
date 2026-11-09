@@ -1,5 +1,6 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.db.models import Q
+from django.template.response import TemplateResponse
 from django.contrib.gis.admin import GISModelAdmin
 
 from clients.models import Adresse, Client, Secteur
@@ -32,6 +33,8 @@ class ClientAdmin(admin.ModelAdmin):
     list_filter = ["entreprise", "statut", "mode_paiement", "canal_prefere", "consentement_commercial"]
     search_fields = ["nom", "prenom", "organisation", "cellulaire", "telephone_autre", "courriel", "adresses__ligne1", "adresses__ville"]
     inlines = [AdresseEnLigne]
+    actions = ["effacer_a_la_demande"]
+    readonly_fields = ["efface_le"]
     fieldsets = [
         (None, {"fields": ["entreprise", ("prenom", "nom"), "organisation", "statut"]}),
         ("Coordonnées", {"fields": [("cellulaire", "telephone_autre"), "courriel"]}),
@@ -42,7 +45,26 @@ class ClientAdmin(admin.ModelAdmin):
             "fields": ["facturation_ligne1", "facturation_ligne2", ("facturation_ville", "facturation_province", "facturation_code_postal")],
         }),
         ("Notes", {"fields": ["notes"]}),
+        ("Loi 25", {"classes": ["collapse"], "fields": ["efface_le"]}),
     ]
+
+    @admin.action(description="Effacer ses renseignements à sa demande (Loi 25, irréversible)")
+    def effacer_a_la_demande(self, request, queryset):
+        """Page de confirmation d'abord; l'effacement se fait seulement au second envoi (« confirmer »)."""
+        from clients.effacement import effacer
+
+        if request.POST.get("confirmer") == "oui":
+            for c in queryset:
+                b = effacer(c)
+                garde = "factures gardées (6 ans, lois fiscales) avec le nom" if b["factures_gardees"] else "nom et adresses effacés aussi"
+                self.message_user(request, f"Client n° {c.pk} effacé : {b['messages']} message(s), {b['archives']} courriel(s) archivé(s), "
+                                           f"{b['demandes']} demande(s), {b['adresses']} adresse(s), {b['brouillons']} brouillon(s); {garde}. "
+                                           "Les courriels encore dans la boîte (moins de 30 jours) s'effacent à leur date.", messages.SUCCESS)
+            return None
+        return TemplateResponse(request, "admin/clients/effacer_confirmation.html", {
+            **self.admin_site.each_context(request), "title": "Effacer à la demande du client (Loi 25)",
+            "clients": queryset, "opts": self.model._meta, "action": "effacer_a_la_demande",
+            "selection": request.POST.getlist(admin.helpers.ACTION_CHECKBOX_NAME)})
 
     @admin.display(description="cellulaire", ordering="cellulaire")
     def cellulaire_affiche(self, obj):

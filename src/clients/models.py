@@ -102,6 +102,8 @@ class Client(Horodate):
     )
 
     notes = models.TextField(blank=True)
+    efface_le = models.DateTimeField("renseignements effacés le", null=True, blank=True, editable=False,
+                                     help_text="Demande de suppression du client (Loi 25) : voir clients/effacement.py.")
 
     class Meta:
         verbose_name = "client"

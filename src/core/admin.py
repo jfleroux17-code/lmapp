@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.gis.geos import Point
 
-from core.models import AbonnementNotification, EchecConnexion, Entreprise, Membre, VilleDesservie
+from core.models import AbonnementNotification, EchecConnexion, Entreprise, IncidentConfidentialite, Membre, VilleDesservie
 
 _titre = "LMAPP : administration"
 if settings.LMAPP_ENV != "prod":
@@ -99,3 +99,22 @@ class AbonnementNotificationAdmin(admin.ModelAdmin):
     list_display = ["utilisateur", "entreprise", "appareil", "cree_le", "dernier_envoi"]
     list_filter = ["entreprise"]
     readonly_fields = ["endpoint", "p256dh", "auth", "appareil", "cree_le", "dernier_envoi"]
+
+
+@admin.register(IncidentConfidentialite)
+class IncidentConfidentialiteAdmin(admin.ModelAdmin):
+    """Registre exigé par la Loi 25 : on inscrit, on n'efface pas (pas de suppression permise)."""
+    list_display = ["constate_le", "entreprise", "resume", "personnes", "risque_serieux", "cai_avisee_le"]
+    list_filter = ["risque_serieux", "entreprise"]
+    fieldsets = [
+        (None, {"fields": ["entreprise", ("survenu_le", "constate_le"), "description", "renseignements", "personnes"]}),
+        ("Risque", {"fields": ["risque_serieux", "evaluation", "mesures"]}),
+        ("Avis (obligatoires si risque sérieux)", {"fields": ["cai_avisee_le", "personnes_avisees_le"]}),
+    ]
+
+    @admin.display(description="description")
+    def resume(self, obj):
+        return obj.description[:80]
+
+    def has_delete_permission(self, request, obj=None):
+        return False
