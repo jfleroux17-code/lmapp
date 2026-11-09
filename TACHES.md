@@ -151,6 +151,7 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 
 ## Fait
 
+- 9 novembre 2026, en prod : fiche de Louis réglée pour ses versements (2 par défaut, dates « 15/01 15/02 », factures préparées 5 jours d'avance); services « Déneigement de l'entrée » et « Bordage » créés (sans prix : le prix est au contrat).
 - 9 novembre 2026, en prod : **durées de conservation** (positions GPS effacées après 120 jours, demandes à info@ après 2 ans), écrites dans la politique de confidentialité.
 - 9 novembre 2026, en prod : **boîte `info@ledeneigeur.com` de la plateforme** lue aux 2 minutes, chaque demande gardée dans l'administration (statut, note) et transférée à JF. Premier transfert parti (courriel de configuration de cPanel). Alertes de la surveillance envoyées de `info@` (essai reçu par JF).
 
