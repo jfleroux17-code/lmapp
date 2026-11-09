@@ -35,7 +35,7 @@ Mise à jour : 9 novembre 2026.
 - [x] **JF : deuxième numéro Twilio, réservé à la plateforme** : +1 450 234-7550, acheté le 9 novembre 2026. Mis dans `LMAPP_ALERTES_TEXTO_DE` de la prod par Claude Code, texto d'essai parti (`surveiller --essai-texto`).
 - [x] ~~SMTP2GO~~ : abandonné le 8 novembre 2026 (décision de JF), remplacé par le serveur de courriel de JF.
 - [x] ~~Boîte IMAP `info@`~~ : remplacée par `louis@ledeneigeur.com` (une boîte par déneigeur), en place.
-- [ ] Stripe : seulement si des clients veulent payer par carte (question 8 de Louis).
+- [x] ~~Stripe~~ : pas de paiement par carte chez Louis (9 novembre 2026), reporté.
 
 ### Serveur (rien d'urgent)
 
@@ -66,16 +66,16 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - [ ] **Nom affiché** : ses factures portent « Les Entretiens Paysagers L.M. » (logo « Entretiens LM »). Proposé : nom légal sur les factures, et un nom que ses clients reconnaissent (ex. « Entretiens LM ») à l'écran et à la fin des textos. À confirmer.
 - [x] **Versements** (8 novembre 2026) : contrat saisonnier en 2 versements égaux, le 1er novembre et entre la mi-janvier et la fin de janvier; 3e versement possible pour les contrats de plus de 1 200 $ par saison.
 - [x] **Type de contrat** : saisonnier seulement, pas de facturation au passage.
-- [ ] **Détails des versements** : date du 2e versement (fixe ou au cas par cas)? Dates d'un échéancier en 3 versements? (Louis rappelle JF le 9 novembre.)
-- [ ] **Clients** : combien d'actifs? Combien d'anciens clients lui doivent de l'argent, et à peu près combien en tout?
+- [x] **Détails des versements** (9 novembre 2026) : 2 versements, à l'approbation et le 15 janvier; 3 s'il l'accepte : 1/3 à l'approbation, 1/3 le 15 janvier, 1/3 le 15 février. Envoi et rappel du 2e versement le 10 janvier.
+- [ ] **Clients** : combien d'actifs? Combien d'anciens clients lui doivent de l'argent? **Liste en cours** : photos reçues par texto, mises en forme par JF avec claude.ai (9 novembre 2026).
 - [ ] **Sa liste de clients** dans le gabarit, ou en photos de ses papiers (noms, adresses, cellulaires, prix entendus, montants dus).
-- [ ] **Services** : entrée seulement, ou aussi bordage de la ville, pelletage, abrasif, toitures?
+- [x] **Services** (9 novembre 2026) : l'entrée au complet; un seul client de bordage.
 - [ ] **Numéro de texto** : accepte-t-il que les clients textent un nouveau numéro d'affaires? Ses clients ont son 514-962-6273, qui pourrait rester pour les appels seulement.
-- [ ] **Courriel et Interac** : ses clients connaissent son Gmail (sur ses factures). Reste : dépôt automatique Interac, sur quelle adresse? Pour les virements (D5) : transférer les avis d'Interac de son Gmail vers `louis@ledeneigeur.com` (filtre Gmail), et valider la lecture sur un vrai avis.
-- [ ] **Carte de crédit et débit** : des clients veulent-ils vraiment payer par carte? Son carnet a une case « carte débit » : a-t-il un terminal de paiement?
-- [ ] **Véhicules** : un seul, ou un tracteur et un camion? (Sainte-Adèle seulement et seul pour l'instant : réglé.)
-- [ ] **Comptabilité** : qui la fait, dans quel logiciel?
-- [ ] **Clients commerciaux** : stationnements, immeubles à logements?
+- [ ] **Courriel et Interac** (9 novembre 2026) : virements reçus à son Gmail. **JF configure avec lui** le transfert des avis d'Interac vers `louis@ledeneigeur.com` (filtre Gmail). Gmail envoie d'abord un code de confirmation à `louis@` : il arrive dans les Messages de l'app (ou dans la boîte). Ensuite, valider la lecture sur un vrai avis.
+- [x] **Paiements** (9 novembre 2026) : comptant, virements Interac et chèques, y compris **postdatés** (important). Pas de carte : Stripe reporté.
+- [x] **Territoire** : Sainte-Adèle seulement, seul (9 novembre 2026).
+- [x] **Comptabilité** (9 novembre 2026) : tout à la main. L'export et le rapport de saison pour le comptable deviennent importants.
+- [x] **Clients commerciaux** : aucun pour l'instant (9 novembre 2026).
 - [ ] **Matériel** : support de téléphone et chargeur pour le tracteur.
 
 ## Claude Code
@@ -136,6 +136,10 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - [x] Site Internet de présentation (Q5) : **en ligne sur le cPanel de JF le 9 novembre 2026** (fichiers vérifiés identiques à l'archive). Boîte `info@` branchée (demandes dans l'administration, transférées à JF), alertes de la surveillance envoyées de `info@`. Reste : tâche de JF.
 - [ ] Arrivée d'un déneigeur venant d'un logiciel concurrent (Q3) : ~~correspondance des colonnes à l'import~~ (fait le 8 novembre 2026 : entêtes anglais reconnus, `--depuis <logiciel>`, `--correspondance`). Reste : un fichier de correspondance par logiciel, à faire avec un vrai export en main.
 - [x] Ajout d'un déneigeur en quelques minutes (Q4) : commande `ajouter_deneigeur` (en prod), et administration à `admin.ledeneigeur.com` (Q6) **en prod le 8 novembre 2026** (DNS par JF, bloc Caddy, `/admin/` de `louis` en 404).
+- [ ] **Échéancier des contrats de Louis (B3, C5)** : 2 ou 3 versements créés avec le contrat (et à l'import), dates de l'entreprise (approbation, 15 janvier, 15 février), facture préparée 5 jours d'avance (10 janvier), rappel à Louis et envoi groupé d'une tape. **Avant l'import de ses clients.**
+- [ ] **Chèques postdatés (D9)** : date et numéro du chèque, encaissé à sa date, liste des chèques à déposer, avis le jour venu.
+- [ ] **Dépenses par photo (PRD S1, S2)** : photo du reçu, montant, taxes, catégorie; dans le rapport et l'export de fin de saison.
+- [ ] Saison d'été, paysagement (PRD T) : à définir avec Louis, plus tard.
 - [ ] Facturation des entreprises par l'app (Q2), quand les tarifs seront fixés.
 - [x] Avis « Ébauche » retiré de la politique de confidentialité, durées réelles écrites, `site.zip` refait (9 novembre 2026).
 - [ ] Test de restauration chaque mois (`sh outils/tester_restauration.sh`), prochain vers le 7 décembre 2026.

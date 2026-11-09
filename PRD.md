@@ -98,8 +98,8 @@ Légende : **V1** = version de base, **V2** = saison suivante ou dès que V1 rou
 |---|---|---|
 | B1 | Prix entendu avec le client pour la saison, en texte libre et en montant | V1 |
 | B2 | Types de contrat : saisonnier forfaitaire, au passage, à l'heure, sur demande | V1 : **saisonnier seulement** (décision de JF, 8 novembre 2026). Les autres types plus tard, au besoin |
-| B3 | Modalités de paiement : montant unique, 2, 3 ou 4 versements avec dates. Chez Louis : 2 versements (1er novembre, mi ou fin janvier) par défaut, 3 possibles au-delà de 1 200 $ par saison | V1 |
-| B4 | Services inclus ou en extra : entrée, bordage de rue laissé par la ville, pelletage manuel (balcon, escalier), abrasif, déneigement de toiture | V1 (liste simple) |
+| B3 | Modalités de paiement : montant unique, 2, 3 ou 4 versements avec dates. **Chez Louis (9 novembre 2026)** : 2 versements, à l'approbation du contrat et le 15 janvier; 3 versements s'il l'accepte (au-delà de 1 200 $ par saison) : 1/3 à l'approbation, 1/3 le 15 janvier, 1/3 le 15 février. Facture du versement préparée **5 jours d'avance** (le 10 janvier pour le 15), envoi et rappel ce jour-là | V1 |
+| B4 | Services inclus ou en extra : entrée, bordage de rue laissé par la ville, pelletage manuel (balcon, escalier), abrasif, déneigement de toiture. **Chez Louis (9 novembre 2026)** : l'entrée au complet; un seul client de bordage | V1 (liste simple) |
 | B5 | Saison : dates de début et de fin, création de la saison suivante en copiant les clients et prix de l'année précédente avec ajustement en % | V2 |
 | B6 | Contrat PDF généré et envoyé au client par courriel ou texto | V2 |
 | B7 | Signature électronique du contrat par le client | Plus tard |
@@ -135,6 +135,7 @@ Légende : **V1** = version de base, **V2** = saison suivante ou dès que V1 rou
 | D6 | Carte de crédit : lien de paiement sur la facture (Stripe ou Square), marquage automatique « payé » | V1 ou V2 selon le volume de clients carte |
 | D7 | Paiement partiel, trop-perçu appliqué à la facture suivante | V2 |
 | D8 | Prélèvement préautorisé (PPA) sur compte bancaire | Plus tard |
+| D9 | **Chèques postdatés** (demande de Louis, 9 novembre 2026, important) : chèque reçu d'avance, avec sa date et son numéro; compté comme encaissé à sa date seulement; liste des chèques à déposer, avis le jour venu | V1 |
 
 ### E. Communications : textos, courriels, historique unifié
 
@@ -300,6 +301,20 @@ Objectif : le numéro d'affaires (Twilio, ex. 450-300-1166 pour Louis) reçoit a
 **Décision de JF (8 novembre 2026)** : à trancher après l'ouverture du 443 et la réception des textos. Propositions gardées : R1 en premier, enregistrements gardés 90 jours. Rien n'est commencé.
 
 **Préalables** : webhooks Twilio joignables depuis Internet (le 443 est ouvert à tous depuis le 9 novembre 2026; ouverture avec vérification de la signature `X-Twilio-Signature`, comme pour la réception des textos); modèle des demandes (H1, H2) et classification (O1), partagés avec les textos et courriels; clé de l'API Claude dans `.env`. Coûts à mesurer sur de vrais appels (minutes Twilio, reconnaissance vocale, API Claude), puis intégrés aux frais d'usage (Q2).
+
+### S. Dépenses par photo (proposé par JF pour Louis, 9 novembre 2026)
+
+Louis fait toute sa comptabilité à la main. Une dépense (essence, réparation de machinerie, pièces, etc.) se note en prenant la photo du reçu au cellulaire : montant, TPS et TVQ payées (pour ses crédits de taxe), catégorie, date. Les photos sont gardées dans la base. En fin de saison, les dépenses vont dans le rapport et l'export pour le comptable, avec les revenus.
+
+| Code | Fonctionnalité | Proposition |
+|---|---|---|
+| S1 | Photo du reçu, montant, taxes, catégorie, date, note | V1 (avant la fin de la saison) |
+| S2 | Total par catégorie et par mois; dépenses dans le rapport de saison et l'export pour le comptable | V1 |
+| S3 | Lecture automatique du reçu (montant, taxes, fournisseur) par l'IA | Plus tard (pas de clé d'API pour l'instant) |
+
+### T. Saison d'été : paysagement (demande de JF, 9 novembre 2026)
+
+Louis travaille aussi l'été, en paysagement. Prévoir un volet pour ses clients d'été (mêmes fiches de clients, autres services et contrats, saison estivale). À définir avec Louis; pas commencé.
 
 ### P. Hors de la portée du projet (pour être clair)
 - Opérations d'été (tonte, aménagement).
@@ -540,16 +555,16 @@ Livrable : automatisation des relances, rapports pour le comptable, demandes de 
 
 1. ~~Louis a un iPhone ou un Android?~~ **Réglé le 7 novembre 2026 : iPhone 17 Pro Max.** Voir 6.5.
 2. ~~Louis est-il inscrit à la TPS et à la TVQ?~~ **Réglé le 8 novembre 2026 : oui, inscrit aux deux.** Les factures auront les taxes. Les numéros vont dans la fiche `Entreprise`, jamais dans le dépôt. Sa facture papier révèle aussi son nom légal : « Les Entretiens Paysagers L.M. » (logo « Entretiens LM »), à Sainte-Adèle. Le nom affiché aux clients reste à confirmer (question 14).
-3. **Combien de clients actifs, et combien d'anciens comptes en souffrance?** Pour dimensionner l'import et estimer les coûts de SMS.
+3. **Combien de clients actifs, et combien d'anciens comptes en souffrance?** (Liste en préparation le 9 novembre 2026 : photos de ses papiers, mises en forme par JF.) Pas de clients commerciaux pour l'instant. Pour dimensionner l'import et estimer les coûts de SMS.
 4. ~~Modèle de prix dominant~~ **Réglé le 8 novembre 2026 : contrat saisonnier seulement (pas de facturation au passage)**, en **2 versements égaux**, le 1er novembre et le second entre la mi-janvier et la fin de janvier. Un **3e versement** peut être offert aux clients dont le contrat dépasse 1 200 $ par saison. Le seuil de 1 200 $ et les dates par défaut vont dans la configuration de l'entreprise, jamais dans le code. Détails à confirmer avec Louis : la date du 2e versement (fixe chaque année, ou au cas par cas) et les dates d'un échéancier en 3 versements.
-5. **Services offerts** : entrée seulement, ou aussi bordage, pelletage manuel, abrasif, toitures?
+5. ~~Services offerts~~ **Réglé le 9 novembre 2026 : l'entrée au complet; un seul client de bordage.**
 6. **Numéro de texto** : Louis accepte-t-il que les clients textent un nouveau numéro d'affaires plutôt que son cellulaire personnel? (C'est nécessaire pour la réception automatique.) Ses clients connaissent son 514-962-6273 (sur ses factures) : il pourrait rester pour les appels seulement.
-7. **Courriel d'affaires et Interac** : réception par une boîte IMAP fournie par JF sur ledeneigeur.com (réglé le 7 novembre 2026, adresse proposée `info@ledeneigeur.com`). Reste à confirmer l'adresse exacte et l'endroit où la boîte est hébergée (MX), Louis a déjà une adresse Gmail d'affaires que ses clients connaissent (sur ses factures, 8 novembre 2026). A-t-il le dépôt automatique Interac, et sur quelle adresse? Si c'est une adresse différente, on peut rediriger les notifications Interac vers la boîte IMAP pour D5.
-8. **Carte de crédit** : y a-t-il réellement des clients qui veulent payer par carte? Sinon, on reporte Stripe. Son carnet de factures a une case « carte débit » : a-t-il un terminal de paiement?
+7. **Courriel d'affaires et Interac** : réception par une boîte IMAP fournie par JF sur ledeneigeur.com (réglé le 7 novembre 2026, adresse proposée `info@ledeneigeur.com`). Reste à confirmer l'adresse exacte et l'endroit où la boîte est hébergée (MX), Louis a déjà une adresse Gmail d'affaires que ses clients connaissent (sur ses factures, 8 novembre 2026). A-t-il le dépôt automatique Interac, et sur quelle adresse? Si c'est une adresse différente, on peut rediriger les notifications Interac vers la boîte IMAP pour D5. **9 novembre 2026 : Louis reçoit les virements à son adresse Gmail; JF configure avec lui le transfert des avis d'Interac vers `louis@ledeneigeur.com` (lecture automatique, D5).**
+8. **Carte de crédit** : **réglé le 9 novembre 2026 : comptant, virements Interac et chèques (y compris postdatés, D9) seulement**, pas de carte; Stripe reporté. (Question d'origine : y a-t-il réellement des clients qui veulent payer par carte? Sinon, on reporte Stripe. Son carnet de factures a une case « carte débit » : a-t-il un terminal de paiement?)
 9. ~~**Secteurs desservis**~~ **Réglé en partie le 7 novembre 2026 : Sainte-Adèle seulement, Louis travaille seul pour l'instant.** D'autres villes pourront s'ajouter si l'opération grossit (modèle `VilleDesservie`, sans changement de code). Reste : un seul véhicule ou plusieurs?
-10. **Comptabilité** : qui fait sa comptabilité, et dans quel logiciel? Pour savoir quel export préparer.
+10. ~~Comptabilité~~ **Réglé le 9 novembre 2026 : tout à la main.** L'export et le rapport de saison pour le comptable (C12, J3) deviennent importants, avec ses dépenses (section S).
 11. ~~Nom de domaine~~ **Réglé le 7 novembre 2026 : `ledeneigeur.com` (principal) et `ledeneigeur.ca`, app de Louis sur `louis.ledeneigeur.com`.** Voir 6.1. Reste : l'adresse courriel exacte (question 7).
-12. **Clients commerciaux** (stationnements, immeubles à logements)? Ils ont souvent des exigences de facturation différentes.
+12. ~~Clients commerciaux~~ **Réglé le 9 novembre 2026 : aucun pour l'instant.**
 13. ~~Confirmation du choix bâtir plutôt qu'acheter~~ **Réglé le 7 novembre 2026 : on bâtit.** Voir section 4, point 4.
 14. **Nom affiché aux clients** : proposé, le nom légal « Les Entretiens Paysagers L.M. » sur les factures, et un nom que ses clients reconnaissent (ex. « Entretiens LM ») à l'écran et à la fin des textos (champs « nom légal », « nom commercial » et « signature des messages » de la fiche). À confirmer avec Louis.
 
