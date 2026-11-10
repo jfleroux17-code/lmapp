@@ -17,6 +17,7 @@
           <div class="min-w-0 flex-1">
             <a href="{% url 'terrain:facture' l.f.pk %}" class="block truncate font-semibold underline-offset-4 active:underline">{{ l.f.client.nom_affiche }}</a>
             <div class="text-sm text-accent">Versement {{ l.f.versement.rang }} de {{ l.f.versement.contrat.versements.count }} · {{ l.f.versement.montant|argent }} avant taxes</div>
+            {% for c in l.cheques %}<div class="text-sm font-semibold text-ok">Chèque en main{% if c.numero %} n° {{ c.numero }}{% endif %} ({{ c.montant|argent }}, daté du {{ c.date_cheque|date:"j F" }}) : à déposer à sa date</div>{% endfor %}
             <div class="text-sm text-gray-400">Payable le {{ l.f.date_echeance|date:"j F" }} · {% if l.canaux %}par {{ l.canaux }}{% else %}<span class="text-danger">pas de courriel ni de cellulaire : à remettre en main propre</span>{% endif %}</div>
           </div>
         </div>

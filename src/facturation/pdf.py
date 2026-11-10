@@ -10,6 +10,12 @@ from core import telephone
 from facturation.models import Facture
 
 
+def _cheques(f):
+    from facturation.cheques import en_main_pour
+
+    return en_main_pour(f) if f.pk else []
+
+
 def contexte(facture):
     f, ent = facture, facture.entreprise
     emise = f.statut != Facture.Statut.BROUILLON
@@ -34,6 +40,7 @@ def contexte(facture):
         "service": f.adresse if c.facturation_ligne1 else None,
         "lignes": f.lignes.all(),
         "paiements": f.paiements.order_by("date", "pk") if emise else [],
+        "cheques": _cheques(f),
         "inscrit": inscrit, "taux_tps": taux_tps, "taux_tvq": taux_tvq, "no_tps": no_tps, "no_tvq": no_tvq,
         "brouillon": f.statut == Facture.Statut.BROUILLON,
         "annulee": f.statut == Facture.Statut.ANNULEE,

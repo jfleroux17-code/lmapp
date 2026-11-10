@@ -70,7 +70,7 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - [ ] **Clients** : combien d'actifs? Combien d'anciens clients lui doivent de l'argent? **Liste en cours** : photos reçues par texto, mises en forme par JF avec claude.ai (9 novembre 2026).
 - [ ] **Sa liste de clients** dans le gabarit, ou en photos de ses papiers (noms, adresses, cellulaires, prix entendus, montants dus).
 - [x] **Services** (9 novembre 2026) : l'entrée au complet; un seul client de bordage.
-- [ ] **Numéro de texto** : accepte-t-il que les clients textent un nouveau numéro d'affaires? Ses clients ont son 514-962-6273, qui pourrait rester pour les appels seulement.
+- [x] **Numéro de texto** (9 novembre 2026) : Louis accepte que les textos des clients arrivent sur le nouveau numéro d'affaires (450-300-1166). Son cellulaire reste pour les appels.
 - [ ] **Courriel et Interac** (9 novembre 2026) : virements reçus à son Gmail. **JF configure avec lui** le transfert des avis d'Interac vers `louis@ledeneigeur.com` (filtre Gmail). Gmail envoie d'abord un code de confirmation à `louis@` : il arrive dans les Messages de l'app (ou dans la boîte). Ensuite, valider la lecture sur un vrai avis.
 - [x] **Paiements** (9 novembre 2026) : comptant, virements Interac et chèques, y compris **postdatés** (important). Pas de carte : Stripe reporté.
 - [x] **Territoire** : Sainte-Adèle seulement, seul (9 novembre 2026).
@@ -137,7 +137,7 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - [ ] Arrivée d'un déneigeur venant d'un logiciel concurrent (Q3) : ~~correspondance des colonnes à l'import~~ (fait le 8 novembre 2026 : entêtes anglais reconnus, `--depuis <logiciel>`, `--correspondance`). Reste : un fichier de correspondance par logiciel, à faire avec un vrai export en main.
 - [x] Ajout d'un déneigeur en quelques minutes (Q4) : commande `ajouter_deneigeur` (en prod), et administration à `admin.ledeneigeur.com` (Q6) **en prod le 8 novembre 2026** (DNS par JF, bloc Caddy, `/admin/` de `louis` en 404).
 - [x] **Échéancier des contrats (B3, C5)** : en prod le 9 novembre 2026. Fiche de l'entreprise (versements par défaut, dates, jours d'avance), échéancier créé par l'import (colonne `versements`) et par l'administration, facture préparée d'avance avec avis au cellulaire, écran « Versements à envoyer » (une tape). Vérifié dans Chrome en test.
-- [ ] **Chèques postdatés (D9)** : date et numéro du chèque, encaissé à sa date, liste des chèques à déposer, avis le jour venu.
+- [x] **Chèques postdatés (D9)** : en prod le 9 novembre 2026. Fiche du client (« + Chèque postdaté »), écran `/cheques/` (déposé d'une tape à sa date, retourné, rendu), avis au cellulaire le jour venu, mention sur la facture et son PDF, pas de relance proposée pendant qu'un chèque est en main. Reste à voir avec Louis : une colonne d'import pour les chèques qu'il a déjà en main, si c'est utile.
 - [ ] **Dépenses par photo (PRD S1, S2)** : photo du reçu, montant, taxes, catégorie; dans le rapport et l'export de fin de saison.
 - [ ] Saison d'été, paysagement (PRD T) : à définir avec Louis, plus tard.
 - [ ] Facturation des entreprises par l'app (Q2), quand les tarifs seront fixés.

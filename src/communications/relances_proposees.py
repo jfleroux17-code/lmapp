@@ -55,6 +55,8 @@ def proposition(client, dues, aujourdhui):
         return None
     if Demande.objects.filter(client=client).exclude(statut=Demande.Statut.REGLEE).exists():
         return None
+    if client.cheques.filter(statut="en_main").exists():
+        return None  # D9 : chèque postdaté en main, l'argent s'en vient
     return {"client": client, "niveau": niveau, "genre": RELANCES[niveau - 1], "genre_label": Genre(RELANCES[niveau - 1]).label,
             "jours": jours, "du": sum(f.solde_du for f in dues), "factures": len(dues), "derniere": derniere,
             "canaux_texte": " et ".join(dict(Message.Canal.choices)[c].lower() for c in canaux)}

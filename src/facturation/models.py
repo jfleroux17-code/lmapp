@@ -479,6 +479,69 @@ class Credit(Horodate):
         return self.montant - (self.applications.aggregate(s=Sum("montant"))["s"] or ZERO)
 
 
+class ChequePostdate(Horodate):
+    """Chèque reçu d'avance (PRD D9) : gardé « en main » jusqu'à sa date, puis déposé par Louis d'une tape.
+
+    Pas de l'argent reçu tant qu'il n'est pas déposé : ni paiement ni crédit avant. Au dépôt (jamais avant sa date),
+    il paie la facture visée (celle du versement, ou une facture choisie) si elle est émise et due, sinon il devient
+    un crédit au compte, appliqué à la prochaine facture émise. Retourné par la banque : le paiement et le crédit
+    sont retirés, la facture redevient due. Logique dans facturation/cheques.py."""
+
+    class Statut(models.TextChoices):
+        EN_MAIN = "en_main", "En main"
+        DEPOSE = "depose", "Déposé"
+        RETOURNE = "retourne", "Retourné par la banque"
+        RENDU = "rendu", "Rendu au client"
+
+    entreprise = models.ForeignKey(Entreprise, on_delete=models.PROTECT, related_name="cheques")
+    client = models.ForeignKey(Client, on_delete=models.PROTECT, related_name="cheques")
+    numero = models.CharField("numéro du chèque", max_length=30, blank=True)
+    montant = _argent("montant", validators=[MinValueValidator(Decimal("0.01"))])
+    date_cheque = models.DateField("date du chèque", help_text="Date écrite sur le chèque : pas déposable avant.")
+    recu_le = models.DateField("reçu le", default=timezone.localdate)
+    versement = models.ForeignKey(Versement, on_delete=models.SET_NULL, null=True, blank=True, related_name="cheques",
+                                  help_text="Le versement du contrat que ce chèque paie.")
+    facture = models.ForeignKey("Facture", on_delete=models.SET_NULL, null=True, blank=True, related_name="cheques",
+                                help_text="Ou une facture déjà émise.")
+    statut = models.CharField(max_length=10, choices=Statut.choices, default=Statut.EN_MAIN)
+    depose_le = models.DateField("déposé le", null=True, blank=True)
+    paiement = models.ForeignKey("Paiement", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    credit = models.ForeignKey("Credit", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    note = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        verbose_name = "chèque postdaté"
+        verbose_name_plural = "chèques postdatés"
+        ordering = ["entreprise", "date_cheque", "pk"]
+        indexes = [models.Index(fields=["entreprise", "statut", "date_cheque"], name="cheque_a_deposer")]
+
+    def __str__(self):
+        return f"Chèque {('n° ' + self.numero + ' ') if self.numero else ''}de {self.client}, {self.date_cheque:%Y-%m-%d}"
+
+    def clean(self):
+        _meme_entreprise(self, "client", "facture")
+        if self.versement_id and self.versement.contrat.entreprise_id != self.entreprise_id:
+            raise ValidationError({"versement": "Appartient à une autre entreprise."})
+        if self.versement_id and self.client_id and self.versement.contrat.client_id != self.client_id:
+            raise ValidationError({"versement": "Ce versement n'est pas celui de ce client."})
+        if self.facture_id and self.client_id and self.facture.client_id != self.client_id:
+            raise ValidationError({"facture": "Cette facture n'est pas celle de ce client."})
+
+    @property
+    def facture_visee(self):
+        return self.facture or (self.versement.facture if self.versement_id else None)
+
+    @property
+    def pour(self):
+        """Ce que le chèque paie, en mots."""
+        if self.facture_id:
+            return f"Facture n° {self.facture.numero or self.facture.pk}"
+        if self.versement_id:
+            n = self.versement.contrat.versements.count()
+            return f"Versement {self.versement.rang} de {n}, saison {self.versement.contrat.saison}"
+        return "Au compte"
+
+
 class VirementInterac(Horodate):
     """Avis de virement Interac reçu par courriel (PRD D5) : l'app propose la facture, Louis confirme
     d'une tape. Jamais enregistré tout seul (appariement semi-automatique, PRD section 6)."""

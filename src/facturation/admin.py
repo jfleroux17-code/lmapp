@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.urls import reverse
 from django.utils.html import format_html
 
-from facturation.models import Contrat, Facture, LigneFacture, Paiement, Saison, Service, Versement, VirementInterac
+from facturation.models import ChequePostdate, Contrat, Facture, LigneFacture, Paiement, Saison, Service, Versement, VirementInterac
 
 
 @admin.register(Saison)
@@ -189,3 +189,15 @@ class VirementInteracAdmin(admin.ModelAdmin):
     list_filter = ["entreprise", "statut"]
     search_fields = ["envoyeur", "message_envoyeur", "reference"]
     readonly_fields = ["courriel", "paiements"]
+
+
+@admin.register(ChequePostdate)
+class ChequePostdateAdmin(admin.ModelAdmin):
+    """D9 : le dépôt, le retour et le rendu se font dans l'app (/cheques/), qui crée ou retire les paiements."""
+    list_display = ["date_cheque", "client", "montant", "numero", "statut", "depose_le"]
+    list_filter = ["entreprise", "statut"]
+    search_fields = ["client__nom", "client__prenom", "numero"]
+    date_hierarchy = "date_cheque"
+    autocomplete_fields = ["client", "facture"]
+    raw_id_fields = ["versement"]
+    readonly_fields = ["statut", "depose_le", "paiement", "credit"]

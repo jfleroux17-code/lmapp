@@ -145,7 +145,15 @@
       {% endif %}
     </div>
   {% endfor %}
-  {% if ecriture %}<a href="{% url 'terrain:nouvelle_facture' client.pk %}" class="gros-bouton mb-3 border-2 border-accent text-accent">+ Nouvelle facture</a>{% endif %}
+  {% if cheques_client %}
+    <div class="carte mb-3 p-4">
+      <div class="mb-1 font-semibold">Chèques postdatés en main</div>
+      {% for c in cheques_client %}<div class="text-sm"><span class="font-semibold">{{ c.montant|argent }}</span> daté du {{ c.date_cheque|date:"j F Y" }}{% if c.numero %} · n° {{ c.numero }}{% endif %} · <span class="text-gray-400">{{ c.pour }}</span></div>{% endfor %}
+      <a href="{% url 'terrain:cheques' %}" class="mt-1 inline-flex min-h-12 items-center text-accent">Chèques à déposer ›</a>
+    </div>
+  {% endif %}
+  {% if ecriture %}<a href="{% url 'terrain:nouvelle_facture' client.pk %}" class="gros-bouton mb-3 border-2 border-accent text-accent">+ Nouvelle facture</a>
+    <a href="{% url 'terrain:nouveau_cheque' client.pk %}" class="gros-bouton mb-3 border-2 border-bordure">+ Chèque postdaté</a>{% endif %}
   {% if relance %}{% include "terrain/argent/_relance.html" %}{% endif %}
   {% if factures_client %}
     <div class="carte divide-y divide-bordure">

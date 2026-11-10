@@ -91,8 +91,15 @@ def facture(request, pk):
         "modes": Paiement.MODES_RECUS, "aujourdhui": timezone.localdate(),
         "envois": f.messages.order_by("-cree_le")[:5],
         "cellulaire": telephone.afficher(f.client.cellulaire),
+        "cheques": _cheques_en_main_pour(f),
     }
     return render(request, "terrain/argent/facture.html", contexte)
+
+
+def _cheques_en_main_pour(f):
+    from facturation.cheques import en_main_pour
+
+    return en_main_pour(f)
 
 
 def _brouillon_ou_erreur(request, f):
@@ -249,7 +256,14 @@ def comptes(request):
         "modifier_clients": peut_modifier_clients(request),
         "relances_pretes": _relances_pretes(request.entreprise),
         "versements_prets": _versements_prets(request.entreprise).count(),
+        "cheques": _cheques(request.entreprise),
     })
+
+
+def _cheques(entreprise):
+    from facturation import cheques
+
+    return cheques.resume(entreprise)
 
 
 def _relances_pretes(entreprise):
@@ -269,7 +283,11 @@ def resume_client(client):
     dues = relances.factures_dues(client)
     from facturation.credits import credit_restant
 
+    from facturation.models import ChequePostdate
+
     resume = {"du": sum((f.solde_du for f in dues), ZERO), "factures_client": qs[:10], "credit": credit_restant(client),
+              "cheques_client": client.cheques.filter(statut=ChequePostdate.Statut.EN_MAIN)
+              .select_related("facture", "versement__contrat__saison").order_by("date_cheque"),
               "contrats": client.contrats.filter(actif=True).select_related("saison").prefetch_related("versements").order_by("-saison__debut")[:2]}
     if dues:
         niveau = relances.niveau_suivant(client, dues)
@@ -479,7 +497,7 @@ def versements_a_envoyer(request):
     lignes = []
     for f in _versements_prets(request.entreprise):
         c = canaux(f.client)
-        lignes.append({"f": f, "canaux": " et ".join(x.label.lower() for x in c) if c else ""})
+        lignes.append({"f": f, "canaux": " et ".join(x.label.lower() for x in c) if c else "", "cheques": _cheques_en_main_pour(f)})
     return render(request, "terrain/argent/versements.html", {"lignes": lignes, "ecriture": peut_ecrire(request)})
 
 

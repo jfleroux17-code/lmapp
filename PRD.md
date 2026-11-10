@@ -141,7 +141,7 @@ Légende : **V1** = version de base, **V2** = saison suivante ou dès que V1 rou
 
 | Code | Fonctionnalité | Proposition |
 |---|---|---|
-| E1 | Numéro de texto d'affaires dédié (numéro local 450 ou 579) distinct du cellulaire personnel de Louis | V1 |
+| E1 | Numéro de texto d'affaires dédié (numéro local 450 ou 579) distinct du cellulaire personnel de Louis (**accepté par Louis le 9 novembre 2026** : les textos des clients arrivent sur 450-300-1166, son cellulaire reste pour les appels) | V1 |
 | E2 | Envoi de textos individuels depuis la fiche client | V1 |
 | E3 | Envoi de courriels individuels depuis la fiche client | V1 |
 | E4 | Réception des textos : la réponse du client est rattachée automatiquement à sa fiche par son numéro | V1 |

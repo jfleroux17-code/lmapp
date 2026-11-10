@@ -1,0 +1,33 @@
+{% extends "terrain/base.html" %}
+{% load argent %}
+{% block titre %}Chèque postdaté{% endblock %}
+{% block contenu %}
+<a href="{% url 'terrain:fiche' client.pk %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ {{ client.nom_affiche }}</a>
+<h1 class="mb-1 text-2xl font-bold">Chèque postdaté</h1>
+<p class="mb-4 text-gray-400">Gardé en main jusqu'à sa date. Compté comme reçu seulement quand vous le déposez.</p>
+
+{% if deja %}
+  <div class="carte mb-4 divide-y divide-bordure">
+    {% for c in deja %}<div class="p-3 text-sm"><span class="font-semibold">{{ c.montant|argent }}</span> daté du {{ c.date_cheque|date:"j F Y" }}{% if c.numero %} · n° {{ c.numero }}{% endif %} · <span class="text-gray-400">{{ c.pour }}</span></div>{% endfor %}
+  </div>
+{% endif %}
+
+{{ cibles|json_script:"cibles-cheque" }}
+<form method="post" class="carte space-y-4 p-4" x-data="{ envoi: false, cibles: JSON.parse(document.getElementById('cibles-cheque').textContent), choisir(v) { const c = this.cibles.find(x => x.valeur === v); if (c && c.montant) { this.$refs.montant.value = c.montant } if (c && c.date) { this.$refs.date.value = c.date } } }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+  <label class="block"><span class="mb-1 block font-semibold">Pour</span>
+    <select name="pour" required class="champ" @change="choisir($event.target.value)">
+      <option value="">Choisir…</option>
+      {% for c in cibles %}<option value="{{ c.valeur }}"{% if c.valeur == valeurs.pour %} selected{% endif %}>{{ c.libelle }}{% if c.montant %} : {{ c.montant }} ${% endif %}</option>{% endfor %}
+    </select>
+  </label>
+  <label class="block"><span class="mb-1 block font-semibold">Montant du chèque</span>
+    <input name="montant" x-ref="montant" value="{{ valeurs.montant }}" inputmode="decimal" required class="champ" placeholder="Ex. 396,00"></label>
+  <label class="block"><span class="mb-1 block font-semibold">Date écrite sur le chèque</span>
+    <input type="date" name="date_cheque" x-ref="date" value="{{ valeurs.date_cheque }}" required class="champ"></label>
+  <label class="block"><span class="mb-1 block font-semibold">Numéro du chèque <span class="font-normal text-gray-400">(facultatif)</span></span>
+    <input name="numero" value="{{ valeurs.numero }}" inputmode="numeric" maxlength="30" class="champ"></label>
+  <button class="gros-bouton bg-accent text-nuit" :class="{ 'opacity-60': envoi }">Enregistrer</button>
+  <button name="autre" value="1" class="gros-bouton border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">Enregistrer et en noter un autre</button>
+  <a href="{% url 'terrain:fiche' client.pk %}" class="gros-bouton border-2 border-bordure text-gray-300">Annuler</a>
+</form>
+{% endblock %}

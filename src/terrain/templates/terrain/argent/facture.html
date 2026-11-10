@@ -44,6 +44,9 @@
     {% for p in paiements %}
       <div class="flex justify-between text-sm text-ok"><span>{{ p.get_mode_display }}, {{ p.date|date:"j F" }}{% if p.reference %} ({{ p.reference }}){% endif %}</span><span>-{{ p.montant|argent }}</span></div>
     {% endfor %}
+    {% for c in cheques %}
+      <div class="flex justify-between text-sm text-gray-300"><span>Chèque postdaté en main{% if c.numero %} n° {{ c.numero }}{% endif %}, daté du {{ c.date_cheque|date:"j F" }}</span><span>{{ c.montant|argent }}</span></div>
+    {% endfor %}
     {% if f.statut == "emise" and paiements %}
       <div class="flex justify-between pt-1 text-xl font-bold {% if f.payee %}text-ok{% else %}text-accent{% endif %}"><span>Reste à payer</span><span>{{ f.solde|argent }}</span></div>
     {% endif %}

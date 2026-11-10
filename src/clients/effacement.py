@@ -37,6 +37,8 @@ def effacer(client):
         PhotoDemande.objects.filter(demande__client=client).delete()
         bilan["demandes"] = client.demandes.update(description=EFFACE, contact="", reglement="", entente="")
 
+        # Chèques postdatés pas déposés : pas de l'argent reçu, rien à garder. Les déposés restent (paiements, 6 ans).
+        bilan["cheques"] = client.cheques.exclude(statut="depose").delete()[0]
         bilan["contacts"] = client.contacts.all().delete()[0]
         adresses = client.adresses.all()
         bilan["photos"] = (PhotoAdresse.objects.filter(adresse__in=adresses).delete()[0]

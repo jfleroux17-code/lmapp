@@ -81,6 +81,11 @@
 
 {% if annulee %}
 <div class="bloc"><p><strong>Facture annulée</strong> le {{ f.annulee_le|date:"j F Y" }}{% if f.raison_annulation %} : {{ f.raison_annulation }}{% endif %}.</p><p>Rien à payer.</p></div>
+{% elif cheques and not f.payee %}
+<div class="bloc">
+  {% for c in cheques %}<p>Chèque postdaté{% if c.numero %} n° {{ c.numero }}{% endif %} de {{ c.montant|argent }}, daté du {{ c.date_cheque|date:"j F Y" }} : reçu, il sera déposé à sa date.</p>{% endfor %}
+  <p>Rien d'autre à faire.</p>
+</div>
 {% elif not f.payee %}
 <div class="bloc">
   <p><strong>Pour payer</strong></p>
