@@ -329,7 +329,7 @@ class Balisage(models.Model):
     Une adresse a au plus un balisage en place (sans date de retrait)."""
     entreprise = models.ForeignKey(Entreprise, on_delete=models.PROTECT, related_name="balisages")
     adresse = models.ForeignKey(Adresse, on_delete=models.CASCADE, related_name="balisages")
-    nombre = models.PositiveSmallIntegerField(default=4)
+    nombre = models.PositiveSmallIntegerField(default=1)
     posees_le = models.DateField("posées le", default=timezone.localdate)
     retirees_le = models.DateField("retirées le", null=True, blank=True)
     note = models.CharField(max_length=200, blank=True)

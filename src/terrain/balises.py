@@ -22,7 +22,7 @@ def liste(request):
     for a in arrets(ent):
         b = en_place.get(a.pk)
         if (vue == "poser") == (b is None):
-            lignes.append({"adresse": a, "balisage": b, "propose": derniers.get(a.pk, 4)})
+            lignes.append({"adresse": a, "balisage": b, "propose": derniers.get(a.pk, 1)})
     return render(request, "terrain/balises.html", {
         "vue": vue, "lignes": lignes, "ecriture": peut_ecrire(request),
         "total_en_place": sum(b.nombre for b in en_place.values()), "adresses_en_place": len(en_place),
@@ -34,9 +34,9 @@ def liste(request):
 def poser(request, adresse_pk):
     a = get_object_or_404(Adresse, pk=adresse_pk, entreprise=request.entreprise)
     try:
-        nombre = max(1, min(50, int(request.POST.get("nombre") or 4)))
+        nombre = max(1, min(50, int(request.POST.get("nombre") or 1)))
     except ValueError:
-        nombre = 4
+        nombre = 1
     try:
         with transaction.atomic():  # double tape : la contrainte « une seule en place » refuse la deuxième
             Balisage.objects.create(entreprise=request.entreprise, adresse=a, nombre=nombre)
