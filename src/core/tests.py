@@ -122,7 +122,7 @@ class PlateformeTests(TestCase):
         page = self.client.get("/admin/plateforme/")
         self.assertContains(page, "Segments de textos")
         self.assertContains(page, 'class="alerte"')  # boîte à 86 %
-        self.assertContains(self.client.get("/admin/"), "Usage par entreprise")
+        self.assertContains(self.client.get("/admin/"), "Courriels, textos, factures, espace par entreprise")
         csv = self.client.get("/admin/plateforme/?format=csv")
         self.assertEqual(csv["Content-Type"], "text/csv; charset=utf-8")
         self.assertIn("Louis;louis;2;1;1;2", csv.content.decode("utf-8-sig"))

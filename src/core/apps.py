@@ -10,3 +10,6 @@ class CoreConfig(AppConfig):
         from core import journal
 
         journal.brancher()  # journal des actions (K4)
+        from core.admin_fr import franciser
+
+        franciser()  # titres de l'administration (l'app admin a déjà chargé tous les admin.py)

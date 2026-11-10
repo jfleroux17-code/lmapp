@@ -122,7 +122,8 @@ WSGI_APPLICATION = "config.wsgi.application"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        # Avant les gabarits des apps : remplace admin/base_site.html de Django (bandeaux, thème de l'administration)
+        "DIRS": [BASE_DIR / "gabarits_prioritaires"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [

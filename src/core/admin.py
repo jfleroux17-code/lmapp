@@ -5,9 +5,9 @@ from django.contrib.gis.geos import Point
 from core.models import (AbonnementNotification, DemandeSite, EchecConnexion, Entreprise, IncidentConfidentialite, JournalAction, Membre,
                          VilleDesservie)
 
-_titre = "LMAPP : administration"
+_titre = "Le Déneigeur : administration"
 if settings.LMAPP_ENV != "prod":
-    _titre = f"LMAPP : administration (ENVIRONNEMENT DE {settings.LMAPP_ENV.upper()})"
+    _titre = f"Le Déneigeur : administration (ENVIRONNEMENT DE {settings.LMAPP_ENV.upper()})"
 
 admin.site.site_header = _titre
 admin.site.site_title = _titre
@@ -16,11 +16,33 @@ admin.site.index_template = "admin/index_lmapp.html"  # ajoute le lien vers l'é
 _index_django = admin.site.index
 
 
+def etat_plateforme():
+    """Cartes de l'accueil (audit UX) : est-ce que tout roule? Envois en échec, file de tâches, sauvegarde, envois réels."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from communications.models import Message
+    from core import surveillance
+
+    file_ok, file_detail = surveillance.verifier_file()
+    sauve_ok, sauve_detail = surveillance.verifier_sauvegarde()
+    if "illisible" in sauve_detail:
+        sauve_detail = "aucun témoin de sauvegarde ici (normal en test : pas de sauvegarde des données fictives)"
+    return {
+        "echecs_7j": Message.objects.filter(statut=Message.Statut.ECHEC, cree_le__gte=timezone.now() - timedelta(days=7)).count(),
+        "file_ok": file_ok, "file_detail": file_detail,
+        "sauvegarde_ok": sauve_ok, "sauvegarde_detail": sauve_detail,
+        "entreprises_envois": list(Entreprise.objects.filter(active=True).order_by("nom").values_list("nom", "envois_actifs")),
+        "demandes_nouvelles": DemandeSite.objects.filter(statut=DemandeSite.Statut.NOUVELLE).count(),
+    }
+
+
 def _index_lmapp(request, extra_context=None):
-    """Accueil de l'administration : nombre de demandes nouvelles reçues à info@ (superutilisateur)."""
+    """Accueil de l'administration : l'état de la plateforme en cartes (superutilisateur)."""
     extra_context = dict(extra_context or {})
     if request.user.is_superuser:
-        extra_context["demandes_nouvelles"] = DemandeSite.objects.filter(statut=DemandeSite.Statut.NOUVELLE).count()
+        extra_context.update(etat_plateforme())
     return _index_django(request, extra_context)
 
 
@@ -56,12 +78,20 @@ class EntrepriseAdmin(admin.ModelAdmin):
         (None, {"fields": ["nom", "nom_legal", "slug", "domaine", "active", "mode"]}),
         ("Coordonnées", {"fields": ["telephone", "courriel", "adresse_ligne1", "adresse_ligne2", "ville", "province", "code_postal"]}),
         ("Taxes et factures", {"fields": ["inscrit_taxes", "numero_tps", "numero_tvq", "taux_tps", "taux_tvq", "prochain_numero_facture"]}),
-        ("Communications", {"fields": ["envois_actifs", "numero_texto", "courriel_reponse", "signature_messages"]}),
+        ("Communications", {"fields": ["envois_actifs", "numero_texto", "courriel_reponse", "signature_messages"],
+                            "description": "« Envois réels activés » : de vrais textos et courriels partent aux clients. "
+                                           "À changer seulement avec le go de Jean-François (une confirmation est demandée, le changement va au journal)."}),
         ("Avis pendant les opérations", {"fields": ["avis_proximite_actif", "avis_rayon_m", "minutes_par_arret", "avis_passage_fait"]}),
-        ("Versements des contrats (B3, C5)", {"fields": ["versements_par_defaut", "dates_versements", "jours_avance_versement"]}),
-        ("Relances proposées (C9)", {"fields": ["relances_proposees", "relances_soldes_anterieurs"]}),
+        ("Versements des contrats", {"fields": ["versements_par_defaut", "dates_versements", "jours_avance_versement"]}),
+        ("Relances proposées", {"fields": ["relances_proposees", "relances_soldes_anterieurs"]}),
         ("Paiement Interac", {"fields": ["interac_courriel", "interac_instructions"]}),
     ]
+
+    class Media:
+        js = ["admin_lmapp/envois_reels.js"]  # confirmation avant d'allumer ou d'éteindre les envois réels
+
+    def has_delete_permission(self, request, obj=None):
+        return False  # une entreprise ne s'efface pas d'un clic : la désactiver (case « active »)
 
     def save_formset(self, request, form, formset, change):
         super().save_formset(request, form, formset, change)
@@ -138,12 +168,20 @@ class IncidentConfidentialiteAdmin(admin.ModelAdmin):
 @admin.register(JournalAction)
 class JournalActionAdmin(admin.ModelAdmin):
     """Journal des actions (K4) : consultation seulement."""
-    list_display = ["moment", "nom_utilisateur", "action", "modele", "objet", "resume", "entreprise"]
+    list_display = ["quand", "nom_utilisateur", "action", "modele", "objet", "resume", "entreprise"]
     list_filter = ["action", "modele", "entreprise", "nom_utilisateur"]
     search_fields = ["objet", "nom_utilisateur", "=objet_id", "=client_id"]
     date_hierarchy = "moment"
     readonly_fields = ["moment", "entreprise", "nom_utilisateur", "ip", "action", "modele", "objet_id", "objet", "client_id", "detail"]
     exclude = ["utilisateur", "changements"]
+
+    @admin.display(description="moment", ordering="moment")
+    def quand(self, obj):
+        from django.utils import timezone
+
+        from core.templatetags.dates_qc import date_texte
+
+        return date_texte(timezone.localtime(obj.moment), "j M Y, H \\h i")
 
     @admin.display(description="champs")
     def resume(self, obj):

@@ -328,7 +328,7 @@ class JournalAction(models.Model):
     # Sans contrainte en base : le journal survit à ce qu'il décrit (une entreprise ou un utilisateur supprimé)
     entreprise = models.ForeignKey(Entreprise, on_delete=models.DO_NOTHING, db_constraint=False, null=True, blank=True, related_name="+")
     utilisateur = models.ForeignKey("auth.User", on_delete=models.DO_NOTHING, db_constraint=False, null=True, blank=True, related_name="+")
-    nom_utilisateur = models.CharField("par", max_length=150, help_text="« système » : worker, tâche ou commande.")
+    nom_utilisateur = models.CharField("auteur", max_length=150, help_text="« système » : worker, tâche ou commande.")
     ip = models.GenericIPAddressField(null=True, blank=True)
     action = models.CharField(max_length=12, choices=Action.choices)
     modele = models.CharField("type", max_length=60)
@@ -338,8 +338,8 @@ class JournalAction(models.Model):
     changements = models.JSONField(default=dict, blank=True, help_text="{champ: [avant, après]}")
 
     class Meta:
-        verbose_name = "action (journal)"
-        verbose_name_plural = "journal des actions"
+        verbose_name = "action du journal"
+        verbose_name_plural = "actions du journal"
         ordering = ["-moment", "-pk"]
         indexes = [models.Index(fields=["entreprise", "-moment"], name="journal_entreprise_moment")]
 

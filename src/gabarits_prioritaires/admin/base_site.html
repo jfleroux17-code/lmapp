@@ -1,0 +1,58 @@
+{% extends "admin/base.html" %}
+{% load admin_lmapp %}
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title }}{% endblock %}
+
+{% block extrastyle %}
+<style>
+  /* Jetons du système de design de l'app (audit UX) : noir et jaune chasse-neige, texte de 16 px */
+  html { font-size: 18.3px; }  /* l'admin de Django est en rem sur 14 px : 16 px de base, tableaux de 15 px environ */
+  :root, html[data-theme="light"] {
+    --primary: #12161c; --secondary: #12161c; --accent: #f5c400; --primary-fg: #f5f7fa;
+    --header-bg: #000; --header-color: #dde3ea; --header-branding-color: #f5c400; --header-link-color: #f5f7fa;
+    --breadcrumbs-bg: #12161c; --breadcrumbs-fg: #b7c0cb; --breadcrumbs-link-fg: #f5c400;
+    --link-fg: #6b5300; --link-hover-color: #000; --link-selected-fg: #000;
+    --button-bg: #f5c400; --button-fg: #000; --button-hover-bg: #ffd633;
+    --default-button-bg: #f5c400; --default-button-hover-bg: #ffd633;
+    --object-tools-bg: #3d4450; --object-tools-hover-bg: #12161c;
+    --selected-row: #fff6cc;
+  }
+  .button, input[type=submit], input[type=button], .submit-row input, a.button { color: #000; font-weight: 700; }
+  .submit-row input.default { color: #000; }
+  thead th, .module caption, .module h2 { font-variant: small-caps; text-transform: none; letter-spacing: 0.02em; }
+  #result_list td, #result_list th { font-size: 0.82rem; }
+  :focus-visible { outline: 3px solid #f5c400; outline-offset: 2px; }
+  .bandeau-env { padding: 6px 16px; font-weight: 700; text-align: center; font-size: 0.8rem; letter-spacing: 0.03em; }
+  .bandeau-prod { background: #c62828; color: #fff; }
+  .bandeau-test { background: #f5c400; color: #000; }
+  .bandeau-envois { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center; padding: 4px 16px; background: #12161c; color: #dde3ea; font-size: 0.75rem; }
+  .envois-actifs { background: #c62828; color: #fff; border-radius: 999px; padding: 1px 10px; font-weight: 700; }
+  .envois-simulation { background: #3d4450; color: #fff; border-radius: 999px; padding: 1px 10px; }
+  .cartes-etat { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .carte-etat { border: 2px solid #d0d5dc; border-radius: 14px; padding: 12px 14px; background: #fff; }
+  .carte-etat .chiffre { font-size: 1.4rem; font-weight: 700; }
+  .carte-etat.alerte { border-color: #c62828; } .carte-etat.alerte .chiffre { color: #c62828; }
+  .carte-etat.ok .chiffre { color: #1a7f37; }
+  .carte-etat .detail { color: #3d4450; font-size: 0.75rem; }
+</style>
+<script>
+  // Sous 1280 px, barre latérale fermée par défaut (le contenu manque de place); le choix de l'usager est ensuite gardé
+  if (window.innerWidth < 1280 && localStorage.getItem("django.admin.navSidebarIsOpen") === null) {
+    localStorage.setItem("django.admin.navSidebarIsOpen", "false");
+  }
+</script>
+{% endblock %}
+
+{% block header %}
+{% etat_admin as etat %}
+{% if etat.prod %}<div class="bandeau-env bandeau-prod">PRODUCTION : vraies données des déneigeurs</div>
+{% else %}<div class="bandeau-env bandeau-test">ENVIRONNEMENT DE {{ etat.env }} : données fictives</div>{% endif %}
+{% if etat.entreprises %}<div class="bandeau-envois">{% for nom, actifs in etat.entreprises %}<span>{{ nom }} : {% if actifs %}<span class="envois-actifs">Envois réels ACTIVÉS</span>{% else %}<span class="envois-simulation">Simulation</span>{% endif %}</span>{% endfor %}</div>{% endif %}
+{{ block.super }}
+{% endblock %}
+
+{% block branding %}
+<div id="site-name"><a href="{% url 'admin:index' %}">{{ site_header }}</a></div>
+{% if user.is_anonymous %}{% include "admin/color_theme_toggle.html" %}{% endif %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

@@ -39,8 +39,45 @@ class ClientAdmin(admin.ModelAdmin):
     list_filter = ["entreprise", "statut", "mode_paiement", "canal_prefere", "consentement_commercial"]
     search_fields = ["nom", "prenom", "organisation", "cellulaire", "telephone_autre", "courriel", "adresses__ligne1", "adresses__ville"]
     inlines = [ContactEnLigne, AdresseEnLigne]
-    actions = ["effacer_a_la_demande"]
+    actions = ["marquer_inactifs", "exporter_csv", "effacer_a_la_demande"]
     readonly_fields = ["efface_le"]
+
+    def changelist_view(self, request, extra_context=None):
+        # État vide : une liste vide ne doit pas ressembler à une panne
+        if not request.GET and not Client.objects.exists():
+            self.message_user(request, "Aucun client pour l'instant. Ajouter un client (bouton en haut à droite), "
+                                       "ou importer le fichier du déneigeur (commande importer_clients, gabarit dans gabarits/).",
+                              messages.INFO)
+        return super().changelist_view(request, extra_context)
+
+    def has_delete_permission(self, request, obj=None):
+        return False  # pas de suppression d'un clic : statut « inactif », ou l'effacement Loi 25 (action)
+
+    @admin.action(description="Marquer inactifs (ex-clients : plus dans la tournée)")
+    def marquer_inactifs(self, request, queryset):
+        n = 0
+        for c in queryset.exclude(statut=Client.Statut.INACTIF):  # un par un : le journal note chaque changement
+            c.statut = Client.Statut.INACTIF
+            c.save(update_fields=["statut", "modifie_le"])
+            n += 1
+        self.message_user(request, f"{n} client(s) marqué(s) inactif(s).")
+
+    @admin.action(description="Exporter en CSV (Excel)")
+    def exporter_csv(self, request, queryset):
+        import csv
+
+        from django.http import HttpResponse
+
+        r = HttpResponse(content_type="text/csv; charset=utf-8")
+        r["Content-Disposition"] = 'attachment; filename="clients.csv"'
+        r.write("\ufeff")  # Excel : UTF-8
+        w = csv.writer(r, delimiter=";")
+        w.writerow(["Prénom", "Nom", "Organisation", "Cellulaire", "Courriel", "Statut", "Paiement", "Adresse", "Ville"])
+        for c in queryset.prefetch_related("adresses"):
+            a = next((x for x in c.adresses.all() if x.active), None)
+            w.writerow([c.prenom, c.nom, c.organisation, c.cellulaire, c.courriel, c.get_statut_display(), c.get_mode_paiement_display(),
+                        a.ligne1 if a else "", a.ville if a else ""])
+        return r
     fieldsets = [
         (None, {"fields": ["entreprise", ("prenom", "nom"), "organisation", "statut"]}),
         ("Coordonnées", {"fields": [("cellulaire", "telephone_autre"), "courriel"]}),

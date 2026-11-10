@@ -94,7 +94,7 @@ class Client(Horodate):
 
     # LCAP (K6, E11). Les avis de service et les factures ne demandent pas de
     # consentement; les messages commerciaux, oui.
-    consentement_commercial = models.BooleanField("consent aux messages commerciaux", default=False)
+    consentement_commercial = models.BooleanField("consentement aux messages commerciaux", default=False)
     consentement_date = models.DateField("date du consentement", null=True, blank=True)
     consentement_source = models.CharField("source du consentement", max_length=10, choices=SourceConsentement.choices, blank=True)
     desabonne_le = models.DateTimeField(

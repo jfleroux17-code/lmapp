@@ -182,6 +182,11 @@ class PaiementAdmin(admin.ModelAdmin):
     search_fields = ["facture__numero", "facture__client__nom", "reference"]
     autocomplete_fields = ["facture"]
 
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        actions.pop("delete_selected", None)  # un paiement se retire un à un, avec la page de confirmation
+        return actions
+
 
 @admin.register(VirementInterac)
 class VirementInteracAdmin(admin.ModelAdmin):

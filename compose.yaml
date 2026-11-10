@@ -45,6 +45,8 @@ services:
         condition: service_healthy
     volumes:
       - media:/app/media
+      # Témoin de la dernière sauvegarde (le fichier seul, pas les copies), pour l'accueil de l'administration
+      - ./sauvegardes/derniere_reussite:/sauvegardes/derniere_reussite:ro
     networks:
       interne:
       edge:
