@@ -1,6 +1,7 @@
 {% extends "terrain/base.html" %}
 {% block titre %}Villes desservies{% endblock %}
 {% block contenu %}
+{% include "terrain/reglages/_tournee.html" %}
 <a href="{% url 'terrain:reglages' %}" class="mb-3 inline-block text-accent">‹ Réglages</a>
 <h1 class="mb-1 text-2xl font-bold">Villes desservies</h1>
 <p class="mb-5 text-gray-400">Chaque adresse est placée sur la carte dans la zone de sa ville. Une adresse d'une ville qui n'est pas ici est marquée « ville non desservie ».</p>

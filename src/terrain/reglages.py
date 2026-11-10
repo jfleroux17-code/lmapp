@@ -144,8 +144,18 @@ def _virgule(champ, **kwargs):
     return champ.formfield(**kwargs)
 
 
+def _operation(entreprise):
+    from tournee.models import Operation
+
+    return Operation.objects.filter(entreprise=entreprise, fin=None).first()
+
+
 def _contexte(request, **extra):
-    return {"peut": est_responsable(request), **extra}
+    """Pendant une opération (décision de JF, 10 novembre 2026) : rien n'est bloqué au bureau, sauf l'accès de la
+    personne en tournée; la personne en tournée confirme chaque enregistrement (gaffe sur la route)."""
+    op = _operation(request.entreprise)
+    return {"peut": est_responsable(request), "operation": op,
+            "en_tournee": bool(op and op.operateur_id == request.user.pk), **extra}
 
 
 @membre_requis
@@ -378,6 +388,10 @@ def utilisateur(request, pk):
         messages.error(request, "Tu ne peux pas changer ton propre accès.")
         return redirect("terrain:reglages_utilisateurs")
     action = request.POST.get("action")
+    op = _operation(request.entreprise)
+    if action in ("role", "retirer") and op and op.operateur_id == user.pk:
+        messages.error(request, "En tournée en ce moment : possible après la fin de l'opération.")
+        return redirect("terrain:reglages_utilisateurs")
     if action == "role" and request.POST.get("role") in Membre.Role.values:
         membre.role = request.POST["role"]
         membre.save(update_fields=["role", "modifie_le"])

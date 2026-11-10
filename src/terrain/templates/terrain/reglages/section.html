@@ -2,9 +2,11 @@
 {% block titre %}{{ titre }}{% endblock %}
 {% block barre_onglets %}{% endblock %}
 {% block contenu %}
+{% include "terrain/reglages/_tournee.html" %}
 <a href="{% url 'terrain:reglages' %}" class="mb-3 inline-block text-accent">‹ Réglages</a>
 <h1 class="mb-1 text-2xl font-bold">{{ titre }}</h1>
 <p class="mb-5 text-gray-400">{{ explication }}</p>
+{% if cle == "avis" and operation %}<p class="carte mb-5 border-orange p-4 text-orange">Opération en cours : ce changement touche les avis de cette tournée dès maintenant.</p>{% endif %}
 <form method="post" class="space-y-5" novalidate
       x-data="{ envoi: false, taxes: {{ ent.inscrit_taxes|yesno:'true,false' }} }"
       @submit="if (envoi) { $event.preventDefault(); return }

@@ -154,3 +154,29 @@ class ReglagesTests(TestCase):
         moi = Membre.objects.get(utilisateur=self.patron)
         self.client.post(f"/plus/reglages/utilisateurs/{moi.pk}/", {"action": "retirer"})
         self.assertTrue(Membre.objects.filter(pk=moi.pk).exists())
+
+    def test_pendant_une_operation(self):
+        from tournee.models import Operation
+
+        op = Operation.objects.create(entreprise=self.ent, operateur=self.employe)
+        url = f"/plus/reglages/utilisateurs/{self.m_employe.pk}/"
+        # Au bureau : l'accès de la personne en tournée ne bouge pas, le reste est libre
+        self.client.post(url, {"action": "retirer"})
+        self.client.post(url, {"action": "role", "role": "lecture"})
+        self.m_employe.refresh_from_db()
+        self.assertEqual(self.m_employe.role, "operateur")
+        self.assertContains(self.client.get("/plus/reglages/utilisateurs/"), "En tournée en ce moment")
+        self.assertContains(self.client.get("/plus/reglages/fiche/avis/"), "touche les avis de cette tournée")
+        self.assertNotContains(self.client.get("/plus/reglages/fiche/avis/"), "Enregistrer quand même")
+        # La personne en tournée (administratrice ici) : confirmation à chaque enregistrement
+        self.m_employe.role = "admin"
+        self.m_employe.save()
+        self.client.force_login(self.employe)
+        self.assertContains(self.client.get("/plus/reglages/secteurs/"), "Enregistrer quand même")
+        # Après la fin de l'opération : permis
+        op.fin = op.debut
+        op.save()
+        self.client.force_login(self.patron)
+        self.client.post(url, {"action": "role", "role": "lecture"})
+        self.m_employe.refresh_from_db()
+        self.assertEqual(self.m_employe.role, "lecture")

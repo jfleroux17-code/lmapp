@@ -1,6 +1,7 @@
 {% extends "terrain/base.html" %}
 {% block titre %}Utilisateurs{% endblock %}
 {% block contenu %}
+{% include "terrain/reglages/_tournee.html" %}
 <a href="{% url 'terrain:reglages' %}" class="mb-3 inline-block text-accent">‹ Réglages</a>
 <h1 class="mb-1 text-2xl font-bold">Utilisateurs</h1>
 <p class="mb-5 text-gray-400">Qui a accès à l'app. Une personne invitée reçoit un texto avec un lien pour choisir son mot de passe (valide 3 jours).</p>
@@ -22,6 +23,7 @@
       </button>
       {% if peut and m.utilisateur != moi %}
       <div x-show="ouvert" x-cloak class="space-y-3 pb-2 pt-3">
+        {% if operation and operation.operateur_id == m.utilisateur_id %}<p class="text-sm text-orange">En tournée en ce moment : rôle et accès modifiables après la fin de l'opération.</p>{% else %}
         <form method="post" action="{% url 'terrain:reglages_utilisateur' m.pk %}" class="flex gap-2">{% csrf_token %}<input type="hidden" name="action" value="role">
           <select name="role" class="champ flex-1" aria-label="Rôle de {{ m.utilisateur.username }}">{% for v, nom in roles %}<option value="{{ v }}" {% if v == m.role %}selected{% endif %}>{{ nom }}</option>{% endfor %}</select>
           <button class="min-h-14 rounded-xl bg-accent px-4 font-semibold text-nuit">Changer</button>
@@ -35,6 +37,7 @@
         <form method="post" action="{% url 'terrain:reglages_utilisateur' m.pk %}" onsubmit="return confirm('Retirer l\'accès de {{ m.utilisateur.get_full_name|default:m.utilisateur.username|escapejs }}? Il ne pourra plus entrer dans l\'app.')">{% csrf_token %}<input type="hidden" name="action" value="retirer">
           <button class="min-h-12 text-sm text-danger underline">Retirer l'accès</button>
         </form>
+        {% endif %}
       </div>
       {% endif %}
     </div>

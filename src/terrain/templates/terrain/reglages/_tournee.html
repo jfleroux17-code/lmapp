@@ -1,0 +1,9 @@
+{% if en_tournee and peut %}
+<p class="carte mb-4 border-orange p-3 text-sm text-orange">Tu es en tournée : chaque enregistrement te demandera de confirmer.</p>
+<script>
+  // Personne en tournée : une confirmation avant tout envoi de formulaire des réglages (avant les autres gestionnaires)
+  document.addEventListener("submit", (e) => {
+    if (e.target.method.toLowerCase() === "post" && !confirm("Tu es en tournée. Enregistrer quand même?")) { e.preventDefault(); e.stopImmediatePropagation(); }
+  }, true);
+</script>
+{% endif %}

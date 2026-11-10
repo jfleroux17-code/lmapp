@@ -1,6 +1,7 @@
 {% extends "terrain/base.html" %}
 {% block titre %}Secteurs{% endblock %}
 {% block contenu %}
+{% include "terrain/reglages/_tournee.html" %}
 <a href="{% url 'terrain:reglages' %}" class="mb-3 inline-block text-accent">‹ Réglages</a>
 <h1 class="mb-1 text-2xl font-bold">Secteurs</h1>
 <p class="mb-5 text-gray-400">Pour changer l'ordre des secteurs dans la tournée : <a class="text-accent underline" href="{% url 'terrain:ordre' %}">Ordre de la tournée</a>. Le secteur d'une adresse se choisit dans la fiche de l'adresse.</p>
