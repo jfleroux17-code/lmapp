@@ -40,10 +40,10 @@ Mise à jour : 9 novembre 2026.
 ### Serveur (rien d'urgent)
 
 - [x] Netplan par MAC (décision du 7 novembre 2026), configuré par JF. MAC rendue statique dans Hyper-V (`00:15:5d:04:0a:02`) par JF le 10 novembre 2026; redémarrage vérifié (réseau, Docker, prod, test, surveillance).
-- [ ] Redémarrer ld1 à un moment tranquille (services signalés par apt).
+- [x] Redémarrer ld1 à un moment tranquille : fait par JF le 10 novembre 2026 (avec la MAC statique), tout est reparti seul.
 - [x] Vérification externe de `https://louis.ledeneigeur.com/sante/` : UptimeRobot configuré par JF le 9 novembre 2026 (sondes vues dans les journaux de Caddy, réponse 200).
 - [x] `sudo ufw status verbose` (7 novembre 2026) : refus par défaut en entrée; SSH depuis `172.16.4.0/24`; 80 et 443 ouverts à tous (ufw ne s'en mêle pas pour le 443 de toute façon, Docker le contourne; rien n'écoute sur le 80). Port 5000 : `BackupFP` (COVE), sur toutes les interfaces, mais bloqué par ufw (aucune règle) : rien à faire.
-- [x] Port local 36789 identifié (9 novembre 2026) : `/opt/MXB/bin/ProcessController` de COVE (root), 127.0.0.1 seulement. Rien à faire.
+- [x] Port local 36789 identifié (9 novembre 2026) : `/opt/MXB/bin/ProcessController` de COVE (root), 127.0.0.1 seulement. Rien à faire. Après le redémarrage du 10 novembre : plus en écoute (processus actif); port local 40051 = `containerd`, normal.
 - [ ] Donner l'IP publique du bureau pour l'accès à `/admin/` (seule celle de la maison est permise). Elle ira dans `edge/.env`, jamais dans Git.
 - [ ] Donner les plages d'adresses des autres réseaux (VPN, bureau, centre de données) : conflit possible avec les plages 172.17 à 172.31 de Docker.
 - [x] Copie du dépôt hors de ld1 : GitHub privé `jfleroux17-code/lmapp`, poussé après chaque étape.
