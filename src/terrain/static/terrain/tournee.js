@@ -29,6 +29,16 @@ document.addEventListener("alpine:init", () => {
       setInterval(() => this.envoyer(), 30000);
       this.envoyer();
       if (localStorage.getItem("lmapp-gps") === "1" && this.avis_proximite) this.activerGps();
+      this.garderEcranAllume();
+    },
+
+    // Téléphone sur le support : l'écran reste allumé pendant l'opération (Wake Lock; relâché par le
+    // système quand la page passe en arrière-plan, repris au retour)
+    async garderEcranAllume() {
+      if (!("wakeLock" in navigator)) return;
+      const demander = async () => { try { await navigator.wakeLock.request("screen"); } catch (e) { /* refusé : tant pis */ } };
+      await demander();
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") demander(); });
     },
 
     // G1 : position pendant que l'écran est ouvert (l'iPhone ne permet pas plus en arrière-plan)

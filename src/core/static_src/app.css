@@ -57,3 +57,26 @@
 
 /* Visuel C : titres très gras. Hors des couches pour passer devant l'utilitaire font-bold. */
 h1 { font-weight: 800; letter-spacing: -0.01em; }
+
+/* Mode « Soleil » (audit UX) : clair et très contrasté, pour le jour sur la neige (reflets).
+   Commuté d'une tape dans l'en-tête, gardé dans le cellulaire (localStorage « lmapp-theme »).
+   Les fonds de couleur (jaune, vert, rouge) ne changent pas : le texte noir y reste lisible.
+   Les textes de couleur, eux, foncent (le jaune sur blanc serait illisible). */
+html.soleil {
+  --color-nuit: #ffffff;
+  --color-neige: #0b0d10;
+  --color-carte: #f2f4f7;
+  --color-bordure: #6b7280;
+  --color-gray-200: #1f2937;
+  --color-gray-300: #1f2937;
+  --color-gray-400: #3d4450;
+  --color-gray-500: #4b5563;
+}
+html.soleil .text-accent { color: #7a5f00; }
+html.soleil .text-ok { color: #1a7f37; }
+html.soleil .text-danger { color: #c62828; }
+html.soleil .text-orange { color: #b45309; }
+/* Texte « nuit » posé sur un fond de couleur (boutons jaunes, verts, rouges) : reste noir */
+html.soleil .text-nuit { color: #000000; }
+html.soleil :focus-visible { outline-color: #000000; }
+html.soleil .onglet-bas-actif { color: #7a5f00; }

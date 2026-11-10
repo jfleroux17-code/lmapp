@@ -119,7 +119,7 @@
                    noms: { {% for valeur, nom in modes %}'{{ valeur }}': '{{ nom|lower|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %} } }">
       <div class="h-28" aria-hidden="true"></div>
       <div class="au-dessus-onglets fixed inset-x-0 z-20 border-t-2 border-bordure bg-nuit/95 px-4 py-3 backdrop-blur">
-        <button type="button" @click="feuille = true" class="mx-auto flex min-h-[72px] w-full max-w-xl flex-col items-center justify-center rounded-2xl bg-ok px-4 text-nuit">
+        <button type="button" @click="feuille = true" class="mx-auto flex min-h-[72px] w-full max-w-[640px] flex-col items-center justify-center rounded-2xl bg-ok px-4 text-nuit">
           <span class="text-2xl font-bold">Reçu {{ f.solde|argent }}</span>
           <span class="text-sm font-semibold" x-text="mode ? noms[mode] : 'choisir le mode de paiement'"></span>
         </button>
