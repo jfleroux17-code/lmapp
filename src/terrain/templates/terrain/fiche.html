@@ -63,6 +63,11 @@
   {% else %}<span class="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold border-2 border-bordure text-gray-500">{% include "terrain/_icone.html" with nom="itineraire" %}Itinéraire</span>{% endif %}{% endwith %}
 </div>
 
+{% comment %}Vue bureau (1024 px et plus, audit UX) : infos à gauche, argent à droite. Sur le cellulaire, une seule colonne
+dans l'ordre habituel (les colonnes sont en « display: contents », l'ordre vient des classes order-N).{% endcomment %}
+<div class="flex flex-col bureau:grid bureau:grid-cols-2 bureau:items-start bureau:gap-x-8">
+<div class="contents bureau:col-start-2 bureau:row-start-1 bureau:block">
+<div class="order-1">
 <section class="carte mb-4 p-4">
   {% if du %}
     <div class="text-sm text-gray-400">Doit</div>
@@ -78,7 +83,8 @@
   {% if credit > 0 %}<p class="mt-3 rounded-xl bg-ok/15 p-3 font-semibold text-ok">Crédit au compte : {{ credit|argent }} (payera la prochaine facture)</p>{% endif %}
   {% if cheques_client %}<p class="mt-3 text-sm text-gray-300">{{ cheques_client|length }} chèque{{ cheques_client|length|pluralize }} postdaté{{ cheques_client|length|pluralize }} en main (détail plus bas)</p>{% endif %}
 </section>
-
+</div>
+<div class="order-2">
 {% if modifier_clients or ecriture %}
 <details class="carte mb-4">
   <summary class="flex min-h-14 cursor-pointer items-center justify-between px-4 font-semibold"><span>Autres actions</span><span class="text-gray-400" aria-hidden="true">•••</span></summary>
@@ -92,11 +98,50 @@
   </div>
 </details>
 {% endif %}
-
+</div>
+<div class="order-6">
+<details id="argent" class="mb-4" {% if request.GET.argent %}open{% endif %} x-data x-init="if (window.matchMedia('(min-width: 1024px)').matches) $el.open = true">
+  <summary class="carte mb-2 flex min-h-14 cursor-pointer items-center justify-between px-4 font-bold"><span>Factures, contrats et relances</span><span class="text-sm font-normal text-gray-400">{% if factures_client %}{{ factures_client|length }} facture{{ factures_client|length|pluralize }} ›{% else %}›{% endif %}</span></summary>
+  {% for c in contrats %}
+    <div class="carte mb-3 p-4" x-data="{ envoi: false }">
+      <div class="flex items-start justify-between gap-3">
+        <div><div class="font-semibold">Contrat {{ c.saison.nom }}</div>
+          <div class="text-sm text-gray-400">{{ c.get_type_display }} · {{ c.prix|argent }} avant taxes{% if c.versements.all %} · {{ c.versements.all|length }} versement{{ c.versements.all|length|pluralize }}{% endif %}</div></div>
+        <a href="{% url 'facturation:contrat_pdf' c.pk %}" class="flex min-h-12 shrink-0 items-center text-accent" target="_blank" rel="noopener">PDF</a>
+      </div>
+      {% if ecriture and client.courriel or ecriture and client.cellulaire %}
+        <div class="mt-2 grid grid-cols-2 gap-2">
+          {% if client.courriel %}<form method="post" action="{% url 'terrain:envoyer_contrat' c.pk %}" @submit="if (envoi || !confirm('Envoyer le contrat par courriel à {{ client.courriel|escapejs }}?')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+            <button class="flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-bordure text-sm font-semibold">Par courriel</button></form>{% endif %}
+          {% if client.cellulaire %}<form method="post" action="{% url 'terrain:envoyer_contrat' c.pk %}" @submit="if (envoi || !confirm('Envoyer le lien du contrat par texto?')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}<input type="hidden" name="canal" value="texto">
+            <button class="flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-bordure text-sm font-semibold">Par texto</button></form>{% endif %}
+        </div>
+      {% endif %}
+    </div>
+  {% endfor %}
+  {% if cheques_client %}
+    <div class="carte mb-3 p-4">
+      <div class="mb-1 font-semibold">Chèques postdatés en main</div>
+      {% for c in cheques_client %}<div class="text-sm"><span class="font-semibold">{{ c.montant|argent }}</span> daté du {{ c.date_cheque|date_qc:"j F Y" }}{% if c.numero %} · n° {{ c.numero }}{% endif %} · <span class="text-gray-400">{{ c.pour }}</span></div>{% endfor %}
+      <a href="{% url 'terrain:cheques' %}" class="mt-1 inline-flex min-h-12 items-center text-accent">Chèques à déposer ›</a>
+    </div>
+  {% endif %}
+  {% if relance %}<div id="relancer">{% include "terrain/argent/_relance.html" %}</div>{% endif %}
+  {% if factures_client %}
+    <div class="carte divide-y divide-bordure">
+      {% for f in factures_client %}{% include "terrain/argent/_ligne_facture.html" %}{% endfor %}
+    </div>
+  {% endif %}
+</details>
+</div>
+</div>
+<div class="contents bureau:col-start-1 bureau:row-start-1 bureau:block">
+<div class="order-3">
 {% if client.cellulaire and client.telephone_autre %}
   <a href="tel:{{ client.telephone_autre }}" class="gros-bouton mb-3 border-2 border-ok text-ok">Autre numéro {{ autre_telephone }}</a>
 {% endif %}
-
+</div>
+<div class="order-4">
 {% if contacts or modifier_clients %}
 <section class="mb-4">
   {% for k in contacts %}
@@ -113,7 +158,8 @@
   {% if modifier_clients %}<a href="{% url 'terrain:nouveau_contact' client.pk %}" class="inline-flex min-h-12 items-center text-accent">+ Autre personne à joindre</a>{% endif %}
 </section>
 {% endif %}
-
+</div>
+<div class="order-5">
 {% for a in adresses %}
   <section class="carte mb-4 p-4">
     <div class="mb-1 text-sm text-gray-400">{% if a.objet.secteur %}{{ a.objet.secteur }}{% if a.rang %} · {% if a.rang == 1 %}1<sup>er</sup>{% else %}{{ a.rang }}<sup>e</sup>{% endif %} arrêt{% endif %}{% else %}Adresse de service{% endif %}</div>
@@ -168,41 +214,8 @@
   <p class="carte mb-4 p-4 text-gray-400">Aucune adresse de service.</p>
 {% endfor %}
 {% if modifier_clients %}<a href="{% url 'terrain:nouvelle_adresse' client.pk %}" class="gros-bouton mb-4 border-2 border-bordure">+ Adresse de service</a>{% endif %}
-
-<details id="argent" class="mb-4" {% if request.GET.argent %}open{% endif %}>
-  <summary class="carte mb-2 flex min-h-14 cursor-pointer items-center justify-between px-4 font-bold"><span>Factures, contrats et relances</span><span class="text-sm font-normal text-gray-400">{% if factures_client %}{{ factures_client|length }} facture{{ factures_client|length|pluralize }} ›{% else %}›{% endif %}</span></summary>
-  {% for c in contrats %}
-    <div class="carte mb-3 p-4" x-data="{ envoi: false }">
-      <div class="flex items-start justify-between gap-3">
-        <div><div class="font-semibold">Contrat {{ c.saison.nom }}</div>
-          <div class="text-sm text-gray-400">{{ c.get_type_display }} · {{ c.prix|argent }} avant taxes{% if c.versements.all %} · {{ c.versements.all|length }} versement{{ c.versements.all|length|pluralize }}{% endif %}</div></div>
-        <a href="{% url 'facturation:contrat_pdf' c.pk %}" class="flex min-h-12 shrink-0 items-center text-accent" target="_blank" rel="noopener">PDF</a>
-      </div>
-      {% if ecriture and client.courriel or ecriture and client.cellulaire %}
-        <div class="mt-2 grid grid-cols-2 gap-2">
-          {% if client.courriel %}<form method="post" action="{% url 'terrain:envoyer_contrat' c.pk %}" @submit="if (envoi || !confirm('Envoyer le contrat par courriel à {{ client.courriel|escapejs }}?')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
-            <button class="flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-bordure text-sm font-semibold">Par courriel</button></form>{% endif %}
-          {% if client.cellulaire %}<form method="post" action="{% url 'terrain:envoyer_contrat' c.pk %}" @submit="if (envoi || !confirm('Envoyer le lien du contrat par texto?')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}<input type="hidden" name="canal" value="texto">
-            <button class="flex min-h-12 w-full items-center justify-center rounded-xl border-2 border-bordure text-sm font-semibold">Par texto</button></form>{% endif %}
-        </div>
-      {% endif %}
-    </div>
-  {% endfor %}
-  {% if cheques_client %}
-    <div class="carte mb-3 p-4">
-      <div class="mb-1 font-semibold">Chèques postdatés en main</div>
-      {% for c in cheques_client %}<div class="text-sm"><span class="font-semibold">{{ c.montant|argent }}</span> daté du {{ c.date_cheque|date_qc:"j F Y" }}{% if c.numero %} · n° {{ c.numero }}{% endif %} · <span class="text-gray-400">{{ c.pour }}</span></div>{% endfor %}
-      <a href="{% url 'terrain:cheques' %}" class="mt-1 inline-flex min-h-12 items-center text-accent">Chèques à déposer ›</a>
-    </div>
-  {% endif %}
-  {% if relance %}<div id="relancer">{% include "terrain/argent/_relance.html" %}</div>{% endif %}
-  {% if factures_client %}
-    <div class="carte divide-y divide-bordure">
-      {% for f in factures_client %}{% include "terrain/argent/_ligne_facture.html" %}{% endfor %}
-    </div>
-  {% endif %}
-</details>
-
+</div>
+<div class="order-7">
 {% if demandes_client or ecriture %}
 <section class="mb-4">
   <div class="mb-2 flex items-center justify-between gap-3">
@@ -212,7 +225,8 @@
   {% if demandes_client %}<div class="carte divide-y divide-bordure">{% for d in demandes_client %}{% include "terrain/demandes/_ligne.html" %}{% endfor %}</div>{% endif %}
 </section>
 {% endif %}
-
+</div>
+<div class="order-8">
 {% if messages_client %}
 <section class="mb-4">
   <h2 class="mb-2 text-lg font-bold">Messages</h2>
@@ -221,7 +235,8 @@
   </div>
 </section>
 {% endif %}
-
+</div>
+<div class="order-9">
 {% if passages %}
 <section class="mb-4">
   <h2 class="mb-2 text-lg font-bold">Passages</h2>
@@ -244,15 +259,20 @@
   </div>
 </section>
 {% endif %}
-
+</div>
+<div class="order-10">
 <section class="carte mb-4 divide-y divide-bordure">
   {% if client.mode_paiement %}<div class="flex justify-between gap-3 p-4"><span class="text-gray-400">Paiement</span><span class="font-semibold">{{ client.get_mode_paiement_display }}</span></div>{% endif %}
   <div class="flex justify-between gap-3 p-4"><span class="text-gray-400">Le joindre par</span><span>{{ client.get_canal_prefere_display }}</span></div>
   {% if client.courriel %}<div class="flex justify-between gap-3 p-4"><span class="text-gray-400">Courriel</span><span class="truncate">{{ client.courriel }}</span></div>{% endif %}
   {% if client.desabonne_le %}<div class="p-4 text-sm text-gray-400">Désabonné des messages commerciaux (reçoit encore les avis de service).</div>{% endif %}
 </section>
-
+</div>
+<div class="order-11">
 {% if client.notes %}
   <section class="carte mb-4 p-4"><div class="mb-1 text-sm text-gray-400">Notes</div>{{ client.notes|linebreaksbr }}</section>
 {% endif %}
+</div>
+</div>
+</div>
 {% endblock %}

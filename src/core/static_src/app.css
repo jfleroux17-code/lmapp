@@ -19,6 +19,7 @@
   --color-danger: #ff6b6b;
   --color-orange: #ff9a3c;   /* demandes ouvertes mais pas réglées */
   --color-ok: #3fb950;
+  --breakpoint-bureau: 51.2rem;  /* 1024 px (base de 20 px) : vue bureau de Louis le soir, ordinateur ou iPad */
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
 }
 
@@ -80,3 +81,11 @@ html.soleil .text-orange { color: #b45309; }
 html.soleil .text-nuit { color: #000000; }
 html.soleil :focus-visible { outline-color: #000000; }
 html.soleil .onglet-bas-actif { color: #7a5f00; }
+
+/* Vue bureau (1024 px et plus, audit UX) : les onglets deviennent une colonne à gauche, le contenu s'élargit */
+@media (min-width: 1024px) {
+  body.avec-onglets { padding-left: 7rem; }
+  .barre-onglets { top: 0; right: auto; width: 7rem; border-top: 0; border-right: 2px solid var(--color-bordure); padding-top: 1rem; }
+  .barre-onglets > div { grid-template-columns: 1fr; max-width: none; gap: 0.5rem; }
+  .au-dessus-onglets { bottom: 0; left: 7rem; }
+}

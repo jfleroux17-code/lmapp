@@ -3,6 +3,8 @@
 {% block titre %}Argent{% endblock %}
 {% block contenu %}
 <h1 class="mb-3 text-2xl font-bold">Argent</h1>
+<div class="bureau:grid bureau:grid-cols-2 bureau:items-start bureau:gap-x-8">
+<div>
 <div class="carte mb-3 p-4">
   <div class="text-sm text-gray-400">À recevoir</div><div class="text-3xl font-bold text-accent">{{ total|argent }}</div>
   {% if plus_de_60 %}<div class="text-sm text-danger">dont {{ plus_de_60|argent }} depuis plus de 60 jours</div>{% endif %}
@@ -47,6 +49,8 @@
   {% if modifier_clients %}<a href="{% url 'terrain:saison_suivante' %}" class="rangee-lien"><span>Préparer la saison suivante</span><span aria-hidden="true">›</span></a>{% endif %}
 </div>
 
+</div>
+<div>
 <h2 class="mb-2 text-lg font-bold">À recevoir</h2>
 <div class="mb-3 grid grid-cols-2 gap-2">
   <a href="?tri=anciennete" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if tri != 'montant' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Plus vieux d'abord</a>
@@ -66,5 +70,7 @@
   {% empty %}
     <p class="p-4 text-gray-400">Personne ne doit rien.</p>
   {% endfor %}
+</div>
+</div>
 </div>
 {% endblock %}
