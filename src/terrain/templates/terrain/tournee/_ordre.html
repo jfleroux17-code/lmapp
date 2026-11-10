@@ -11,7 +11,7 @@
     {% for a in g.arrets %}
       <div id="a{{ a.pk }}" class="flex min-h-16 items-center justify-between gap-3 p-3 {% if a.bouge %}bg-accent/10{% endif %}">
         <div class="min-w-0">
-          <div class="font-semibold">{{ a.rang }}. {{ a.ligne1 }}</div>
+          <div class="flex items-center gap-2"><span class="inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-full bg-accent px-2 text-base font-bold leading-none text-nuit" aria-label="Arrêt {{ a.rang }}">{{ a.rang }}</span><span class="font-semibold">{{ a.ligne1 }}</span></div>
           <div class="text-sm text-gray-400">{{ a.client.nom_affiche }}</div>
         </div>
         {% if ecriture %}
