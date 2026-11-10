@@ -1,0 +1,7 @@
+{% load argent %}<div class="blocs">
+{% for titre, rangees in blocs %}
+  <div class="bloc"><h3>{{ titre }}</h3><dl>
+  {% for r in rangees %}<div class="rangee{% if r.alerte %} alerte{% endif %}"><dt>{{ r.nom }}</dt><dd>{% if r.valeur is None %}–{% elif r.genre == "date" %}{{ r.valeur|date_qc:"j M Y" }}{% elif r.genre == "argent" %}{{ r.valeur|argent }}{% else %}{{ r.valeur }}{% endif %}</dd></div>
+  {% endfor %}</dl></div>
+{% endfor %}
+</div>

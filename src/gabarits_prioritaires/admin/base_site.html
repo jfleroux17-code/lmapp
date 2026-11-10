@@ -33,12 +33,40 @@
   .carte-etat.alerte { border-color: #c62828; } .carte-etat.alerte .chiffre { color: #c62828; }
   .carte-etat.ok .chiffre { color: #1a7f37; }
   .carte-etat .detail { color: #3d4450; font-size: 0.75rem; }
+  /* Sous 1280 px : filtres des listes dans un panneau déroulant au-dessus de la liste (audit UX), la liste prend toute la largeur */
+  @media (max-width: 1279.98px) {
+    body #changelist { flex-direction: column; }
+    body #changelist #changelist-filter { order: -1; flex: none !important; align-self: stretch; width: 100% !important; max-width: none; box-sizing: border-box; margin: 0 0 16px !important; display: grid !important; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 0 12px; }
+    #changelist-filter > h2, #changelist-filter > #changelist-filter-extra-actions { grid-column: 1 / -1; }
+    body #changelist #changelist-filter > h2 { margin: 0; padding: 0; background: #12161c; font-variant: normal; border-radius: 4px; }
+    #changelist-filter.replie > :not(h2) { display: none; }
+    .bouton-filtres { all: unset; color: #f5f7fa; font-variant: normal; box-sizing: border-box; display: flex; gap: 8px; align-items: center; width: 100%; min-height: 44px; padding: 8px 15px; cursor: pointer; font-weight: 700; text-transform: none; letter-spacing: 0; font-size: 0.8rem; }
+    .bouton-filtres .actifs { font-weight: 400; color: #f5c400; }
+  }
 </style>
 <script>
   // Sous 1280 px, barre latérale fermée par défaut (le contenu manque de place); le choix de l'usager est ensuite gardé
   if (window.innerWidth < 1280 && localStorage.getItem("django.admin.navSidebarIsOpen") === null) {
     localStorage.setItem("django.admin.navSidebarIsOpen", "false");
   }
+  // Panneau des filtres sous 1280 px : replié, avec le rappel des filtres actifs dans le bouton
+  document.addEventListener("DOMContentLoaded", () => {
+    const nav = document.getElementById("changelist-filter");
+    if (!nav || window.innerWidth >= 1280) return;
+    const actifs = [...nav.querySelectorAll("details[data-filter-title]")].map(d => {
+      const choix = [...d.querySelectorAll("li")], sel = d.querySelector("li.selected");
+      const t = d.dataset.filterTitle; return sel && choix.indexOf(sel) > 0 ? t.charAt(0).toUpperCase() + t.slice(1) + " = " + sel.innerText.trim() : null;
+    }).filter(Boolean);
+    const h2 = nav.querySelector("h2"), b = document.createElement("button");
+    b.type = "button"; b.className = "bouton-filtres"; b.setAttribute("aria-expanded", "false");
+    b.innerHTML = '<span aria-hidden="true">▸</span><span>Filtres</span>';
+    if (actifs.length) { const a = document.createElement("span"); a.className = "actifs"; a.textContent = "Filtré : " + actifs.join(", "); b.append(a); }
+    h2.replaceChildren(b); nav.classList.add("replie");
+    b.addEventListener("click", () => {
+      const ouvert = nav.classList.toggle("replie") === false;
+      b.setAttribute("aria-expanded", String(ouvert)); b.firstChild.textContent = ouvert ? "▾" : "▸";
+    });
+  });
 </script>
 {% endblock %}
 

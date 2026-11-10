@@ -35,6 +35,30 @@ COLONNES = [
     ("boite_utilisee_mo", "Boîte courriel utilisée (Mo)"), ("boite_permise_mo", "Boîte permise (Mo)"), ("archives_mo", "Archives (Mo)"),
 ]
 
+# Regroupement de l'écran (audit UX) : une carte par entreprise, en 4 blocs; le CSV garde toutes les colonnes à plat
+BLOCS = [
+    ("Communications", ["courriels_envoyes", "courriels_recus", "textos_envoyes", "segments", "textos_recus", "textos_livres",
+                        "cout_textos", "cout_numero", "echecs"]),
+    ("Facturation", ["factures_emises", "montant_facture", "factures_envoyees", "relances", "paiements", "montant_encaisse", "virements"]),
+    ("Tournée", ["operations", "passages", "clients_servis", "utilisateurs", "derniere_connexion"]),
+    ("Espace", ["boite_utilisee_mo", "boite_permise_mo", "archives_mo"]),
+]
+NOMS = dict(COLONNES)
+
+
+def blocs(ligne):
+    """[(titre, [(nom, valeur, alerte)])] pour une ligne de statistiques() (valeurs brutes, formatées dans le gabarit)."""
+    sortie = []
+    for titre, cles in BLOCS:
+        rangees = []
+        for k in cles:
+            alerte = (k == "echecs" and bool(ligne.get(k))) or (
+                k == "boite_utilisee_mo" and (ligne.get("boite_pourcent") or 0) >= 80)
+            rangees.append({"cle": k, "nom": NOMS[k], "valeur": ligne.get(k), "alerte": alerte,
+                            "genre": "date" if k == "derniere_connexion" else "argent" if k.startswith("montant") else ""})
+        sortie.append((titre, rangees))
+    return sortie
+
 
 def mois(annee, numero):
     debut = date(annee, numero, 1)

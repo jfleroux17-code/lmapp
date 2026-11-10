@@ -121,7 +121,8 @@ class PlateformeTests(TestCase):
         self.client.force_login(self.jf)
         page = self.client.get("/admin/plateforme/")
         self.assertContains(page, "Segments de textos")
-        self.assertContains(page, 'class="alerte"')  # boîte à 86 %
+        self.assertContains(page, "rangee alerte")  # boîte à 86 %
+        self.assertContains(page, "<h3>Communications</h3>")
         self.assertContains(self.client.get("/admin/"), "Courriels, textos, factures, espace par entreprise")
         csv = self.client.get("/admin/plateforme/?format=csv")
         self.assertEqual(csv["Content-Type"], "text/csv; charset=utf-8")

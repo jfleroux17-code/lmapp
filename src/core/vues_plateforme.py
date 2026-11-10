@@ -42,6 +42,7 @@ def tableau(request):
     suivant = fin
     return render(request, "admin/plateforme.html", {
         **admin.site.each_context(request), "title": f"Plateforme : {titre}", "lignes": lignes, "total": total,
+        "cartes": [(l, plateforme.blocs(l)) for l in lignes], "blocs_total": plateforme.blocs(total) if len(lignes) > 1 else None,
         "colonnes": plateforme.COLONNES, "annee": annee, "mois": numero, "titre_mois": titre,
         "precedent": precedent, "suivant": suivant if suivant <= aujourdhui.replace(day=1) else None,
     })
