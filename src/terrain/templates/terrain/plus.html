@@ -10,6 +10,7 @@
   <a href="{% url 'terrain:balises' %}" class="rangee-lien"><span>Balises (poser, retirer)</span><span aria-hidden="true">›</span></a>
   <a href="{% url 'terrain:a_collecter' %}" class="rangee-lien"><span>À collecter (comptant)</span><span aria-hidden="true">›</span></a>
   <a href="{% url 'terrain:ordre' %}" class="rangee-lien"><span>Ordre de la tournée</span><span aria-hidden="true">›</span></a>
+  <a href="{% url 'terrain:ville_meteo' %}" class="rangee-lien"><span>Météo{% if meteo_ville %} <span class="text-gray-400">· {{ meteo_ville }}</span>{% endif %}</span><span aria-hidden="true">›</span></a>
   {% if responsable %}<a href="{% url 'terrain:carte_direct' %}" class="rangee-lien"><span>Carte en direct</span><span aria-hidden="true">›</span></a>{% endif %}
 </div>
 <div class="carte mb-5 divide-y divide-bordure">

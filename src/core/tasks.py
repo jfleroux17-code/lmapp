@@ -51,6 +51,17 @@ def relever_meteo(timestamp):
         meteo.relever(e)
 
 
+@app.task(queue="communications")
+def relever_meteo_de(entreprise_id):
+    """Tout de suite après un changement de ville de prévision (choix dans l'app)."""
+    from core import meteo
+    from core.models import Entreprise
+
+    e = Entreprise.objects.filter(pk=entreprise_id).first()
+    if e:
+        meteo.relever(e)
+
+
 @app.periodic(cron="*/2 * * * *")
 @app.task(queue="communications", queueing_lock="lire_boite_plateforme")
 def lire_boite_plateforme_aux_2_minutes(timestamp):

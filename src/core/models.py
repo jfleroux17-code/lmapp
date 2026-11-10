@@ -353,6 +353,10 @@ class Meteo(models.Model):
     entreprise = models.OneToOneField(Entreprise, on_delete=models.CASCADE, related_name="meteo")
     ville_id = models.CharField(max_length=20, blank=True, help_text="Identifiant GeoMet, ex. qc-c3 (Saint-Sauveur).")
     ville_nom = models.CharField(max_length=100, blank=True)
+    ville_choisie = models.BooleanField("ville choisie par le déneigeur", default=False,
+                                        help_text="Faux : la plus proche, choisie par l'app.")
+    villes_proches = models.JSONField(default=list, blank=True,
+                                      help_text="Villes de prévision autour, pour le choix dans l'app : [[id, nom, km]].")
     lien = models.URLField(blank=True)
     periodes = models.JSONField(default=list, blank=True, help_text="[{nom, resume, neige_cm, pluie_mm}]")
     avertissements = models.JSONField(default=list, blank=True)

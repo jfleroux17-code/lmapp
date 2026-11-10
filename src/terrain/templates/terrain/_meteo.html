@@ -15,6 +15,6 @@
       </div>
     {% endfor %}
   </div>
-  <p class="mt-2 text-xs text-gray-500">{% if meteo.ville_nom %}Prévisions pour {{ meteo.ville_nom }}. {% endif %}Source : Environnement et Changement climatique Canada{% if meteo.publiee_le %}, prévisions du {{ meteo.publiee_le|date_qc:"j F, H \h i" }}{% endif %}.{% if meteo.lien %} <a href="{{ meteo.lien }}" class="underline" rel="noopener">Détails</a>{% endif %}</p>
+  <p class="mt-2 text-xs text-gray-500">{% if meteo.ville_nom %}Prévisions pour {{ meteo.ville_nom }} (<a href="{% url 'terrain:ville_meteo' %}" class="underline">changer</a>). {% endif %}Source : Environnement et Changement climatique Canada{% if meteo.publiee_le %}, prévisions du {{ meteo.publiee_le|date_qc:"j F, H \h i" }}{% endif %}.{% if meteo.lien %} <a href="{{ meteo.lien }}" class="underline" rel="noopener">Détails</a>{% endif %}</p>
 </details>
 {% endif %}

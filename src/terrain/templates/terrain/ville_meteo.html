@@ -1,0 +1,20 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Ville de la météo{% endblock %}
+{% block contenu %}
+<a href="{% url 'terrain:plus' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Plus</a>
+<h1 class="mb-1 text-2xl font-bold">Ville de la météo</h1>
+<p class="mb-4 text-gray-400">Environnement Canada n'a pas de prévisions pour chaque municipalité. Choisir la ville voisine dont la météo ressemble le plus à celle des clients.</p>
+{% if m.villes_proches %}
+<form method="post" class="carte divide-y divide-bordure">{% csrf_token %}
+  {% for vid, nom, km in m.villes_proches %}
+    <button name="ville" value="{{ vid }}" class="rangee-lien w-full text-left {% if vid == m.ville_id %}bg-accent/10{% endif %}" {% if not ecriture %}disabled{% endif %}>
+      <span>{{ nom }} <span class="text-sm text-gray-400">· {{ km }} km</span></span>
+      {% if vid == m.ville_id %}<span class="pastille bg-accent text-nuit">Choisie</span>{% else %}<span aria-hidden="true">›</span>{% endif %}
+    </button>
+  {% endfor %}
+</form>
+<p class="mt-3 text-sm text-gray-500">Distance jusqu'au point de prévision d'Environnement Canada (le centre de sa zone, pas toujours le centre de la ville).</p>
+{% else %}
+<p class="carte p-4 text-gray-400">La liste des villes arrive avec la prochaine lecture de la météo (aux 30 minutes).</p>
+{% endif %}
+{% endblock %}

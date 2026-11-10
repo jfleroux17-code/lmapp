@@ -22,16 +22,22 @@ def _fr(v):
     return v.get("fr") if isinstance(v, dict) else v
 
 
-def ville_proche(lat, lng):
-    """(identifiant, nom) de la ville de prévision la plus proche, cherchée dans un carré de 1,2 degré."""
+def villes_autour(lat, lng, nombre=10):
+    """Villes de prévision d'Environnement Canada autour d'un point, la plus proche d'abord : [[id, nom, km]].
+    Toutes les municipalités n'ont pas leur page (Sainte-Adèle n'en a pas) : on propose les voisines."""
     d = _lire(COLLECTION, bbox=f"{lng - 0.6},{lat - 0.6},{lng + 0.6},{lat + 0.6}", limit=50)
-    meilleure = None
+    villes = []
     for f in d.get("features", []):
         x, y = f["geometry"]["coordinates"][:2]
-        dist = math.hypot((x - lng) * math.cos(math.radians(lat)), y - lat)
-        if meilleure is None or dist < meilleure[0]:
-            meilleure = (dist, f["id"], _fr(f["properties"]["name"]))
-    return (meilleure[1], meilleure[2]) if meilleure else (None, None)
+        km = math.hypot((x - lng) * math.cos(math.radians(lat)), y - lat) * 111.2
+        villes.append([f["id"], _fr(f["properties"]["name"]), round(km)])
+    return sorted(villes, key=lambda v: (v[2], v[1]))[:nombre]
+
+
+def ville_proche(lat, lng):
+    """(identifiant, nom) de la ville de prévision la plus proche."""
+    v = villes_autour(lat, lng, 1)
+    return (v[0][0], v[0][1]) if v else (None, None)
 
 
 def analyser(p):
@@ -61,14 +67,16 @@ def relever(entreprise):
 
     m, _ = Meteo.objects.get_or_create(entreprise=entreprise)
     try:
-        if not m.ville_id:
+        if not m.ville_id or not m.villes_proches:
             v = VilleDesservie.objects.filter(entreprise=entreprise, par_defaut=True).exclude(centre=None).first() or \
                 VilleDesservie.objects.filter(entreprise=entreprise).exclude(centre=None).first()
             if v is None:
                 m.erreur = "Aucune ville desservie avec un centre : impossible de choisir la ville de prévision."
                 m.save(update_fields=["erreur"])
                 return m
-            m.ville_id, m.ville_nom = ville_proche(v.centre.y, v.centre.x)
+            m.villes_proches = villes_autour(v.centre.y, v.centre.x)  # pour le choix dans l'app (qui n'a pas Internet)
+            if not m.ville_id and m.villes_proches:
+                m.ville_id, m.ville_nom = m.villes_proches[0][0], m.villes_proches[0][1]
             if not m.ville_id:
                 m.erreur = "Aucune ville de prévision trouvée près de la ville desservie."
                 m.save(update_fields=["erreur", "ville_id", "ville_nom"])

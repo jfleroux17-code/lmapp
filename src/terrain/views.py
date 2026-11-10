@@ -225,5 +225,39 @@ def plus(request):
     """Onglet « Plus » de la barre du bas : ce qui sert moins souvent sur la route, et la déconnexion."""
     from core.acces import est_responsable
 
+    from core.models import Meteo
+
     return render(request, "terrain/plus.html", {"ecriture": peut_ecrire(request), "responsable": est_responsable(request),
-                                                 "envois_actifs": request.entreprise.envois_actifs})
+                                                 "envois_actifs": request.entreprise.envois_actifs,
+                                                 "meteo_ville": Meteo.objects.filter(entreprise=request.entreprise).values_list("ville_nom", flat=True).first()})
+
+
+@membre_requis
+def ville_meteo(request):
+    """Choix de la ville des prévisions (Environnement Canada n'a pas une page pour chaque municipalité)."""
+    from django.contrib import messages
+    from django.shortcuts import redirect
+
+    from core.models import Meteo
+
+    m, _ = Meteo.objects.get_or_create(entreprise=request.entreprise)
+    if request.method == "POST":
+        if not peut_ecrire(request):
+            return render(request, "terrain/refuse.html", status=403)
+        choix = {v[0]: v[1] for v in m.villes_proches}
+        vid = request.POST.get("ville", "")
+        if vid not in choix:
+            messages.error(request, "Choisir une ville de la liste.")
+            return redirect("terrain:ville_meteo")
+        if vid != m.ville_id:
+            m.ville_id, m.ville_nom, m.ville_choisie = vid, choix[vid], True
+            m.periodes, m.avertissements, m.lue_le = [], [], None  # pas de vieilles prévisions d'une autre ville
+            m.save()
+            from django.db import transaction
+
+            from core.tasks import relever_meteo_de
+
+            transaction.on_commit(lambda: relever_meteo_de.defer(entreprise_id=request.entreprise.pk))
+        messages.success(request, f"Météo : prévisions de {choix[vid]}. Elles arrivent d'ici une minute.")
+        return redirect("terrain:plus")
+    return render(request, "terrain/ville_meteo.html", {"m": m, "ecriture": peut_ecrire(request)})

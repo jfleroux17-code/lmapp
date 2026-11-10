@@ -8,6 +8,7 @@ app_name = "terrain"
 urlpatterns = [
     path("", views.accueil, name="accueil"),
     path("plus/", views.plus, name="plus"),
+    path("plus/meteo/", views.ville_meteo, name="ville_meteo"),
     path("clients/<int:pk>/", views.fiche, name="fiche"),
     path("clients/nouveau/", clients.nouveau, name="nouveau_client"),
     path("clients/<int:pk>/modifier/", clients.modifier, name="modifier_client"),

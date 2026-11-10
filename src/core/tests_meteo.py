@@ -57,3 +57,28 @@ class MeteoTests(TestCase):
         self.assertContains(r, "Neige 15 cm")
         self.assertContains(r, "Avertissement de neige")
         self.assertContains(r, "Environnement et Changement climatique Canada")
+
+    def test_choisir_la_ville_dans_l_app(self):
+        from django.contrib.auth import get_user_model
+        from core.models import Membre
+        reponses = [VILLES, VILLE]
+        with mock.patch("core.meteo._lire", side_effect=lambda *a, **k: reponses.pop(0)):
+            m = meteo.relever(self.ent)
+        self.assertEqual([v[1] for v in m.villes_proches], ["Saint-Sauveur", "Saint-Jérôme"])  # la plus proche d'abord
+        u = get_user_model().objects.create_user("l-met2", password="x" * 12)
+        Membre.objects.create(utilisateur=u, entreprise=self.ent, role="operateur")
+        self.client.force_login(u)
+        with override_settings(ALLOWED_HOSTS=["*"]):
+            page = self.client.get("/plus/meteo/", HTTP_HOST="met.exemple.test")
+            self.assertContains(page, "Saint-Jérôme")
+            with mock.patch("core.tasks.relever_meteo_de.defer") as defer, self.captureOnCommitCallbacks(execute=True):
+                r = self.client.post("/plus/meteo/", {"ville": "qc-13"}, HTTP_HOST="met.exemple.test", follow=True)
+            self.assertContains(r, "prévisions de Saint-Jérôme")
+            defer.assert_called_once_with(entreprise_id=self.ent.pk)
+            self.assertContains(self.client.post("/plus/meteo/", {"ville": "qc-999"}, HTTP_HOST="met.exemple.test", follow=True),
+                                "Choisir une ville de la liste")
+        m.refresh_from_db()
+        self.assertEqual((m.ville_id, m.ville_nom, m.ville_choisie, m.periodes), ("qc-13", "Saint-Jérôme", True, []))
+        # La lecture suivante garde le choix
+        with mock.patch("core.meteo._lire", return_value=VILLE):
+            self.assertEqual(meteo.relever(self.ent).ville_id, "qc-13")
