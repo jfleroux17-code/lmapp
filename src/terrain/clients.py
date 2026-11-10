@@ -24,7 +24,35 @@ def _attrs(**kw):
     return {"class": CHAMP, **kw}
 
 
-class ClientForm(forms.ModelForm):
+class GroupesMixin:
+    """Mode court (audit UX) : l'essentiel d'abord, le reste replié sous « Plus de détails ».
+    GROUPES : [(titre du repli ou None, [champs])]; un repli s'ouvre s'il contient une erreur ou une valeur."""
+    GROUPES = None
+
+    def groupes(self):
+        if not self.GROUPES:
+            return [(None, list(self), True)]
+        sortie, vus = [], {n for _, noms in self.GROUPES for n in noms}
+        groupes = list(self.GROUPES)
+        restants = [n for n in self.fields if n not in vus]
+        if restants:  # un champ ajouté au formulaire sans être classé : dans le dernier repli, jamais perdu
+            groupes[-1] = (groupes[-1][0], list(groupes[-1][1]) + restants)
+        for titre, noms in groupes:
+            champs = [self[n] for n in noms if n in self.fields]
+            rempli = any(c.errors or (self.instance.pk and c.value() not in (None, "", False)) for c in champs)
+            sortie.append((titre, champs, titre is None or rempli))
+        return sortie
+
+
+class ClientForm(GroupesMixin, forms.ModelForm):
+    GROUPES = [
+        (None, ["prenom", "nom", "cellulaire"]),
+        ("Plus de détails : courriel, autre numéro, paiement, statut, notes",
+         ["organisation", "courriel", "telephone_autre", "canal_prefere", "mode_paiement", "statut", "notes", "ne_pas_relancer"]),
+        ("Adresse de facturation différente de l'adresse de service",
+         ["facturation_ligne1", "facturation_ligne2", "facturation_ville", "facturation_code_postal"]),
+    ]
+
     class Meta:
         model = Client
         fields = ["prenom", "nom", "organisation", "cellulaire", "telephone_autre", "courriel", "canal_prefere",
@@ -56,7 +84,13 @@ class ClientForm(forms.ModelForm):
                 self.initial[champ] = afficher(getattr(self.instance, champ))
 
 
-class AdresseForm(forms.ModelForm):
+class AdresseForm(GroupesMixin, forms.ModelForm):
+    GROUPES = [
+        (None, ["ligne1", "ville", "secteur"]),
+        ("Plus de détails : appartement, code postal, terrain, consignes",
+         ["ligne2", "code_postal", "ou_mettre_neige", "obstacles", "borne_fontaine", "entree_en_pente", "consignes", "active"]),
+    ]
+
     class Meta:
         model = Adresse
         fields = ["ligne1", "ligne2", "ville", "code_postal", "secteur", "active", "ou_mettre_neige", "obstacles",
@@ -86,7 +120,7 @@ class AdresseForm(forms.ModelForm):
             self.initial["ville"] = self.initial.get("ville") or (defaut.nom if defaut else entreprise.ville)
 
 
-class ContactForm(forms.ModelForm):
+class ContactForm(GroupesMixin, forms.ModelForm):
     class Meta:
         model = Contact
         fields = ["nom", "role", "cellulaire", "courriel", "note"]

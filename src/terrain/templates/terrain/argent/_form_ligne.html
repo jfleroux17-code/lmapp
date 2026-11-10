@@ -1,15 +1,22 @@
 {% load argent %}
 {# Ligne de facture : un service du catalogue remplit la description et le prix (modifiables). #}
-<div x-data="{ service: '', description: '{{ form.description.value|default:''|escapejs }}', prix: '{{ form.prix.value|default:''|escapejs }}', quantite: '{{ form.quantite.value|default:1 }}' }" class="space-y-4">
+<div x-data="{ tps: {{ request.entreprise.taux_tps|stringformat:'s' }}, tvq: {{ request.entreprise.taux_tvq|stringformat:'s' }},
+              nombre(t) { const n = parseFloat(String(t || '').replace(/[\s\u00a0\u202f$]/g, '').replace(',', '.')); return isNaN(n) ? 0 : n },
+              cents(x) { return Math.round((x + Number.EPSILON) * 100) / 100 },
+              fmt(x) { return x.toLocaleString('fr-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '\u00a0$' },
+              get avant() { return this.cents(this.nombre(this.prix) * (this.nombre(this.quantite) || 0)) },
+              get mtps() { return this.cents(this.avant * this.tps / 100) },
+              get mtvq() { return this.cents(this.avant * this.tvq / 100) },
+              service: '', description: '{{ form.description.value|default:''|escapejs }}', prix: '{{ form.prix.value|default:''|escapejs }}', quantite: '{{ form.quantite.value|default:1 }}' }" class="space-y-4">
   {% if services %}
     <div>
       <span class="mb-2 block text-gray-300">Service</span>
       <div class="grid grid-cols-2 gap-2">
         {% for s in services %}
-          <button type="button" class="flex min-h-14 items-center justify-center rounded-xl border-2 px-2 text-center font-semibold"
+          <button type="button" class="flex min-h-16 items-center justify-center rounded-xl border-2 px-2 py-2 text-center font-semibold leading-tight"
                   :class="service == '{{ s.pk }}' ? 'border-accent text-accent' : 'border-bordure'"
                   @click="service = '{{ s.pk }}'; description = '{{ s.nom|escapejs }}'{% if s.prix_suggere is not None %}; prix = '{{ s.prix_suggere|stringformat:'s'|cut:'.00'|escapejs }}'{% endif %}">
-            {{ s.nom }}{% if s.prix_suggere is not None %}<span class="ml-1 text-sm text-gray-400">{{ s.prix_suggere|argent }}</span>{% endif %}
+            <span>{{ s.nom }}{% if s.prix_suggere is not None %}<span class="block text-sm font-normal text-gray-400">{{ s.prix_suggere|argent }}</span>{% endif %}</span>
           </button>
         {% endfor %}
       </div>
@@ -29,5 +36,11 @@
       <span class="mb-2 block text-gray-300">Prix (avant taxes)</span>
       <input name="prix" class="champ text-right" inputmode="decimal" x-model="prix" required placeholder="0,00 $">
     </label>
+  </div>
+  {# Ce que le client paiera, calculé en direct (estimation : les taxes sont arrondies une fois sur la facture) #}
+  <div class="rounded-xl bg-carte p-3 text-gray-300" x-show="avant > 0" x-cloak aria-live="polite">
+    <div class="flex justify-between text-sm"><span>TPS ({{ request.entreprise.taux_tps|floatformat:"-3" }} %)</span><span x-text="fmt(mtps)"></span></div>
+    <div class="flex justify-between text-sm"><span>TVQ ({{ request.entreprise.taux_tvq|floatformat:"-3" }} %)</span><span x-text="fmt(mtvq)"></span></div>
+    <div class="flex justify-between pt-1 text-lg font-bold text-neige"><span>Avec taxes</span><span x-text="fmt(cents(avant + mtps + mtvq))"></span></div>
   </div>
 </div>

@@ -8,16 +8,20 @@
     <fieldset class="space-y-4">
       {% if formulaires|length > 1 %}<legend class="mb-2 text-lg font-bold text-accent">{{ section }}</legend>{% endif %}
       {% if form.non_field_errors %}<p class="rounded-xl bg-danger/10 p-3 text-danger">{{ form.non_field_errors|join:" " }}</p>{% endif %}
-      {% for champ in form %}
-        {% if champ.widget_type == "checkbox" %}
-          <label class="flex min-h-12 cursor-pointer items-center gap-3">{{ champ }}<span>{{ champ.label|capfirst }}</span></label>
-        {% else %}
-          <label class="block">
-            <span class="mb-2 block text-gray-300">{{ champ.label|capfirst }}</span>
-            {{ champ }}
-            {% if champ.errors %}<span class="mt-1 block text-danger">{{ champ.errors|join:" " }}</span>{% elif champ.help_text %}<span class="mt-1 block text-sm text-gray-500">{{ champ.help_text }}</span>{% endif %}
-          </label>
-        {% endif %}
+      {% for titre, champs, ouvert in form.groupes %}
+        {% if titre %}<details class="rounded-2xl border-2 border-bordure px-4" {% if ouvert %}open{% endif %}><summary class="flex min-h-14 cursor-pointer items-center font-semibold text-gray-300">{{ titre }}</summary><div class="space-y-4 pb-4">{% endif %}
+        {% for champ in champs %}
+          {% if champ.widget_type == "checkbox" %}
+            <label class="flex min-h-14 cursor-pointer items-center gap-3">{{ champ }}<span>{{ champ.label|capfirst }}</span></label>
+          {% else %}
+            <label class="block">
+              <span class="mb-2 block text-gray-300">{{ champ.label|capfirst }}</span>
+              {{ champ }}
+              {% if champ.errors %}<span class="mt-1 block text-danger">{{ champ.errors|join:" " }}</span>{% elif champ.help_text %}<span class="mt-1 block text-sm text-gray-500">{{ champ.help_text }}</span>{% endif %}
+            </label>
+          {% endif %}
+        {% endfor %}
+        {% if titre %}</div></details>{% endif %}
       {% endfor %}
     </fieldset>
   {% endfor %}
