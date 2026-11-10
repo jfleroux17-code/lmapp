@@ -22,6 +22,13 @@
     <span x-show="enAttente" x-text="enAttente + (enAttente > 1 ? ' passages en attente' : ' passage en attente') + (horsLigne ? ', envoyés au retour du réseau.' : ', envoi en cours…')"></span>
     <span x-show="!enAttente">Les passages tapés seront gardés et envoyés au retour du réseau.</span>
   </p>
+  {# Dernière tape annulable 5 secondes, juste au-dessus des onglets (à portée du pouce) #}
+  <div x-show="annulable" x-cloak class="au-dessus-onglets fixed inset-x-0 z-20 px-4 pb-2">
+    <div class="mx-auto flex max-w-[640px] items-center justify-between gap-3 rounded-2xl border-2 border-accent bg-nuit p-3 shadow-lg" role="status">
+      <span class="min-w-0 text-lg" x-text="annulable ? annulable.texte : ''"></span>
+      <button type="button" @click="annuler()" class="min-h-14 shrink-0 rounded-xl bg-accent px-5 text-lg font-bold text-nuit" x-text="'Annuler (' + (annulable ? annulable.reste : '') + ')'"></button>
+    </div>
+  </div>
   <p x-show="message && !horsLigne" x-text="message" class="mb-4 rounded-2xl border border-ok/50 bg-ok/10 p-4 text-ok" role="status"></p>
 
   <div class="mb-4 flex items-center justify-between gap-3">
@@ -30,7 +37,11 @@
       <p class="text-gray-400">Depuis <span x-text="operation.debut"></span> ·
         <span x-text="faits + (faits > 1 ? ' faits' : ' fait') + (sautes ? ', ' + sautes + (sautes > 1 ? ' sautés' : ' sauté') : '') + ' sur ' + arrets.length"></span></p>
     </div>
-    <span class="pastille bg-ok/20 text-ok">En cours</span>
+    <div class="flex flex-col items-end gap-1">
+      <span class="pastille bg-ok/20 text-ok">En cours</span>
+      <span x-show="gps" class="flex items-center gap-1.5 text-sm" :class="gpsCapte ? 'text-ok' : 'text-gray-400'" role="status">
+        <span class="h-3 w-3 rounded-full" :class="gpsCapte ? 'bg-ok' : 'bg-gray-500'"></span><span x-text="gpsCapte ? 'GPS' : 'GPS perdu'"></span></span>
+    </div>
   </div>
   <div class="mb-5 h-3 overflow-hidden rounded-full bg-bordure" role="progressbar" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="progression">
     <div class="h-full bg-ok transition-all" :style="'width: ' + progression + '%'"></div>

@@ -17,3 +17,4 @@ class DatesQcTests(SimpleTestCase):
         self.assertEqual(self.rendre('{{ d|date_qc:"j F" }}', d=date(2026, 12, 2)), "2 décembre")
         self.assertEqual(self.rendre('{{ d|date_qc:"j F, H \\h i" }}', d=None), "")
         self.assertEqual(date_texte(date(2026, 10, 1)), "1er octobre 2026")
+

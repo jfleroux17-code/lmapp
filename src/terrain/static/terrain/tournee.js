@@ -17,6 +17,9 @@ document.addEventListener("alpine:init", () => {
     surveillance: null,
     dernierEnvoi: null,
     photoEnvoi: false,
+    annulable: null,   // dernière tape, annulable 5 secondes (audit UX) : { item, precedent, adresse, reste }
+    dernierePos: 0,    // heure de la dernière position reçue (indicateur GPS)
+    horloge: Date.now(),
 
     get cleFile() { return "lmapp-tournee-" + this.operation.id; },
 
@@ -30,7 +33,10 @@ document.addEventListener("alpine:init", () => {
       this.envoyer();
       if (localStorage.getItem("lmapp-gps") === "1" && this.avis_proximite) this.activerGps();
       this.garderEcranAllume();
+      setInterval(() => { this.horloge = Date.now(); }, 5000);
     },
+
+    get gpsCapte() { return this.gps && this.dernierePos && this.horloge - this.dernierePos < 60000; },
 
     // Téléphone sur le support : l'écran reste allumé pendant l'opération (Wake Lock; relâché par le
     // système quand la page passe en arrière-plan, repris au retour)
@@ -65,6 +71,7 @@ document.addEventListener("alpine:init", () => {
     async nouvellePosition(pos) {
       const ici = { lat: pos.coords.latitude, lon: pos.coords.longitude, precision: Math.round(pos.coords.accuracy), t: Date.now() };
       this.gpsEtat = "Position active (précision " + ici.precision + " m).";
+      this.dernierePos = ici.t;
       const d = this.dernierEnvoi;
       // Au plus une fois par 30 secondes, ou tout de suite après 150 m de route
       if (d && Date.now() - d.t < 30000 && this.distanceM(d, ici) < 150) return;
@@ -89,7 +96,8 @@ document.addEventListener("alpine:init", () => {
     get faits() { return this.arrets.filter((a) => a.passage && a.passage.statut === "fait").length; },
     get sautes() { return this.arrets.filter((a) => a.passage && a.passage.statut === "saute").length; },
     get progression() { return this.arrets.length ? Math.round(100 * (this.faits + this.sautes) / this.arrets.length) : 0; },
-    get enAttente() { return this.file.length; },
+    // La tape encore annulable (5 secondes) n'est pas « en attente du réseau »
+    get enAttente() { return this.file.filter((x) => !(this.annulable && x.cle === this.annulable.item.cle)).length; },
 
     choisir(id) {
       this.choisiId = id; this.menuSaute = false; this.note = "";
@@ -115,14 +123,37 @@ document.addEventListener("alpine:init", () => {
         operation: this.operation.id, adresse: a.id, statut: statut, raison: raison || "",
         note: this.note.trim(), quand: new Date().toISOString(),
       };
+      const precedent = a.passage ? { ...a.passage } : null;
       // Une correction du même arrêt remplace la tape pas encore envoyée
       this.file = this.file.filter((x) => x.adresse !== a.id).concat([item]);
       this.sauver();
       this.appliquer(item, true);
-      this.message = a.client + " : " + (statut === "fait" ? "fait." : "sauté.");
+      this.message = "";
       this.choisiId = null; this.menuSaute = false; this.note = "";
       window.scrollTo({ top: 0, behavior: "smooth" });
-      this.envoyer();
+      // 5 secondes pour annuler une tape ratée (gants) : la tape est gardée dans le cellulaire, mais pas envoyée avant
+      if (this.annulable) clearInterval(this.annulable.minuteur);
+      this.annulable = { item, precedent, adresse: a.id, texte: a.ligne1 + " : " + (statut === "fait" ? "fait" : "sauté"), reste: 5 };
+      const ann = this.annulable;  // l'objet réactif d'Alpine (le compte à rebours s'affiche)
+      ann.minuteur = setInterval(() => {
+        if (--ann.reste > 0) return;
+        clearInterval(ann.minuteur);
+        if (this.annulable && this.annulable.item.cle === ann.item.cle) this.annulable = null;
+        this.envoyer();
+      }, 1000);
+    },
+
+    annuler() {
+      const ann = this.annulable;
+      if (!ann) return;
+      clearInterval(ann.minuteur);
+      this.annulable = null;
+      this.file = this.file.filter((x) => x.cle !== ann.item.cle);
+      this.sauver();
+      const a = this.arrets.find((x) => x.id === ann.adresse);
+      if (a) a.passage = ann.precedent;
+      this.choisiId = ann.adresse;  // on revient à cet arrêt
+      this.message = "Annulé : rien n'a été noté.";
     },
 
     sauver() { localStorage.setItem(this.cleFile, JSON.stringify(this.file)); },
@@ -161,7 +192,9 @@ document.addEventListener("alpine:init", () => {
     async envoyer() {
       if (this.envoiEnCours || !this.file.length) return;
       this.envoiEnCours = true;
-      const lot = this.file.slice();
+      // La tape encore annulable attend la fin de ses 5 secondes
+      const lot = this.file.filter((x) => !(this.annulable && x.cle === this.annulable.item.cle));
+      if (!lot.length) { this.envoiEnCours = false; return; }
       try {
         const r = await fetch(this.synchro, {
           method: "POST", credentials: "same-origin",
@@ -171,7 +204,7 @@ document.addEventListener("alpine:init", () => {
         if (r.status === 403 || r.redirected) { this.message = "Session expirée : se reconnecter (les passages restent en attente)."; return; }
         if (!r.ok) throw new Error("HTTP " + r.status);
         const rep = await r.json();
-        const faites = new Set(rep.acceptes.map((x) => x.cle).concat(rep.refuses));
+        const faites = new Set(rep.acceptes.map((x) => x.cle).concat(rep.refuses));  // seulement celles du lot
         for (const x of rep.acceptes) {
           const a = this.arrets.find((y) => y.id === x.adresse);
           // Seulement si aucune nouvelle tape n'attend pour cet arrêt
