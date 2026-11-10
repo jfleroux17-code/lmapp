@@ -2,8 +2,10 @@
 {% block titre %}Messages{% endblock %}
 {% block contenu %}
 <div class="mb-3 flex items-center justify-between gap-3"><h1 class="text-2xl font-bold">Messages</h1><a href="{% url 'terrain:demandes' %}" class="flex min-h-12 items-center text-accent">Demandes ›</a></div>
-<a href="{% url 'terrain:envoi_groupe' %}" class="gros-bouton mb-2 border-2 border-bordure">Écrire à plusieurs clients</a>
-<a href="{% url 'terrain:gabarits' %}" class="mb-4 block text-center text-sm text-gray-400">Messages types (textes des avis, relances, reçus) ›</a>
+<div class="mb-4 grid grid-cols-2 gap-2">
+  <a href="?vue=recus" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if vue == 'recus' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Reçus{% if non_lus %} ({{ non_lus }}){% endif %}</a>
+  <a href="?vue=envoyes" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if vue == 'envoyes' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Envoyés</a>
+</div>
 {% if cle_vapid %}
 <script>
   // E8 : notifications sur ce cellulaire (Web Push). iPhone : seulement une fois l'app ajoutée à l'écran d'accueil.
@@ -38,21 +40,7 @@
     },
   });
 </script>
-<div class="carte mb-4 p-4" x-data="notifications('{{ cle_vapid }}', '{% url 'terrain:abonnement_notifications' %}', '{{ csrf_token }}')" x-show="etat !== 'inconnu'" x-cloak>
-  <div class="mb-2 font-semibold">Notifications sur ce cellulaire</div>
-  <p class="mb-3 text-sm text-gray-400" x-show="etat === 'actif'">Activées : un avis quand un client écrit ou qu'un virement Interac arrive.</p>
-  <p class="mb-3 text-sm text-gray-400" x-show="etat === 'inactif'">Être averti quand un client écrit ou qu'un virement Interac arrive.</p>
-  <p class="text-sm text-gray-400" x-show="etat === 'installer'">Sur iPhone : touchez Partager, puis « Sur l'écran d'accueil », et ouvrez l'app de là pour activer les notifications.</p>
-  <p class="text-sm text-gray-400" x-show="etat === 'bloque'">Refusées : à permettre dans les réglages du téléphone (Notifications), puis revenir ici.</p>
-  <p class="text-sm text-gray-400" x-show="etat === 'impossible'">Ce navigateur ne reçoit pas de notifications.</p>
-  <button type="button" class="gros-bouton border-2 border-accent text-accent" x-show="etat === 'inactif'" @click="activer()">Activer les notifications</button>
-  <button type="button" class="gros-bouton border-2 border-bordure text-gray-300" x-show="etat === 'actif'" @click="desactiver()">Désactiver</button>
-</div>
 {% endif %}
-<div class="mb-4 grid grid-cols-2 gap-2">
-  <a href="?vue=recus" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if vue == 'recus' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Reçus{% if non_lus %} ({{ non_lus }}){% endif %}</a>
-  <a href="?vue=envoyes" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if vue == 'envoyes' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Envoyés</a>
-</div>
 <div class="carte divide-y divide-bordure">
   {% for m in liste %}
     {% include "terrain/_ligne_message.html" with avec_client=True %}
@@ -61,4 +49,17 @@
   {% endfor %}
 </div>
 {% if vue == "envoyes" %}<p class="mt-3 text-sm text-gray-400">« Préparé » : le message n'est pas parti (la raison est indiquée).</p>{% endif %}
+{% if cle_vapid %}
+<div class="mt-4 flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-2xl border border-bordure px-4 py-2 text-sm text-gray-400" x-data="notifications('{{ cle_vapid }}', '{% url 'terrain:abonnement_notifications' %}', '{{ csrf_token }}')" x-show="etat !== 'inconnu'" x-cloak>
+  <span x-show="etat === 'actif'">Notifications activées sur ce cellulaire.</span>
+  <span x-show="etat === 'inactif'">Être averti quand un client écrit.</span>
+  <span x-show="etat === 'installer'">Notifications : Partager, puis « Sur l'écran d'accueil », et ouvrir l'app de là.</span>
+  <span x-show="etat === 'bloque'">Notifications refusées : les permettre dans les réglages du téléphone.</span>
+  <span x-show="etat === 'impossible'">Ce navigateur ne reçoit pas de notifications.</span>
+  <button type="button" class="min-h-12 font-semibold text-accent" x-show="etat === 'inactif'" @click="activer()">Activer</button>
+  <button type="button" class="min-h-12 text-gray-400 underline" x-show="etat === 'actif'" @click="desactiver()">Désactiver</button>
+</div>
+{% endif %}
+<a href="{% url 'terrain:envoi_groupe' %}" class="gros-bouton mt-4 border-2 border-bordure">Écrire à plusieurs clients</a>
+<a href="{% url 'terrain:gabarits' %}" class="mt-2 block py-3 text-center text-sm text-gray-400">Messages types (textes des avis, relances, reçus) ›</a>
 {% endblock %}

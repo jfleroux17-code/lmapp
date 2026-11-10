@@ -3,7 +3,7 @@
     <h2 class="text-lg font-bold">{% if g.secteur %}{{ g.secteur.nom }}{% else %}Sans secteur{% endif %}</h2>
     {% if ecriture and g.secteur %}
       <div class="flex gap-2">
-        {% include "terrain/tournee/_fleches.html" with url_nom="terrain:deplacer_secteur" pk=g.secteur.pk premier=g.premier dernier=g.dernier quoi="le secteur" %}
+        {% include "terrain/tournee/_fleches.html" with url_nom="terrain:deplacer_secteur" pk=g.secteur.pk premier=g.premier dernier=g.dernier quoi="le secteur "|add:g.secteur.nom %}
       </div>
     {% endif %}
   </div>
@@ -11,12 +11,12 @@
     {% for a in g.arrets %}
       <div id="a{{ a.pk }}" class="flex min-h-16 items-center justify-between gap-3 p-3 {% if a.bouge %}bg-accent/10{% endif %}">
         <div class="min-w-0">
-          <div class="truncate font-semibold">{{ a.rang }}. {{ a.ligne1 }}</div>
-          <div class="truncate text-sm text-gray-400">{{ a.client.nom_affiche }}</div>
+          <div class="font-semibold">{{ a.rang }}. {{ a.ligne1 }}</div>
+          <div class="text-sm text-gray-400">{{ a.client.nom_affiche }}</div>
         </div>
         {% if ecriture %}
           <div class="flex shrink-0 gap-2">
-            {% include "terrain/tournee/_fleches.html" with url_nom="terrain:deplacer_arret" pk=a.pk premier=forloop.first dernier=forloop.last quoi="l'arrêt" %}
+            {% include "terrain/tournee/_fleches.html" with url_nom="terrain:deplacer_arret" pk=a.pk premier=forloop.first dernier=forloop.last quoi=a.ligne1 %}
           </div>
         {% endif %}
       </div>

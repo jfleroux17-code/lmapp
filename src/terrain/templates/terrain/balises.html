@@ -10,23 +10,26 @@
 </div>
 <div class="carte divide-y divide-bordure">
   {% for l in lignes %}
-    <div class="flex items-center justify-between gap-3 p-4" id="a{{ l.adresse.pk }}">
-      <a href="{% url 'terrain:fiche' l.adresse.client_id %}" class="min-w-0">
-        <div class="truncate font-semibold">{{ l.adresse.client.nom_affiche }}</div>
-        <div class="truncate text-sm text-gray-400">{{ l.adresse.ligne1 }}{% if l.adresse.secteur %} · {{ l.adresse.secteur.nom }}{% endif %}</div>
-        {% if l.balisage %}<div class="text-sm text-accent">{{ l.balisage.nombre }} posée{{ l.balisage.nombre|pluralize }} le {{ l.balisage.posees_le|date_qc:"j F" }}</div>{% endif %}
+    <div class="p-4" id="a{{ l.adresse.pk }}">
+      {# Adresse en premier, sur toute la largeur (jamais coupée); l'action en dessous #}
+      <a href="{% url 'terrain:fiche' l.adresse.client_id %}" class="block">
+        <div class="font-semibold">{{ l.adresse.ligne1 }}</div>
+        <div class="text-sm text-gray-400">{{ l.adresse.client.nom_affiche }}{% if l.adresse.secteur %} · {{ l.adresse.secteur.nom }}{% endif %}</div>
+        {% if l.balisage %}<div class="text-sm text-accent">✓ {{ l.balisage.nombre }} posée{{ l.balisage.nombre|pluralize }} le {{ l.balisage.posees_le|date_qc:"j F" }}</div>{% endif %}
       </a>
       {% if ecriture %}
         {% if vue == "poser" %}
-          <form method="post" action="{% url 'terrain:poser_balises' l.adresse.pk %}" class="flex shrink-0 items-center gap-2">{% csrf_token %}
+          <form method="post" action="{% url 'terrain:poser_balises' l.adresse.pk %}" class="mt-3 grid grid-cols-[3.5rem_1fr_3.5rem] gap-2" x-data="{ n: {{ l.propose|default:4 }} }">{% csrf_token %}
             <input type="hidden" name="retour" value="{% url 'terrain:balises' %}?vue=poser">
-            <input name="nombre" type="number" inputmode="numeric" min="1" max="50" value="{{ l.propose }}" class="champ w-20 px-3 text-center" aria-label="Nombre de balises">
-            <button class="flex min-h-14 items-center rounded-xl bg-ok px-4 font-semibold text-nuit">Posées</button>
+            <button type="button" @click="n = Math.max(1, n - 1)" class="h-14 rounded-xl border-2 border-bordure text-2xl" aria-label="Une balise de moins">−</button>
+            <input name="nombre" type="number" inputmode="numeric" min="1" max="50" x-model.number="n" value="{{ l.propose }}" class="champ px-1 text-center text-xl font-bold" aria-label="Nombre de balises">
+            <button type="button" @click="n = Math.min(50, n + 1)" class="h-14 rounded-xl border-2 border-bordure text-2xl" aria-label="Une balise de plus">+</button>
+            <button class="col-span-3 flex min-h-14 items-center justify-center rounded-xl bg-accent px-3 font-semibold text-nuit" x-text="'Marquer ' + n + ' balise' + (n > 1 ? 's' : '') + ' posée' + (n > 1 ? 's' : '')">Marquer posées</button>
           </form>
         {% else %}
-          <form method="post" action="{% url 'terrain:retirer_balises' l.balisage.pk %}" class="shrink-0">{% csrf_token %}
+          <form method="post" action="{% url 'terrain:retirer_balises' l.balisage.pk %}" class="mt-3">{% csrf_token %}
             <input type="hidden" name="retour" value="{% url 'terrain:balises' %}?vue=retirer">
-            <button class="flex min-h-14 items-center rounded-xl border-2 border-accent px-4 font-semibold text-accent">Retirées</button>
+            <button class="flex min-h-14 w-full items-center justify-center rounded-xl border-2 border-accent px-4 font-semibold text-accent">Marquer retirées</button>
           </form>
         {% endif %}
       {% endif %}

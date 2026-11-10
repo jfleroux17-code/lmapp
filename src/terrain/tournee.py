@@ -264,7 +264,8 @@ def avis_manuels(request):
 @membre_requis
 def liste_messages(request):
     """Messages reçus (E7) et envoyés, les plus récents d'abord. Les reçus pas encore ouverts en premier."""
-    base = Message.objects.filter(entreprise=request.entreprise).select_related("client", "operation")
+    base = (Message.objects.filter(entreprise=request.entreprise).select_related("client", "operation")
+            .prefetch_related("virements__facture"))
     recus = base.filter(sens=Message.Sens.ENTRANT)
     vue = request.GET.get("vue") or ("recus" if recus.exists() else "envoyes")
     if vue == "recus":

@@ -3,9 +3,12 @@ from django.conf import settings
 
 def environnement(request):
     """Rend LMAPP_ENV disponible dans tous les gabarits (bandeau de test)."""
+    from django.utils import timezone
+
     return {
         "lmapp_env": settings.LMAPP_ENV,
         "est_test": settings.LMAPP_ENV != "prod",
+        "aujourdhui": timezone.localdate(),  # pastille « En retard » des factures
     }
 
 

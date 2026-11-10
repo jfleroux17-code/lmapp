@@ -263,4 +263,4 @@ class NotificationsTests(TestCase):
         self.client.generic("DELETE", "/notifications/abonnement/", json.dumps({"endpoint": "https://web.push.apple.com/abc"}), content_type="application/json")
         self.assertFalse(AbonnementNotification.objects.exists())
         with override_settings(VAPID_CLE_PUBLIQUE="CLE"):
-            self.assertContains(self.client.get("/messages/"), "Notifications sur ce cellulaire")
+            self.assertContains(self.client.get("/messages/"), "Être averti quand un client écrit.")

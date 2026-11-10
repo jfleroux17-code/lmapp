@@ -230,7 +230,7 @@ class OrdreTests(TourneeBase):
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "Village")
         self.assertContains(page, "Sans secteur")
-        self.assertContains(page, 'aria-label="Monter l\'arrêt"')
+        self.assertContains(page, f'aria-label="Monter {self.a2.ligne1}"')  # le nom de l'arrêt, pas « l'arrêt »
 
     def test_monter_et_descendre_un_arret(self):
         r = self.client.post(f"/tournee/ordre/arrets/{self.a2.pk}/", {"sens": "haut"})

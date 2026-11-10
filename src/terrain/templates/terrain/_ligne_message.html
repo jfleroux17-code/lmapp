@@ -1,3 +1,14 @@
+{% load argent %}{% with v=m.virements.all.0 %}{% if v %}
+{# Avis Interac : carte d'action plutôt qu'un message ordinaire (D5) #}
+<a href="{% if v.statut == 'a_traiter' %}{% url 'terrain:virements' %}{% else %}{% url 'terrain:message' m.pk %}{% endif %}" class="block p-4 active:bg-bordure {% if v.statut == 'a_traiter' %}bg-ok/10{% endif %}">
+  <div class="mb-1 flex items-start justify-between gap-3">
+    <span class="min-w-0 font-bold">Virement Interac {{ v.montant|argent }}</span>
+    <span class="pastille {% if v.statut == 'a_traiter' %}bg-ok text-nuit{% else %}bg-bordure text-gray-300{% endif %}">{{ v.get_statut_display }}</span>
+  </div>
+  <div class="text-sm text-gray-400">{{ v.envoyeur|default:"Envoyeur inconnu" }} · {{ v.recu_le|date_qc:"j F, H \h i" }}</div>
+  {% if v.statut == "a_traiter" %}<div class="mt-1 font-semibold text-ok">{% if v.facture %}Appliquer à la facture {% if v.facture.numero %}n° {{ v.facture.numero }}{% else %}{{ v.facture }}{% endif %} ›{% else %}Choisir la facture ›{% endif %}</div>{% endif %}
+</a>
+{% else %}
 <a href="{% url 'terrain:message' m.pk %}" class="block p-4 active:bg-bordure {% if m.sens == 'entrant' and not m.lu %}bg-accent/10{% endif %}">
   <div class="mb-1 flex items-start justify-between gap-3">
     <span class="min-w-0 truncate {% if m.sens == 'entrant' and not m.lu %}font-bold{% else %}font-semibold{% endif %}">
@@ -16,3 +27,4 @@
   <div class="line-clamp-2 text-sm text-gray-400">{{ m.contenu }}</div>
   {% if m.erreur and m.sens != "entrant" %}<div class="mt-1 text-sm {% if m.statut == 'echec' %}text-danger{% else %}text-gray-400{% endif %}">{{ m.erreur }}</div>{% endif %}
 </a>
+{% endif %}{% endwith %}
