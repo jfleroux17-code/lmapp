@@ -74,6 +74,7 @@ urlpatterns = [
     path("photos-passage/<int:pk>/", tournee.voir_photo_passage, name="voir_photo_passage"),
     path("photos-passage/<int:pk>/retirer/", tournee.retirer_photo_passage, name="retirer_photo_passage"),
     path("tournee/ordre/arrets/<int:adresse_pk>/", tournee.deplacer_arret, name="deplacer_arret"),
+    path("tournee/ordre/arrets/<int:adresse_pk>/rang/", tournee.placer_arret, name="placer_arret"),
     path("tournee/ordre/secteurs/<int:secteur_pk>/", tournee.deplacer_secteur, name="deplacer_secteur"),
     path("demandes/", demandes.liste, name="demandes"),
     path("demandes/nouvelle/", demandes.nouvelle, name="nouvelle_demande"),

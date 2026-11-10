@@ -239,6 +239,19 @@ class OrdreTests(TourneeBase):
         self.client.post(f"/tournee/ordre/arrets/{self.a2.pk}/", {"sens": "bas"})
         self.assertEqual(self.ordre(), [self.a1.pk, self.a2.pk, self.a_mont.pk, self.a_sans_rang.pk])
 
+    def test_rang_tape_directement(self):
+        self.client.post(f"/tournee/ordre/arrets/{self.a2.pk}/rang/", {"rang": "1"})
+        self.assertEqual(self.ordre(), [self.a2.pk, self.a1.pk, self.a_mont.pk, self.a_sans_rang.pk])
+        # Rang hors du secteur : ramené au dernier du Village, sans changer de secteur
+        r = self.client.post(f"/tournee/ordre/arrets/{self.a2.pk}/rang/", {"rang": "9"}, HTTP_HX_REQUEST="true")
+        self.assertContains(r, "Rang ramené dans le secteur Village (rangs 1 à 2)")
+        self.assertEqual(self.ordre(), [self.a1.pk, self.a2.pk, self.a_mont.pk, self.a_sans_rang.pk])
+        self.a2.refresh_from_db()
+        self.assertEqual(self.a2.secteur.nom, "Village")
+        r = self.client.post(f"/tournee/ordre/arrets/{self.a2.pk}/rang/", {"rang": "abc"}, HTTP_HX_REQUEST="true")
+        self.assertContains(r, "Taper un numéro de rang.")
+        self.assertContains(self.client.get("/tournee/ordre/"), "changer le rang")
+
     def test_au_bout_rien_ne_bouge_et_reste_dans_son_secteur(self):
         self.client.post(f"/tournee/ordre/arrets/{self.a1.pk}/", {"sens": "haut"})
         self.client.post(f"/tournee/ordre/arrets/{self.a2.pk}/", {"sens": "bas"})  # dernier du Village

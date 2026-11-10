@@ -308,7 +308,7 @@ def _contexte_ordre(request, bouge=None):
 
 def _reponse_ordre(request, bouge):
     if request.headers.get("HX-Request"):
-        return render(request, "terrain/tournee/_ordre.html", _contexte_ordre(request, bouge))
+        return render(request, "terrain/tournee/_ordre.html", {**_contexte_ordre(request, bouge), "hx": True})
     return redirect(f"{reverse('terrain:ordre')}?bouge={bouge}#{bouge}")
 
 
@@ -341,6 +341,38 @@ def deplacer_arret(request, adresse_pk):
         if a not in voisins:  # adresse inactive ou client pas servi : pas dans la tournée
             return redirect("terrain:ordre")
         Adresse.objects.bulk_update(_echanger(voisins, a, request.POST.get("sens"), "ordre_tournee"), ["ordre_tournee"])
+    return _reponse_ordre(request, f"a{a.pk}")
+
+
+@require_POST
+@ecriture_requise
+def placer_arret(request, adresse_pk):
+    """Rang tapé directement (audit UX) : l'arrêt va à ce rang de la tournée, dans son secteur
+    (un arrêt ne change pas de secteur ici : le rang est ramené au premier ou au dernier du secteur)."""
+    try:
+        cible = int(request.POST.get("rang", ""))
+    except ValueError:
+        messages.error(request, "Taper un numéro de rang.")
+        return _reponse_ordre(request, f"a{adresse_pk}")
+    with transaction.atomic():
+        a = get_object_or_404(Adresse.objects.select_for_update(), pk=adresse_pk, entreprise=request.entreprise)
+        tous = list(arrets(request.entreprise))
+        if a not in tous:
+            return redirect("terrain:ordre")
+        voisins = list(arrets(request.entreprise).filter(secteur=a.secteur_id).select_for_update(of=("self",)))
+        premier = tous.index(voisins[0]) + 1  # rang de la tournée du premier arrêt du secteur
+        position = min(max(cible - premier, 0), len(voisins) - 1)
+        if cible - premier != position and a.secteur_id:
+            messages.info(request, f"Rang ramené dans le secteur {a.secteur.nom} (rangs {premier} à {premier + len(voisins) - 1}). "
+                                   "Changer de secteur : dans la fiche de l'adresse.")
+        voisins.remove(a)
+        voisins.insert(position, a)
+        changes = []
+        for n, o in enumerate(voisins, start=1):
+            if o.ordre_tournee != n * 10:
+                o.ordre_tournee = n * 10
+                changes.append(o)
+        Adresse.objects.bulk_update(changes, ["ordre_tournee"])
     return _reponse_ordre(request, f"a{a.pk}")
 
 

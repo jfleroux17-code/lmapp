@@ -1,3 +1,4 @@
+{% if hx %}{% for m in messages %}<p class="mb-3 rounded-2xl border border-bordure bg-carte p-4 text-gray-200" role="status">{{ m }}</p>{% endfor %}{% endif %}
 {% for g in groupes %}
   <div class="mb-2 mt-5 flex items-center justify-between gap-3"{% if g.secteur %} id="s{{ g.secteur.pk }}"{% endif %}>
     <h2 class="text-lg font-bold">{% if g.secteur %}{{ g.secteur.nom }}{% else %}Sans secteur{% endif %}</h2>
@@ -9,15 +10,34 @@
   </div>
   <div class="carte divide-y divide-bordure {% if g.bouge %}ring-2 ring-accent{% endif %}">
     {% for a in g.arrets %}
-      <div id="a{{ a.pk }}" class="flex min-h-16 items-center justify-between gap-3 p-3 {% if a.bouge %}bg-accent/10{% endif %}">
-        <div class="min-w-0">
-          <div class="flex items-center gap-2"><span class="inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-full bg-accent px-2 text-base font-bold leading-none text-nuit" aria-label="Arrêt {{ a.rang }}">{{ a.rang }}</span><span class="font-semibold">{{ a.ligne1 }}</span></div>
-          <div class="text-sm text-gray-400">{{ a.client.nom_affiche }}</div>
+      <div id="a{{ a.pk }}" class="p-3 {% if a.bouge %}bg-accent/10{% endif %}" x-data="{ changer: false }">
+        <div class="flex min-h-14 items-center justify-between gap-3">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              {% if ecriture %}
+                {# Toucher le rang pour en taper un autre (déplacer de plusieurs places d'un coup) #}
+                <button type="button" @click="changer = !changer; $nextTick(() => changer && $refs.rang.focus())" class="inline-flex h-12 min-w-12 shrink-0 items-center justify-center rounded-full bg-accent px-2 text-lg font-bold leading-none text-nuit" aria-label="Arrêt {{ a.rang }} : changer le rang" :aria-expanded="changer">{{ a.rang }}</button>
+              {% else %}
+                <span class="inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-full bg-accent px-2 text-base font-bold leading-none text-nuit" aria-label="Arrêt {{ a.rang }}">{{ a.rang }}</span>
+              {% endif %}
+              <span class="font-semibold">{{ a.ligne1 }}</span>
+            </div>
+            <div class="text-sm text-gray-400">{{ a.client.nom_affiche }}</div>
+          </div>
+          {% if ecriture %}
+            <div class="flex shrink-0 gap-2">
+              {% include "terrain/tournee/_fleches.html" with url_nom="terrain:deplacer_arret" pk=a.pk premier=forloop.first dernier=forloop.last quoi=a.ligne1 %}
+            </div>
+          {% endif %}
         </div>
         {% if ecriture %}
-          <div class="flex shrink-0 gap-2">
-            {% include "terrain/tournee/_fleches.html" with url_nom="terrain:deplacer_arret" pk=a.pk premier=forloop.first dernier=forloop.last quoi=a.ligne1 %}
-          </div>
+          {% url 'terrain:placer_arret' a.pk as url_rang %}
+          <form x-show="changer" x-cloak method="post" action="{{ url_rang }}" hx-post="{{ url_rang }}" hx-target="#ordre" hx-swap="innerHTML" hx-sync="#ordre:queue all"
+                class="mt-3 grid grid-cols-[1fr_auto_auto] items-center gap-2">{% csrf_token %}
+            <label class="text-gray-300" for="rang-{{ a.pk }}">Nouveau rang</label>
+            <input id="rang-{{ a.pk }}" x-ref="rang" name="rang" type="number" inputmode="numeric" min="1" value="{{ a.rang }}" class="champ w-24 px-2 text-center text-xl font-bold">
+            <button class="min-h-14 rounded-xl bg-accent px-4 font-bold text-nuit">Placer</button>
+          </form>
         {% endif %}
       </div>
     {% endfor %}
