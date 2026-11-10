@@ -138,7 +138,7 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - [x] Ajout d'un déneigeur en quelques minutes (Q4) : commande `ajouter_deneigeur` (en prod), et administration à `admin.ledeneigeur.com` (Q6) **en prod le 8 novembre 2026** (DNS par JF, bloc Caddy, `/admin/` de `louis` en 404).
 - [x] **Échéancier des contrats (B3, C5)** : en prod le 9 novembre 2026. Fiche de l'entreprise (versements par défaut, dates, jours d'avance), échéancier créé par l'import (colonne `versements`) et par l'administration, facture préparée d'avance avec avis au cellulaire, écran « Versements à envoyer » (une tape). Vérifié dans Chrome en test.
 - [x] **Chèques postdatés (D9)** : en prod le 9 novembre 2026. Fiche du client (« + Chèque postdaté »), écran `/cheques/` (déposé d'une tape à sa date, retourné, rendu), avis au cellulaire le jour venu, mention sur la facture et son PDF, pas de relance proposée pendant qu'un chèque est en main. Reste à voir avec Louis : une colonne d'import pour les chèques qu'il a déjà en main, si c'est utile.
-- [ ] **Dépenses par photo (PRD S1, S2)** : photo du reçu, montant, taxes, catégorie; dans le rapport et l'export de fin de saison.
+- [x] **Dépenses par photo (PRD S1, S2)** : en prod le 9 novembre 2026. Comptes, « Dépenses (photo du reçu) » : photo, total, catégorie, taxes calculées; rapport de saison (PDF) et export CSV. Lecture automatique du reçu (S3) : plus tard, avec une clé d'API.
 - [ ] Saison d'été, paysagement (PRD T) : à définir avec Louis, plus tard.
 - [ ] Facturation des entreprises par l'app (Q2), quand les tarifs seront fixés.
 - [x] Avis « Ébauche » retiré de la politique de confidentialité, durées réelles écrites, `site.zip` refait (9 novembre 2026).

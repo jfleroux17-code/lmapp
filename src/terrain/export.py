@@ -64,4 +64,11 @@ def export(request):
                     c.note] for c in Credit.objects.filter(entreprise=request.entreprise, date__gte=du, date__lte=au).select_related("client")]
         lignes.sort(key=lambda l: l[0])
         return _csv(f"paiements_{suffixe}", ["Date", "Facture", "Client", "Mode", "Montant", "Référence", "Note"], lignes)
+    if quoi == "depenses":
+        from facturation.models import Depense
+
+        depenses = Depense.objects.filter(entreprise=request.entreprise, date__gte=du, date__lte=au).defer("photo").order_by("date", "pk")
+        return _csv(f"depenses_{suffixe}", ["Date", "Catégorie", "Fournisseur", "Avant taxes", "TPS", "TVQ", "Total", "Note", "Photo du reçu"], [
+            [f"{d.date:%Y-%m-%d}", d.get_categorie_display(), d.fournisseur, _argent(d.avant_taxes), _argent(d.tps), _argent(d.tvq),
+             _argent(d.total), d.note, "oui" if d.photo_taille else "non"] for d in depenses])
     return render(request, "terrain/argent/export.html", {"du": du, "au": au, "saison": saison})

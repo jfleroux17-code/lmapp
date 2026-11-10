@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.urls import reverse
 from django.utils.html import format_html
 
-from facturation.models import ChequePostdate, Contrat, Facture, LigneFacture, Paiement, Saison, Service, Versement, VirementInterac
+from facturation.models import ChequePostdate, Contrat, Depense, Facture, LigneFacture, Paiement, Saison, Service, Versement, VirementInterac
 
 
 @admin.register(Saison)
@@ -201,3 +201,14 @@ class ChequePostdateAdmin(admin.ModelAdmin):
     autocomplete_fields = ["client", "facture"]
     raw_id_fields = ["versement"]
     readonly_fields = ["statut", "depose_le", "paiement", "credit"]
+
+
+@admin.register(Depense)
+class DepenseAdmin(admin.ModelAdmin):
+    """S1 : notées au cellulaire (/depenses/). La photo du reçu se voit dans l'app."""
+    list_display = ["date", "categorie", "fournisseur", "total", "tps", "tvq", "entreprise"]
+    list_filter = ["entreprise", "categorie"]
+    search_fields = ["fournisseur", "note"]
+    date_hierarchy = "date"
+    exclude = ["photo"]
+    readonly_fields = ["photo_type", "photo_taille", "saisie_par"]

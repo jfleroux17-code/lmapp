@@ -20,5 +20,15 @@
   {% for l in par_secteur %}<tr><td>{{ l.nom }}</td><td class="nombre">{{ l.clients }}</td><td class="nombre">{{ l.sous_total|argent }}</td><td class="nombre">{{ l.total|argent }}</td><td class="nombre">{{ l.paye|argent }}</td></tr>
   {% empty %}<tr><td colspan="5">Aucune facture.</td></tr>{% endfor %}
 </table>
+<h3>Dépenses de la saison</h3>
+<table class="lignes">
+  {% if depenses.par_categorie %}<thead><tr><th>Catégorie</th><th class="nombre">Reçus</th><th class="nombre">Avant taxes</th><th class="nombre">TPS</th><th class="nombre">TVQ</th><th class="nombre">Total</th></tr></thead>{% endif %}
+  {% for c in depenses.par_categorie %}<tr><td>{{ c.categorie }}</td><td class="nombre">{{ c.nombre }}</td><td class="nombre">{{ c.avant_taxes|argent }}</td><td class="nombre">{{ c.tps|argent }}</td><td class="nombre">{{ c.tvq|argent }}</td><td class="nombre">{{ c.total|argent }}</td></tr>
+  {% empty %}<tr><td colspan="6">Aucune dépense notée.</td></tr>{% endfor %}
+  {% if depenses.par_categorie %}<tr><td><strong>Total des dépenses</strong></td><td class="nombre">{{ depenses.nombre }}</td><td class="nombre">{{ depenses.avant_taxes|argent }}</td><td class="nombre">{{ depenses.tps|argent }}</td><td class="nombre">{{ depenses.tvq|argent }}</td><td class="nombre"><strong>{{ depenses.total|argent }}</strong></td></tr>{% endif %}
+</table>
+{% if depenses.par_mois %}<table class="lignes">
+  {% for m in depenses.par_mois %}<tr><td>{{ m.mois|date:"F Y"|capfirst }}</td><td class="nombre">{{ m.nombre }} reçu{{ m.nombre|pluralize }}</td><td class="nombre">{{ m.total|argent }}</td></tr>{% endfor %}
+</table>{% endif %}
 <h3>À recevoir aujourd'hui (toutes saisons)</h3>
 <table class="lignes"><tr><td>{{ nb_a_recevoir }} client{{ nb_a_recevoir|pluralize }}</td><td class="nombre">{{ a_recevoir|argent }}</td></tr></table>

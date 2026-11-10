@@ -1,0 +1,34 @@
+{% extends "terrain/base.html" %}
+{% load argent %}
+{% block titre %}Dépenses{% endblock %}
+{% block contenu %}
+<a href="{% url 'terrain:comptes' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Comptes</a>
+<h1 class="mb-1 text-2xl font-bold">Dépenses</h1>
+<p class="mb-4 text-gray-400">Une photo du reçu, le total, la catégorie. Les taxes payées se calculent toutes seules.</p>
+{% if ecriture %}<a href="{% url 'terrain:nouvelle_depense' %}" class="gros-bouton mb-5 min-h-20 bg-accent text-xl text-nuit">+ Dépense (photo du reçu)</a>{% endif %}
+
+<div class="mb-5 grid grid-cols-2 gap-3">
+  <div class="carte p-4"><div class="text-sm text-gray-400">Ce mois-ci</div><div class="text-xl font-bold">{{ ce_mois.total|argent }}</div><div class="text-sm text-gray-400">{{ ce_mois.nombre }} reçu{{ ce_mois.nombre|pluralize }}</div></div>
+  <div class="carte p-4"><div class="text-sm text-gray-400">Saison {{ saison.nom }}</div><div class="text-xl font-bold">{{ bilan.total|argent }}</div><div class="text-sm text-gray-400">Taxes payées {{ bilan.taxes|argent }}</div></div>
+</div>
+
+{% if bilan.par_categorie %}
+  <h2 class="mb-2 text-lg font-bold">Par catégorie (saison)</h2>
+  <div class="carte mb-5 divide-y divide-bordure">
+    {% for c in bilan.par_categorie %}<div class="flex justify-between gap-3 p-3"><span class="min-w-0">{{ c.categorie }} <span class="text-sm text-gray-400">({{ c.nombre }})</span></span><span class="shrink-0 font-semibold">{{ c.total|argent }}</span></div>{% endfor %}
+  </div>
+{% endif %}
+
+<h2 class="mb-2 text-lg font-bold">Dernières dépenses</h2>
+<div class="carte divide-y divide-bordure">
+  {% for d in recentes %}
+    <a href="{% url 'terrain:depense' d.pk %}" class="flex min-h-16 items-center justify-between gap-3 p-4 active:bg-bordure">
+      <span class="min-w-0"><span class="block truncate font-semibold">{{ d.get_categorie_display }}</span>
+        <span class="block truncate text-sm text-gray-400">{{ d.date|date:"j F" }}{% if d.fournisseur %} · {{ d.fournisseur }}{% endif %}{% if not d.photo_taille %} · <span class="text-accent">sans photo</span>{% endif %}</span></span>
+      <span class="shrink-0 font-semibold">{{ d.total|argent }}</span>
+    </a>
+  {% empty %}
+    <p class="p-4 text-gray-400">Aucune dépense notée.</p>
+  {% endfor %}
+</div>
+{% endblock %}

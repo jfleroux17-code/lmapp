@@ -41,7 +41,11 @@ def saison(entreprise, s):
     encaissements = [{"mode": noms[m], "montant": t} for m, t in modes.items() if t]
 
     a_recevoir = Facture.objects.filter(entreprise=entreprise).a_recevoir()
+    from facturation.depenses import bilan
+
+    depenses = bilan(entreprise, s.debut, s.fin)
     return {
+        "depenses": depenses,
         "saison": s,
         "nb_factures": len(ventes), "sous_total": sum((f.sous_total for f in ventes), ZERO),
         "tps": sum((f.tps for f in ventes), ZERO), "tvq": sum((f.tvq for f in ventes), ZERO),

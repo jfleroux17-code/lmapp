@@ -575,3 +575,52 @@ class VirementInterac(Horodate):
 
     def __str__(self):
         return f"{self.montant} $ de {self.envoyeur or '?'}"
+
+
+class Depense(Horodate):
+    """Dépense de l'entreprise (PRD S1) : photo du reçu, total payé, TPS et TVQ payées (crédits de taxe), catégorie.
+
+    Le total est ce qui a été payé, taxes comprises. TPS et TVQ : tapées, ou calculées à partir du total aux taux
+    de l'entreprise (facturation/depenses.py). Photo gardée dans la base (dans les sauvegardes), servie aux membres
+    seulement. Pas une facture : on peut la corriger ou la supprimer (journal des actions)."""
+
+    class Categorie(models.TextChoices):
+        CARBURANT = "carburant", "Essence et carburant"
+        REPARATION = "reparation", "Réparation et entretien de la machinerie"
+        PIECES = "pieces", "Pièces, outils et équipement"
+        ABRASIFS = "abrasifs", "Sel, sable et abrasifs"
+        VEHICULE = "vehicule", "Véhicule (immatriculation, assurance)"
+        TELEPHONE = "telephone", "Téléphone et Internet"
+        SOUS_TRAITANCE = "sous_traitance", "Sous-traitance"
+        BUREAU = "bureau", "Bureau et administration"
+        AUTRE = "autre", "Autre"
+
+    entreprise = models.ForeignKey(Entreprise, on_delete=models.PROTECT, related_name="depenses")
+    date = models.DateField(default=timezone.localdate)
+    categorie = models.CharField("catégorie", max_length=16, choices=Categorie.choices, default=Categorie.CARBURANT)
+    fournisseur = models.CharField(max_length=100, blank=True, help_text="Ex. Ultramar, Garage Lachance.")
+    total = _argent("total payé", validators=[MinValueValidator(Decimal("0.01"))], help_text="Taxes comprises.")
+    tps = _argent("TPS payée", default=ZERO, validators=[MinValueValidator(0)])
+    tvq = _argent("TVQ payée", default=ZERO, validators=[MinValueValidator(0)])
+    note = models.CharField(max_length=200, blank=True)
+    photo = models.BinaryField(null=True, blank=True)
+    photo_type = models.CharField(max_length=20, blank=True)
+    photo_taille = models.PositiveIntegerField(default=0)
+    saisie_par = models.ForeignKey("auth.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        verbose_name = "dépense"
+        verbose_name_plural = "dépenses"
+        ordering = ["entreprise", "-date", "-pk"]
+        indexes = [models.Index(fields=["entreprise", "date"], name="depense_par_date")]
+
+    def __str__(self):
+        return f"{self.get_categorie_display()} : {self.total} $ ({self.date:%Y-%m-%d})"
+
+    def clean(self):
+        if self.total is not None and (self.tps or 0) + (self.tvq or 0) >= self.total:
+            raise ValidationError("Les taxes ne peuvent pas dépasser le total payé.")
+
+    @property
+    def avant_taxes(self):
+        return self.total - self.tps - self.tvq
