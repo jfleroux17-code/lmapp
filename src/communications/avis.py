@@ -31,7 +31,7 @@ def _canal(client, genre):
     return None, None
 
 
-def _creer(operation, client, genre, **variables):
+def _creer(operation, client, genre, delai=0, **variables):
     canal, dest = _canal(client, genre)
     if canal is None:
         return None
@@ -47,7 +47,7 @@ def _creer(operation, client, genre, **variables):
                                        destinataire=dest, contenu=f"{texte}\n{_signature(ent)}")
     except IntegrityError:
         return None  # déjà avisé pour cette opération (G3)
-    return envoi.envoyer(m)
+    return envoi.envoyer(m, delai=delai)
 
 
 def _deja(operation, genre):
@@ -58,14 +58,32 @@ def _minutes(entreprise, arrets_avant):
     return max(5, (arrets_avant + 1) * entreprise.minutes_par_arret)
 
 
-def aviser_debut(operation):
-    """G5 : à chaque client servi, une fois, au début de l'opération."""
+DELAI_ANNULATION_DEBUT = 10  # secondes pour annuler les avis de début après « Démarrer » (tap accidentel)
+
+
+def clients_a_aviser_au_debut(entreprise):
+    """Clients servis joignables (cellulaire ou courriel) : ceux qui recevront l'avis de début."""
+    from django.db.models import Q
+
+    return (Client.objects.filter(entreprise=entreprise, statut__in=[Client.Statut.ACTIF, Client.Statut.RECOUVREMENT],
+                                  adresses__active=True).exclude(Q(cellulaire="") & Q(courriel="")).distinct())
+
+
+def aviser_debut(operation, delai=0):
+    """G5 : à chaque client servi, une fois, au début de l'opération. delai : secondes avant l'envoi
+    réel, le temps d'annuler (annuler_avis_debut)."""
     deja, n = _deja(operation, Genre.DEBUT), 0
     for c in Client.objects.filter(entreprise=operation.entreprise, statut__in=[Client.Statut.ACTIF, Client.Statut.RECOUVREMENT],
                                    adresses__active=True).distinct():
-        if c.pk not in deja and _creer(operation, c, Genre.DEBUT):
+        if c.pk not in deja and _creer(operation, c, Genre.DEBUT, delai=delai):
             n += 1
     return n
+
+
+def annuler_avis_debut(operation):
+    """Avis de début encore en file (pas partis) : retenus. Renvoie le nombre retenu."""
+    return Message.objects.filter(operation=operation, genre=Genre.DEBUT, statut=Message.Statut.EN_FILE).update(
+        statut=Message.Statut.PREPARE, erreur="Avis de début annulé avant l'envoi.", modifie_le=timezone.now())
 
 
 def _restants(operation):

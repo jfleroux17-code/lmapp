@@ -6,6 +6,15 @@
 <script src="{% static 'terrain/photo.js' %}"></script>
 <script src="{% static 'terrain/tournee.js' %}"></script>
 {{ donnees|json_script:"donnees-tournee" }}
+{% with a=donnees.avis_debut %}{% if a and ecriture %}
+  {# 10 secondes pour retenir les avis de début (Démarrer tapé par erreur) #}
+  <form method="post" action="{{ a.annuler }}" x-data="{ reste: {{ a.secondes }}, init() { const t = setInterval(() => { if (--this.reste <= 0) clearInterval(t) }, 1000) } }"
+        class="mb-4 flex items-center justify-between gap-3 rounded-2xl border-2 border-accent bg-nuit p-3" role="status">{% csrf_token %}
+    <span class="text-lg" x-show="reste > 0" x-text="'{{ a.nombre }} avis partent dans ' + reste + ' s'"></span>
+    <span class="text-lg text-ok" x-show="reste <= 0" x-cloak>{{ a.nombre }} avis de début partis.</span>
+    <button x-show="reste > 0" class="min-h-14 rounded-xl bg-accent px-5 text-lg font-bold text-nuit">Annuler</button>
+  </form>
+{% endif %}{% endwith %}
 <div x-data="tournee(JSON.parse(document.getElementById('donnees-tournee').textContent))" x-cloak>
 
   <p x-show="horsLigne || enAttente" class="mb-4 rounded-2xl border border-accent/60 bg-accent/10 p-4 text-accent" role="status">

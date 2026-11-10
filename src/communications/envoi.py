@@ -43,7 +43,8 @@ def _pourquoi_pas(message):
     return ""
 
 
-def envoyer(message):
+def envoyer(message, delai=0):
+    """delai (secondes) : envoi retardé, le temps de l'annuler (avis de début d'opération)."""
     raison = _pourquoi_pas(message)
     if raison:
         message.statut, message.erreur = Message.Statut.PREPARE, raison
@@ -54,6 +55,7 @@ def envoyer(message):
 
         message.statut, message.erreur = Message.Statut.EN_FILE, ""
         pk = message.pk
-        transaction.on_commit(lambda: envoyer_message.defer(message_id=pk))
+        tache = envoyer_message.configure(schedule_in={"seconds": delai}) if delai else envoyer_message
+        transaction.on_commit(lambda: tache.defer(message_id=pk))
     message.save(update_fields=["statut", "erreur", "modifie_le"])
     return message

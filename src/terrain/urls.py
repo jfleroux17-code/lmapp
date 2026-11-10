@@ -56,6 +56,7 @@ urlpatterns = [
     path("tournee/", tournee.tournee, name="tournee"),
     path("tournee/demarrer/", tournee.demarrer, name="demarrer"),
     path("tournee/terminer/", tournee.terminer, name="terminer"),
+    path("tournee/avis-debut/annuler/", tournee.annuler_avis_debut, name="annuler_avis_debut"),
     path("tournee/passages/<int:adresse_pk>/", tournee.passage, name="passage"),
     path("tournee/synchro/", tournee.synchro, name="synchro"),
     path("tournee/position/", tournee.position, name="position"),

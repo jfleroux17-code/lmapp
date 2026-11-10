@@ -2,17 +2,47 @@
 {% block titre %}Tournée{% endblock %}
 {% block contenu %}
 <h1 class="mb-1 text-2xl font-bold">Tournée</h1>
-<p class="mb-5 text-gray-400">Aucune opération en cours.</p>
-{% include "terrain/_meteo.html" with ouvert=True %}
+<p class="mb-4 text-gray-400">Aucune opération en cours.</p>
+{% include "terrain/_meteo.html" %}
 {% if ecriture %}
-  <form method="post" action="{% url 'terrain:demarrer' %}" class="mb-8 space-y-3" x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
-    <label class="carte flex min-h-14 cursor-pointer items-center gap-3 p-4">
-      <input type="checkbox" name="aviser_debut" value="1" checked class="h-6 w-6 accent-[#f5c400]">
-      <span>Aviser tous les clients du début des opérations</span>
-    </label>
+  {# Démarrer en haut de l'écran. Avec l'avis aux clients coché, une feuille de confirmation à maintenir 1 seconde #}
+  {# (un tap accidentel avec des gants ne texte pas toute la clientèle), puis 10 secondes pour annuler les avis. #}
+  <form method="post" action="{% url 'terrain:demarrer' %}" class="mb-6" x-ref="form"
+        x-data="{ envoi: false, aviser: {% if nb_a_aviser %}true{% else %}false{% endif %}, type: '', nom: '', feuille: false, minuteur: null, charge: false,
+                  choisir(v, n) { if (this.envoi) return; this.type = v; this.nom = n; if (this.aviser) { this.feuille = true } else { this.partir() } },
+                  partir() { this.envoi = true; this.$nextTick(() => this.$refs.form.submit()) },
+                  tenir() { this.charge = true; this.minuteur = setTimeout(() => this.partir(), 1000) },
+                  lacher() { if (!this.envoi) { clearTimeout(this.minuteur); this.charge = false } } }">{% csrf_token %}
+    <input type="hidden" name="type" :value="type">
     {% for valeur, nom in types %}
-      <button name="type" value="{{ valeur }}" class="gros-bouton min-h-16 {% if forloop.first %}bg-accent text-nuit{% else %}border-2 border-bordure{% endif %}" :class="{ 'opacity-60': envoi }">Démarrer : {{ nom }}</button>
+      {% if forloop.first %}
+        <button type="button" @click="choisir('{{ valeur }}', '{{ nom|escapejs }}')" class="gros-bouton min-h-[88px] bg-accent text-2xl font-bold text-nuit" :class="{ 'opacity-60': envoi }">Démarrer : {{ nom }}</button>
+        <div class="mt-3 grid grid-cols-3 gap-2">
+      {% else %}
+          <button type="button" @click="choisir('{{ valeur }}', '{{ nom|escapejs }}')" class="flex min-h-16 items-center justify-center rounded-2xl border-2 border-bordure px-2 text-center text-base font-semibold leading-tight" :class="{ 'opacity-60': envoi }">{{ nom }}</button>
+      {% endif %}
     {% endfor %}
+        </div>
+    <label class="carte mt-3 flex min-h-14 cursor-pointer items-center gap-3 p-4">
+      <input type="checkbox" name="aviser_debut" value="1" x-model="aviser" class="h-7 w-7 shrink-0 accent-[#f5c400]">
+      <span>{% if nb_a_aviser %}Aviser les {{ nb_a_aviser }} client{{ nb_a_aviser|pluralize }} du début des opérations{% else %}Aviser les clients du début (aucun client joignable){% endif %}</span>
+    </label>
+
+    <div x-show="feuille" x-cloak class="fixed inset-0 z-30 flex items-end bg-nuit/80" @click.self="lacher(); feuille = false" @keydown.escape.window="lacher(); feuille = false">
+      <div class="zone-sure w-full rounded-t-[28px] border-t-2 border-bordure bg-carte p-5 pb-8" role="dialog" aria-modal="true" aria-labelledby="titre-confirmer">
+        <h2 id="titre-confirmer" class="mb-2 text-2xl font-bold" x-text="'Démarrer une opération ' + nom + '?'"></h2>
+        <p class="mb-3 text-lg">{{ nb_a_aviser }} client{{ nb_a_aviser|pluralize }} recevr{{ nb_a_aviser|pluralize:"a,ont" }} cet avis{% if not envois_actifs %} <span class="text-gray-400">(envois réels éteints : rien ne partira)</span>{% endif %} :</p>
+        <p class="mb-5 rounded-xl border-l-4 border-accent bg-nuit p-3 text-gray-300">{{ apercu_avis }}</p>
+        <button type="button" class="relative gros-bouton min-h-[88px] select-none overflow-hidden bg-accent text-xl font-bold text-nuit touch-none"
+                @pointerdown="tenir()" @pointerup="lacher()" @pointerleave="lacher()" @pointercancel="lacher()" @contextmenu.prevent
+                @click="if ($event.detail === 0) partir()">
+          <span class="absolute inset-y-0 left-0 bg-nuit/25" :class="charge ? 'w-full transition-[width] duration-1000 ease-linear' : 'w-0'"></span>
+          <span class="relative" x-text="envoi ? 'Démarrage...' : 'Maintenir pour démarrer'"></span>
+        </button>
+        <p class="mt-2 text-center text-sm text-gray-400">Garder le doigt 1 seconde. Ensuite, 10 secondes pour annuler les avis.</p>
+        <button type="button" @click="lacher(); feuille = false" class="gros-bouton mt-3 border-2 border-bordure">Annuler</button>
+      </div>
+    </div>
   </form>
 {% endif %}
 <div class="mb-6 grid grid-cols-3 gap-2">

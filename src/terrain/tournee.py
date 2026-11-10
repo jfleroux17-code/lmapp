@@ -65,12 +65,33 @@ def _meteo(request):
     return m if m and m.lue_le and timezone.now() - m.lue_le < timedelta(hours=6) else None
 
 
+def _avis_debut_annulables(op):
+    """Avis de début encore en file pendant le délai d'annulation : nombre et secondes qui restent."""
+    from communications.models import Genre, Message
+
+    file = Message.objects.filter(operation=op, genre=Genre.DEBUT, statut=Message.Statut.EN_FILE)
+    premier = file.order_by("cree_le").values_list("cree_le", flat=True).first()
+    if premier is None:
+        return None
+    reste = avis.DELAI_ANNULATION_DEBUT - (timezone.now() - premier).total_seconds()
+    return {"nombre": file.count(), "secondes": int(reste) + 1, "annuler": reverse("terrain:annuler_avis_debut")} if reste > 0 else None
+
+
 @membre_requis
 def tournee(request):
     op = Operation.en_cours_de(request.entreprise)
     if op is None:
+        from communications.models import Gabarit, Genre
+
+        apercu = Gabarit.texte_pour(request.entreprise, Genre.DEBUT)
+        try:
+            apercu = apercu.format(client="(nom du client)")
+        except (KeyError, IndexError, ValueError):
+            pass
         return render(request, "terrain/tournee/demarrer.html", {
             "types": Operation.Type.choices, "ecriture": peut_ecrire(request), "meteo": _meteo(request),
+            "nb_a_aviser": avis.clients_a_aviser_au_debut(request.entreprise).count(), "apercu_avis": apercu,
+            "envois_actifs": request.entreprise.envois_actifs,
             "dernieres": Operation.objects.filter(entreprise=request.entreprise).order_by("-debut")[:5],
         })
     passages = {p.adresse_id: p for p in op.passages.all()}
@@ -86,6 +107,7 @@ def tournee(request):
         "avis_proximite": request.entreprise.avis_proximite_actif,
         "nb_avis": op.messages.count(),
         "photo_url": reverse("terrain:photo_passage"),
+        "avis_debut": _avis_debut_annulables(op),
     }
     # F7 : nombre de photos déjà prises à chaque arrêt pendant cette opération
     from django.db.models import Count
@@ -144,11 +166,24 @@ def demarrer(request):
             op = Operation.objects.create(entreprise=request.entreprise, type=t, operateur=request.user)
         texte = f"Opération « {op.get_type_display()} » commencée."
         if request.POST.get("aviser_debut") == "1":
-            n = avis.aviser_debut(op)
+            n = avis.aviser_debut(op, delai=avis.DELAI_ANNULATION_DEBUT)
             texte += f" {n} avis de début préparé{'s' if n > 1 else ''}."
         messages.success(request, texte)
     except IntegrityError:
         messages.info(request, "Une opération est déjà en cours.")
+    return redirect("terrain:tournee")
+
+
+@require_POST
+@ecriture_requise
+def annuler_avis_debut(request):
+    """Bandeau « Annuler » des 10 secondes après Démarrer : retient les avis pas encore partis."""
+    op = Operation.en_cours_de(request.entreprise)
+    n = avis.annuler_avis_debut(op) if op else 0
+    if n:
+        messages.success(request, f"{n} avis de début retenu{'s' if n > 1 else ''} : rien n'est parti. L'opération continue.")
+    else:
+        messages.info(request, "Trop tard : les avis de début étaient déjà partis.")
     return redirect("terrain:tournee")
 
 

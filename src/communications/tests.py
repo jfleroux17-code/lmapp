@@ -220,6 +220,27 @@ class EcransAvisTests(AvisTests.__bases__[0]):
         self.assertContains(page, "on arrive au 1, rue Tremblay")
         self.assertContains(page, "Préparé")
 
+    def test_demarrer_confirme_puis_10_secondes_pour_annuler(self):
+        page = self.client.get("/tournee/")
+        self.assertContains(page, "Aviser les 4 clients")  # Roy : ni cellulaire ni courriel
+        self.assertContains(page, "Maintenir pour démarrer")
+        self.assertContains(page, "envois réels éteints")
+        with mock.patch("communications.envoi._pourquoi_pas", return_value=""), \
+                mock.patch("communications.envoi.destinataire_permis", return_value=True), \
+                mock.patch("communications.tasks.envoyer_message.configure") as configure:
+            with self.captureOnCommitCallbacks(execute=True):
+                self.client.post("/tournee/demarrer/", {"type": "neige", "aviser_debut": "1"})
+        configure.assert_called_with(schedule_in={"seconds": avis.DELAI_ANNULATION_DEBUT})
+        self.assertEqual(Message.objects.filter(genre="debut", statut="en_file").count(), 4)
+        page = self.client.get("/tournee/")
+        self.assertEqual(page.context["donnees"]["avis_debut"]["nombre"], 4)
+        self.assertContains(page, "avis partent dans")
+        r = self.client.post("/tournee/avis-debut/annuler/", follow=True)
+        self.assertContains(r, "4 avis de début retenus")
+        self.assertFalse(Message.objects.filter(statut="en_file").exists())
+        self.assertIsNone(self.client.get("/tournee/").context["donnees"]["avis_debut"])
+        self.assertContains(self.client.post("/tournee/avis-debut/annuler/", follow=True), "Trop tard")
+
     def test_avis_manuels(self):
         self.client.post("/tournee/demarrer/", {"type": "neige"})
         self.assertFalse(Message.objects.exists())  # case décochée : pas d'avis de début
