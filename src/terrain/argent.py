@@ -11,7 +11,7 @@ from django import forms
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Count, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -294,7 +294,8 @@ def resume_client(client):
     resume = {"du": sum((f.solde_du for f in dues), ZERO), "factures_client": qs[:10], "credit": credit_restant(client),
               "cheques_client": client.cheques.filter(statut=ChequePostdate.Statut.EN_MAIN)
               .select_related("facture", "versement__contrat__saison").order_by("date_cheque"),
-              "contrats": client.contrats.filter(actif=True).select_related("saison").prefetch_related("versements").order_by("-saison__debut")[:2]}
+              "contrats": client.contrats.filter(actif=True).select_related("saison", "adresse").prefetch_related("versements")
+              .annotate(nb_factures=Count("factures")).order_by("-saison__debut")[:2]}
     if dues:
         resume.update({"nb_dues": len(dues), "plus_vieille": dues[0],
                        "jours_plus_vieille": (timezone.localdate() - dues[0].date_facture).days})
