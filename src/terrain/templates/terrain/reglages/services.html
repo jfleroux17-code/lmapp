@@ -1,0 +1,17 @@
+{% extends "terrain/base.html" %}
+{% load argent %}
+{% block titre %}Services et prix{% endblock %}
+{% block contenu %}
+<a href="{% url 'terrain:reglages' %}" class="mb-3 inline-block text-accent">‹ Réglages</a>
+<h1 class="mb-1 text-2xl font-bold">Services et prix</h1>
+<p class="mb-5 text-gray-400">Les boutons proposés quand tu ajoutes une ligne à une facture. Le prix reste modifiable chaque fois.</p>
+{% if peut %}<a href="{% url 'terrain:reglages_nouveau_service' %}" class="gros-bouton mb-5 bg-accent text-nuit">+ Service</a>{% endif %}
+<div class="carte divide-y divide-bordure">
+  {% for s in services %}
+    <a href="{% url 'terrain:reglages_service' s.pk %}" class="rangee-lien">
+      <span><span class="font-semibold">{{ s.nom }}</span>{% if not s.actif %} <span class="pastille bg-bordure text-gray-300">inactif</span>{% endif %}<span class="block text-sm text-gray-400">{% if s.prix_suggere is not None %}{{ s.prix_suggere|argent }}{% else %}prix à taper{% endif %}{% if not s.taxable %} · non taxable{% endif %}</span></span>
+      <span aria-hidden="true">›</span>
+    </a>
+  {% empty %}<p class="p-4 text-gray-400">Aucun service.</p>{% endfor %}
+</div>
+{% endblock %}

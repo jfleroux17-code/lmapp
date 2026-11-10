@@ -104,3 +104,33 @@ def purger_conservation_chaque_nuit(timestamp):
     positions = PositionGPS.objects.filter(moment__lt=maintenant - timedelta(days=settings.LMAPP_POSITIONS_JOURS)).delete()[0]
     demandes = DemandeSite.objects.filter(recu_le__lt=maintenant - timedelta(days=settings.LMAPP_DEMANDES_SITE_JOURS)).delete()[0]
     return {"positions": positions, "demandes": demandes}
+
+
+@app.task(queue="geocodage")
+def centre_ville_desservie(ville_id):
+    """Ville ajoutée dans les Réglages : son centre (Nominatim, par le worker), puis ses adresses replacées dans la zone
+    (sauf les positions manuelles ou GPS, jamais écrasées)."""
+    from django.contrib.gis.geos import Point
+
+    from clients import geocodage
+    from clients.models import Adresse
+    from clients.tasks import geocoder_maintenant
+    from core.models import VilleDesservie
+    from core.texte import cle_ville
+
+    ville = VilleDesservie.objects.filter(pk=ville_id).first()
+    if ville is None:
+        return "ville disparue"
+    if ville.centre is None:
+        centre = geocodage.centre_ville(ville.nom, ville.province)
+        if centre is None:
+            return "centre introuvable"
+        ville.centre = Point(centre[1], centre[0], srid=4326)
+        ville.save(update_fields=["centre", "modifie_le"])
+    cle = cle_ville(ville.nom)
+    n = 0
+    for a in Adresse.objects.filter(entreprise_id=ville.entreprise_id).exclude(position_source__in=["manuelle", "gps"]):
+        if cle_ville(a.ville) == cle:
+            geocoder_maintenant(a)
+            n += 1
+    return f"centre trouvé, {n} adresse(s) replacée(s)"

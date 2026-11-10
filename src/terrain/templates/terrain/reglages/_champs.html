@@ -1,0 +1,12 @@
+{% if form.non_field_errors %}<p class="rounded-xl bg-danger/10 p-3 text-danger">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+{% for champ in form %}
+  {% if champ.widget_type == "checkbox" %}
+    <label class="flex min-h-14 cursor-pointer items-start gap-3 py-2">{{ champ }}<span><span class="block">{{ champ.label|capfirst }}</span>{% if champ.help_text %}<span class="block text-sm text-gray-500">{{ champ.help_text }}</span>{% endif %}</span></label>
+  {% else %}
+    <label class="block">
+      <span class="mb-2 block text-gray-300">{{ champ.label|capfirst }}</span>
+      {{ champ }}
+      {% if champ.errors %}<span class="mt-1 block text-danger">{{ champ.errors|join:" " }}</span>{% elif champ.help_text %}<span class="mt-1 block text-sm text-gray-500">{{ champ.help_text }}</span>{% endif %}
+    </label>
+  {% endif %}
+{% endfor %}

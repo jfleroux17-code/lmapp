@@ -1,0 +1,19 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Choisir ton mot de passe{% endblock %}
+{% block barre_onglets %}{% endblock %}
+{% block contenu %}
+<div class="pt-10">
+  <h1 class="mb-1 text-3xl font-bold">{{ request.entreprise.nom|default:"LMAPP" }}</h1>
+  {% if expire %}
+    <p class="mb-6 text-gray-400">Ce lien d'invitation n'est plus valide (déjà utilisé, ou plus de 3 jours). Demande un nouveau lien à la personne qui t'a invité.</p>
+    <a href="{% url 'terrain:connexion' %}" class="gros-bouton border-2 border-bordure text-gray-300">Connexion</a>
+  {% else %}
+    <p class="mb-6 text-gray-400">Bienvenue{% if utilisateur.first_name %}, {{ utilisateur.first_name }}{% endif %}. Ton nom d'utilisateur : <strong class="text-white">{{ utilisateur.username }}</strong>. Choisis ton mot de passe.</p>
+    <form method="post" class="space-y-5" novalidate>{% csrf_token %}
+      <input type="text" name="username" value="{{ utilisateur.username }}" autocomplete="username" class="hidden" readonly>
+      {% include "terrain/reglages/_champs.html" %}
+      <button class="gros-bouton bg-accent text-nuit">Enregistrer et entrer</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "terrain/base.html" %}
+{% block titre %}{{ titre }}{% endblock %}
+{% block barre_onglets %}{% endblock %}
+{% block contenu %}
+<a href="{% url 'terrain:reglages' %}" class="mb-3 inline-block text-accent">‹ Réglages</a>
+<h1 class="mb-1 text-2xl font-bold">{{ titre }}</h1>
+<p class="mb-5 text-gray-400">{{ explication }}</p>
+<form method="post" class="space-y-5" novalidate
+      x-data="{ envoi: false, taxes: {{ ent.inscrit_taxes|yesno:'true,false' }} }"
+      @submit="if (envoi) { $event.preventDefault(); return }
+               const c = $el.querySelector('[name=inscrit_taxes]');
+               if (c && c.checked !== taxes && !confirm(c.checked ? 'Tes prochaines factures auront la TPS et la TVQ. Continuer?' : 'Tes prochaines factures n\'auront plus de TPS ni de TVQ. Continuer?')) { $event.preventDefault(); return }
+               envoi = true">{% csrf_token %}
+  <fieldset class="space-y-5" {% if not peut %}disabled{% endif %}>{% include "terrain/reglages/_champs.html" %}</fieldset>
+  {% if cle == "factures" %}<p class="carte p-4 text-sm text-gray-400">Taux : TPS {{ ent.taux_tps|floatformat:"-3" }} %, TVQ {{ ent.taux_tvq|floatformat:"-3" }} % (taux du gouvernement, réglés par la plateforme). Prochain numéro de facture : {{ ent.prochain_numero_facture }}.</p>{% endif %}
+  {% with retour="terrain:reglages" %}{% include "terrain/reglages/_boutons.html" %}{% endwith %}
+</form>
+{% endblock %}

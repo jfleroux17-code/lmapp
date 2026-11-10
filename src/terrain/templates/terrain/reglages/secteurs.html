@@ -1,0 +1,19 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Secteurs{% endblock %}
+{% block contenu %}
+<a href="{% url 'terrain:reglages' %}" class="mb-3 inline-block text-accent">‹ Réglages</a>
+<h1 class="mb-1 text-2xl font-bold">Secteurs</h1>
+<p class="mb-5 text-gray-400">Pour changer l'ordre des secteurs dans la tournée : <a class="text-accent underline" href="{% url 'terrain:ordre' %}">Ordre de la tournée</a>. Le secteur d'une adresse se choisit dans la fiche de l'adresse.</p>
+{% if peut %}<a href="{% url 'terrain:reglages_nouveau_secteur' %}" class="gros-bouton mb-5 bg-accent text-nuit">+ Secteur</a>{% endif %}
+<div class="carte divide-y divide-bordure">
+  {% for s in secteurs %}
+    <div class="flex items-center gap-3 px-4 py-2">
+      <a href="{% url 'terrain:reglages_secteur' s.pk %}" class="flex min-h-14 flex-1 items-center justify-between gap-3">
+        <span><span class="font-semibold">{{ s.nom }}</span>{% if not s.actif %} <span class="pastille bg-bordure text-gray-300">inactif</span>{% endif %}<span class="block text-sm text-gray-400">{{ s.nb }} adresse{{ s.nb|pluralize }} active{{ s.nb|pluralize }}</span></span>
+        <span aria-hidden="true">›</span>
+      </a>
+      {% if peut and not s.adresses.exists %}<form method="post" action="{% url 'terrain:reglages_retirer_secteur' s.pk %}" onsubmit="return confirm('Retirer le secteur {{ s.nom|escapejs }}?')">{% csrf_token %}<button class="min-h-12 px-2 text-sm text-danger underline">Retirer</button></form>{% endif %}
+    </div>
+  {% empty %}<p class="p-4 text-gray-400">Aucun secteur.</p>{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "terrain/base.html" %}
+{% block titre %}{{ titre }}{% endblock %}
+{% block barre_onglets %}{% endblock %}
+{% block contenu %}
+<a href="{% url retour %}" class="mb-3 inline-block text-accent">‹ Retour</a>
+<h1 class="mb-5 text-2xl font-bold">{{ titre }}</h1>
+<form method="post" class="space-y-5" novalidate x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+  <fieldset class="space-y-5" {% if not peut %}disabled{% endif %}>{% include "terrain/reglages/_champs.html" %}</fieldset>
+  {% include "terrain/reglages/_boutons.html" %}
+</form>
+{% endblock %}

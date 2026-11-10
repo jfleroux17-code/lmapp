@@ -26,6 +26,7 @@ CHEMINS_PUBLICS = {
     "facturation:contrat_public": "contrat de la saison en PDF, par lien secret de 192 bits (B6)",
     "photos_message": "photos jointes à un texto, par lien secret de 192 bits (E14), message sortant de l'entreprise du domaine",
     "photo_message": "une image de la même page, même lien secret",
+    "terrain:invitation": "choisir son mot de passe par le lien d'invitation (jeton de Django, une seule fois, 3 jours, membre de l'entreprise du domaine)",
     "twilio_texto": "webhook de Twilio : signature X-Twilio-Signature obligatoire, sinon 403",
     "twilio_statut": "webhook de Twilio : signature X-Twilio-Signature obligatoire, sinon 403",
 }

@@ -19,6 +19,7 @@
   <a href="{% url 'terrain:export_comptable' %}" class="rangee-lien"><span>Export pour le comptable</span><span aria-hidden="true">›</span></a>
 </div>
 <div class="carte mb-5 divide-y divide-bordure">
+  <a href="{% url 'terrain:reglages' %}" class="rangee-lien"><span>Réglages <span class="text-gray-400">· entreprise, secteurs, services, utilisateurs</span></span><span aria-hidden="true">›</span></a>
   {% if ecriture %}<a href="{% url 'terrain:envoi_groupe' %}" class="rangee-lien"><span>Écrire à plusieurs clients</span><span aria-hidden="true">›</span></a>{% endif %}
   <a href="{% url 'terrain:gabarits' %}" class="rangee-lien"><span>Messages types</span><span aria-hidden="true">›</span></a>
   <div class="rangee-lien">

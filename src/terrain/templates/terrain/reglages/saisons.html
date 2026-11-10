@@ -1,0 +1,16 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Saisons{% endblock %}
+{% block contenu %}
+<a href="{% url 'terrain:reglages' %}" class="mb-3 inline-block text-accent">‹ Réglages</a>
+<h1 class="mb-1 text-2xl font-bold">Saisons</h1>
+<p class="mb-5 text-gray-400">Dates de chaque saison. Pour reprendre les contrats d'une saison à l'autre : <a class="text-accent underline" href="{% url 'terrain:saison_suivante' %}">Préparer la saison suivante</a>.</p>
+{% if peut %}<a href="{% url 'terrain:reglages_nouvelle_saison' %}" class="gros-bouton mb-5 border-2 border-accent text-accent">+ Saison</a>{% endif %}
+<div class="carte divide-y divide-bordure">
+  {% for s in saisons %}
+    <a href="{% url 'terrain:reglages_saison' s.pk %}" class="rangee-lien">
+      <span><span class="font-semibold">{{ s.nom }}</span><span class="block text-sm text-gray-400">{{ s.debut|date_qc:"j M Y" }} au {{ s.fin|date_qc:"j M Y" }} · {{ s.nb }} contrat{{ s.nb|pluralize }}</span></span>
+      <span aria-hidden="true">›</span>
+    </a>
+  {% empty %}<p class="p-4 text-gray-400">Aucune saison.</p>{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Utilisateurs{% endblock %}
+{% block contenu %}
+<a href="{% url 'terrain:reglages' %}" class="mb-3 inline-block text-accent">‹ Réglages</a>
+<h1 class="mb-1 text-2xl font-bold">Utilisateurs</h1>
+<p class="mb-5 text-gray-400">Qui a accès à l'app. Une personne invitée reçoit un texto avec un lien pour choisir son mot de passe (valide 3 jours).</p>
+{% if invitation %}
+  <div class="carte mb-5 border-accent p-4" x-data="{ copie: false }">
+    <p class="mb-2 font-semibold">Lien d'invitation</p>
+    <p class="mb-3 text-sm text-gray-400">S'il n'arrive pas par texto (envois en simulation, par exemple), donne-le toi-même. Il ne sert qu'une fois.</p>
+    <p class="mb-3 break-all rounded-xl bg-bordure/40 p-3 text-sm">{{ invitation.lien }}</p>
+    <button type="button" class="gros-bouton border-2 border-accent text-accent" @click="navigator.clipboard.writeText('{{ invitation.lien|escapejs }}'); copie = true" x-text="copie ? 'Copié' : 'Copier le lien'">Copier le lien</button>
+  </div>
+{% endif %}
+<div class="carte mb-6 divide-y divide-bordure">
+  {% for m in membres %}
+    <div class="px-4 py-3" x-data="{ ouvert: false }">
+      <button type="button" class="flex min-h-12 w-full items-center justify-between gap-3 text-left" @click="ouvert = !ouvert" :aria-expanded="ouvert" {% if not peut or m.utilisateur == moi %}disabled{% endif %}>
+        <span><span class="font-semibold">{{ m.utilisateur.get_full_name|default:m.utilisateur.username }}</span>{% if m.utilisateur == moi %} <span class="text-gray-400">(toi)</span>{% endif %}
+          <span class="block text-sm text-gray-400">{{ m.get_role_display }} · nom d'utilisateur : {{ m.utilisateur.username }}{% if not m.utilisateur.has_usable_password and not m.utilisateur.last_login %} · <span class="text-orange">invitation pas encore acceptée</span>{% endif %}</span></span>
+        {% if peut and m.utilisateur != moi %}<span aria-hidden="true" x-text="ouvert ? '▾' : '▸'">▸</span>{% endif %}
+      </button>
+      {% if peut and m.utilisateur != moi %}
+      <div x-show="ouvert" x-cloak class="space-y-3 pb-2 pt-3">
+        <form method="post" action="{% url 'terrain:reglages_utilisateur' m.pk %}" class="flex gap-2">{% csrf_token %}<input type="hidden" name="action" value="role">
+          <select name="role" class="champ flex-1" aria-label="Rôle de {{ m.utilisateur.username }}">{% for v, nom in roles %}<option value="{{ v }}" {% if v == m.role %}selected{% endif %}>{{ nom }}</option>{% endfor %}</select>
+          <button class="min-h-14 rounded-xl bg-accent px-4 font-semibold text-nuit">Changer</button>
+        </form>
+        {% if not m.utilisateur.has_usable_password %}
+        <form method="post" action="{% url 'terrain:reglages_utilisateur' m.pk %}" class="flex gap-2">{% csrf_token %}<input type="hidden" name="action" value="inviter">
+          <input name="cellulaire" type="tel" inputmode="tel" class="champ flex-1" placeholder="Cellulaire (facultatif)" aria-label="Cellulaire pour le nouveau lien">
+          <button class="min-h-14 rounded-xl border-2 border-accent px-4 font-semibold text-accent">Nouveau lien</button>
+        </form>
+        {% endif %}
+        <form method="post" action="{% url 'terrain:reglages_utilisateur' m.pk %}" onsubmit="return confirm('Retirer l\'accès de {{ m.utilisateur.get_full_name|default:m.utilisateur.username|escapejs }}? Il ne pourra plus entrer dans l\'app.')">{% csrf_token %}<input type="hidden" name="action" value="retirer">
+          <button class="min-h-12 text-sm text-danger underline">Retirer l'accès</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+{% if peut %}
+<h2 class="mb-3 text-lg font-bold">Inviter quelqu'un</h2>
+<form method="post" class="space-y-5" novalidate x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+  {% include "terrain/reglages/_champs.html" %}
+  <button class="gros-bouton bg-accent text-nuit" :class="{ 'opacity-60': envoi }">Créer le compte et envoyer l'invitation</button>
+</form>
+{% endif %}
+{% endblock %}

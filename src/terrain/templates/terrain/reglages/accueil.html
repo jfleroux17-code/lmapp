@@ -1,0 +1,38 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Réglages{% endblock %}
+{% block contenu %}
+<a href="{% url 'terrain:plus' %}" class="mb-3 inline-block text-accent">‹ Plus</a>
+<h1 class="mb-1 text-2xl font-bold">Réglages</h1>
+<p class="mb-5 text-gray-400">{% if peut %}Ce que tu règles toi-même pour {{ ent.nom }}.{% else %}Consultation seulement : un administrateur de l'entreprise change les réglages.{% endif %}</p>
+<div class="bureau:grid bureau:grid-cols-2 bureau:gap-5">
+<div>
+<h2 class="mb-2 text-lg font-bold">Fiche de l'entreprise</h2>
+<div class="carte mb-5 divide-y divide-bordure">
+  {% for cle, titre in sections %}<a href="{% url 'terrain:reglages_section' cle %}" class="rangee-lien"><span>{{ titre }}</span><span aria-hidden="true">›</span></a>{% endfor %}
+</div>
+<h2 class="mb-2 text-lg font-bold">Organisation</h2>
+<div class="carte mb-5 divide-y divide-bordure">
+  <a href="{% url 'terrain:reglages_secteurs' %}" class="rangee-lien"><span>Secteurs <span class="text-gray-400">· {{ nb_secteurs }}</span></span><span aria-hidden="true">›</span></a>
+  <a href="{% url 'terrain:reglages_services' %}" class="rangee-lien"><span>Services et prix <span class="text-gray-400">· {{ nb_services }}</span></span><span aria-hidden="true">›</span></a>
+  <a href="{% url 'terrain:reglages_saisons' %}" class="rangee-lien"><span>Saisons{% if saison %} <span class="text-gray-400">· {{ saison }}</span>{% endif %}</span><span aria-hidden="true">›</span></a>
+  <a href="{% url 'terrain:reglages_villes' %}" class="rangee-lien"><span>Villes desservies <span class="text-gray-400">· {{ villes|join:", "|default:"aucune" }}</span></span><span aria-hidden="true">›</span></a>
+  <a href="{% url 'terrain:reglages_utilisateurs' %}" class="rangee-lien"><span>Utilisateurs <span class="text-gray-400">· {{ nb_membres }}</span></span><span aria-hidden="true">›</span></a>
+</div>
+</div>
+<div>
+<h2 class="mb-2 text-lg font-bold">Réglé par la plateforme</h2>
+<div class="carte mb-5 p-4 text-sm">
+  <p class="mb-3 text-gray-400">Pour changer l'un de ces réglages, écrire à info@ledeneigeur.com.</p>
+  <dl class="space-y-2">
+    <div class="flex justify-between gap-3"><dt class="text-gray-400">Envois aux clients</dt><dd class="text-right font-semibold">{% if ent.envois_actifs %}Activés{% else %}Simulation : rien ne part{% endif %}</dd></div>
+    <div class="flex justify-between gap-3"><dt class="text-gray-400">Numéro des textos</dt><dd class="text-right font-semibold">{{ numero_texto|default:"pas encore" }}</dd></div>
+    <div class="flex justify-between gap-3"><dt class="text-gray-400">Adresse des courriels</dt><dd class="text-right font-semibold break-all">{{ ent.courriel_reponse|default:"pas encore" }}</dd></div>
+    <div class="flex justify-between gap-3"><dt class="text-gray-400">Prochain numéro de facture</dt><dd class="text-right font-semibold tabular-nums">{{ ent.prochain_numero_facture }}</dd></div>
+    <div class="flex justify-between gap-3"><dt class="text-gray-400">Taux des taxes</dt><dd class="text-right font-semibold">TPS {{ ent.taux_tps|floatformat:"-3" }} %, TVQ {{ ent.taux_tvq|floatformat:"-3" }} %</dd></div>
+    <div class="flex justify-between gap-3"><dt class="text-gray-400">Mode</dt><dd class="text-right font-semibold">{{ ent.get_mode_display }}</dd></div>
+    <div class="flex justify-between gap-3"><dt class="text-gray-400">Adresse de l'app</dt><dd class="text-right font-semibold break-all">{{ ent.domaine }}</dd></div>
+  </dl>
+</div>
+</div>
+</div>
+{% endblock %}

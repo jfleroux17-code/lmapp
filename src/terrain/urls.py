@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from terrain import argent, balises, cheques, clients, depenses, demandes, export, gabarits, rapports, saisons, tournee, views
+from terrain import argent, balises, cheques, clients, depenses, demandes, export, gabarits, rapports, reglages, saisons, tournee, views
 
 app_name = "terrain"
 
@@ -9,6 +9,25 @@ urlpatterns = [
     path("", views.accueil, name="accueil"),
     path("plus/", views.plus, name="plus"),
     path("plus/meteo/", views.ville_meteo, name="ville_meteo"),
+    path("plus/reglages/", reglages.accueil, name="reglages"),
+    path("plus/reglages/fiche/<slug:cle>/", reglages.section, name="reglages_section"),
+    path("plus/reglages/secteurs/", reglages.secteurs, name="reglages_secteurs"),
+    path("plus/reglages/secteurs/nouveau/", reglages.secteur, name="reglages_nouveau_secteur"),
+    path("plus/reglages/secteurs/<int:pk>/", reglages.secteur, name="reglages_secteur"),
+    path("plus/reglages/secteurs/<int:pk>/retirer/", reglages.retirer_secteur, name="reglages_retirer_secteur"),
+    path("plus/reglages/services/", reglages.services, name="reglages_services"),
+    path("plus/reglages/services/nouveau/", reglages.service, name="reglages_nouveau_service"),
+    path("plus/reglages/services/<int:pk>/", reglages.service, name="reglages_service"),
+    path("plus/reglages/saisons/", reglages.saisons, name="reglages_saisons"),
+    path("plus/reglages/saisons/nouvelle/", reglages.saison, name="reglages_nouvelle_saison"),
+    path("plus/reglages/saisons/<int:pk>/", reglages.saison, name="reglages_saison"),
+    path("plus/reglages/villes/", reglages.villes, name="reglages_villes"),
+    path("plus/reglages/villes/nouvelle/", reglages.ville, name="reglages_nouvelle_ville"),
+    path("plus/reglages/villes/<int:pk>/", reglages.ville, name="reglages_ville"),
+    path("plus/reglages/villes/<int:pk>/retirer/", reglages.retirer_ville, name="reglages_retirer_ville"),
+    path("plus/reglages/utilisateurs/", reglages.utilisateurs, name="reglages_utilisateurs"),
+    path("plus/reglages/utilisateurs/<int:pk>/", reglages.utilisateur, name="reglages_utilisateur"),
+    path("invitation/<str:uidb64>/<str:jeton>/", reglages.invitation, name="invitation"),
     path("clients/<int:pk>/", views.fiche, name="fiche"),
     path("clients/nouveau/", clients.nouveau, name="nouveau_client"),
     path("clients/<int:pk>/modifier/", clients.modifier, name="modifier_client"),
