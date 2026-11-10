@@ -39,7 +39,7 @@ Mise à jour : 9 novembre 2026.
 
 ### Serveur (rien d'urgent)
 
-- [ ] Netplan par MAC (décision du 7 novembre 2026), configuré par JF avec de l'aide. Instantané avant, `sudo netplan try` depuis la console Hyper-V. Si la MAC reste dynamique dans Hyper-V, la VM peut perdre son réseau quand elle est déplacée ou réimportée.
+- [x] Netplan par MAC (décision du 7 novembre 2026), configuré par JF. MAC rendue statique dans Hyper-V (`00:15:5d:04:0a:02`) par JF le 10 novembre 2026; redémarrage vérifié (réseau, Docker, prod, test, surveillance).
 - [ ] Redémarrer ld1 à un moment tranquille (services signalés par apt).
 - [x] Vérification externe de `https://louis.ledeneigeur.com/sante/` : UptimeRobot configuré par JF le 9 novembre 2026 (sondes vues dans les journaux de Caddy, réponse 200).
 - [x] `sudo ufw status verbose` (7 novembre 2026) : refus par défaut en entrée; SSH depuis `172.16.4.0/24`; 80 et 443 ouverts à tous (ufw ne s'en mêle pas pour le 443 de toute façon, Docker le contourne; rien n'écoute sur le 80). Port 5000 : `BackupFP` (COVE), sur toutes les interfaces, mais bloqué par ufw (aucune règle) : rien à faire.

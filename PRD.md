@@ -393,7 +393,7 @@ Pourquoi :
 | Claude Code | Version 2.1.319, installateur natif (`~/.local/bin/claude`, mises à jour automatiques), PATH ajouté dans `~/.bashrc` de `deploy`, connecté au compte claude.ai de JF (`claude auth login`), `claude doctor` sans problème. Installé le 7 novembre 2026. Consignes dans `/srv/lmapp/CLAUDE.md`. |
 
 Points à régler :
-- **Carte réseau et MAC** : décision de JF du 7 novembre 2026, qui remplace l'idée de reconnaître la carte par son pilote (`hv_netvsc`) : netplan reconnaît la carte **par la MAC** (`00:15:5d:04:0a:02`). JF fait la configuration, avec de l'aide. Rappel : si la MAC reste dynamique dans Hyper-V, la VM perd son réseau quand la MAC change (déplacement ou réimportation de la VM).
+- **Carte réseau et MAC** : décision de JF du 7 novembre 2026, qui remplace l'idée de reconnaître la carte par son pilote (`hv_netvsc`) : netplan reconnaît la carte **par la MAC** (`00:15:5d:04:0a:02`). JF fait la configuration, avec de l'aide. MAC rendue statique dans Hyper-V par JF le 10 novembre 2026 (redémarrage vérifié) : elle ne change plus au déplacement ni à la réimportation de la VM.
 - ~~**NAT source**~~ **Réglé pour le web le 7 novembre 2026** : les connexions SSH arrivent avec la source `172.16.4.1` (la passerelle), mais la redirection du 443 sur le Mikrotik conserve l'IP réelle du visiteur (essai de JF depuis la maison : son IP publique apparaît dans les journaux de Caddy). Django la reçoit par `X-Forwarded-For`, en ne faisant confiance qu'à Caddy (`172.20.0.250`).
 - **Docker contourne ufw** : un port publié par un conteneur est ouvert même si ufw le bloque. Seul Caddy publie un port (443); la base, l'app et le worker restent sur les réseaux Docker internes. Une règle dans la chaîne `DOCKER-USER` pourra filtrer les IP sur ld1 même, en plus du routeur.
 - ~~**DNS public** : enregistrements A `louis` et `test` vers `216.46.12.226` en DNS seulement, suppression du générique `*`.~~ **Fait.** Reste, pour l'accès interne ou VPN tant que le routeur ne redirige rien : faire pointer ces noms vers `172.16.4.100` dans le DNS interne (ou le fichier `hosts` des postes).
@@ -502,7 +502,7 @@ Le calendrier est serré : la saison est commencée. Priorité à ce qui rapport
 - ~~Claude Code installé sur la VM.~~ **Fait le 7 novembre 2026** (2.1.319, connecté au compte de JF). `CLAUDE.md` et `PRD.md` déposés dans `/srv/lmapp`.
 - ~~JF : DNS (`louis.ledeneigeur.com` et `test.ledeneigeur.com`, voir 6.1.1), jeton API Cloudflare, redirection au routeur filtrée par IP source.~~ **Fait le 7 novembre 2026.**
 - ~~JF : comptes administrateur Django en prod et en test.~~ **Fait le 7 novembre 2026.**
-- JF : configuration du netplan par MAC (avec de l'aide).
+- JF : configuration du netplan par MAC (fait; MAC statique dans Hyper-V le 10 novembre 2026).
 - JF et Louis : réponses aux questions ouvertes (section 10).
 - Louis : liste de ses clients (même en photo de ses papiers) pour l'import.
 - Création des comptes : Twilio (numéro 450), sous-compte SMTP2GO et boîte de réception, Stripe si retenu.
@@ -572,7 +572,7 @@ Livrable : automatisation des relances, rapports pour le comptable, demandes de 
 
 **JF**
 1. ~~Installer la VM Ubuntu Server 26.04.1 LTS, créer `deploy` avec clé SSH.~~ Fait.
-2. Configurer le netplan par MAC (décision du 7 novembre 2026, avec de l'aide).
+2. Configurer le netplan par MAC (fait; MAC statique dans Hyper-V le 10 novembre 2026).
 3. ~~DNS chez Cloudflare, jeton API Cloudflare dans `/srv/lmapp/edge/.env`, redirection du 443 au routeur limitée à `_SLAPP`.~~ Fait le 7 novembre 2026 (IP réelle du visiteur conservée).
    - ~~Créer les comptes administrateur Django (prod et test).~~ Fait le 7 novembre 2026.
    - Créer la fiche `Entreprise` de Louis dans l'administration (Sainte-Adèle, rayon 8 km, ville par défaut; JF comme membre administrateur).
