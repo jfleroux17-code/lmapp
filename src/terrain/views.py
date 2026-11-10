@@ -109,6 +109,15 @@ def fiche(request, pk):
          "balisage": a.balisages.filter(retirees_le=None).first()}  # sans les octets
         for a in client.adresses.filter(active=True).select_related("secteur").order_by("secteur__ordre", "ordre_tournee")
     ]
+    # Rang réel dans le secteur (« 4e arrêt du Village »), pas la valeur technique de l'ordre (10, 20, 30...)
+    from tournee.models import arrets
+
+    rangs, compte = {}, {}
+    for pk_a, secteur in arrets(request.entreprise).values_list("pk", "secteur_id"):
+        compte[secteur] = compte.get(secteur, 0) + 1
+        rangs[pk_a] = compte[secteur]
+    for a in adresses:
+        a["rang"] = rangs.get(a["objet"].pk)
     contexte = {
         "client": client,
         "adresses": adresses,

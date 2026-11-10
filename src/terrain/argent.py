@@ -290,6 +290,8 @@ def resume_client(client):
               .select_related("facture", "versement__contrat__saison").order_by("date_cheque"),
               "contrats": client.contrats.filter(actif=True).select_related("saison").prefetch_related("versements").order_by("-saison__debut")[:2]}
     if dues:
+        resume.update({"nb_dues": len(dues), "plus_vieille": dues[0],
+                       "jours_plus_vieille": (timezone.localdate() - dues[0].date_facture).days})
         niveau = relances.niveau_suivant(client, dues)
         resume["relance"] = {
             "niveau": niveau, "niveaux": [(n, g.label) for n, g in enumerate(relances.RELANCES, start=1)],

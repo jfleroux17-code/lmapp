@@ -114,45 +114,56 @@
     </form>
 
   {% elif f.statut == "emise" and not f.payee %}
-    <section class="carte mb-4 p-4">
-      <h2 class="mb-3 text-lg font-bold">Paiement reçu</h2>
-      <form method="post" action="{% url 'terrain:paiement' f.pk %}" x-data="{ mode: '{% if client.mode_paiement and client.mode_paiement != 'carte' %}{{ client.mode_paiement }}{% endif %}', envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }" class="space-y-4">{% csrf_token %}
-        <div class="grid grid-cols-2 gap-2">
-          {% for valeur, nom in modes %}
-            <label class="flex min-h-14 cursor-pointer items-center justify-center rounded-xl border-2 px-2 text-center font-semibold"
-                   :class="mode == '{{ valeur }}' ? 'border-accent text-accent' : 'border-bordure'">
-              <input type="radio" name="mode" value="{{ valeur }}" class="sr-only" x-model="mode" required>{{ nom }}
+    {# Encaisser à la porte en deux taps (audit UX) : barre collante en bas, puis feuille de paiement #}
+    <div x-data="{ feuille: {% if request.GET.payer %}true{% else %}false{% endif %}, mode: '{% if client.mode_paiement and client.mode_paiement != 'carte' %}{{ client.mode_paiement }}{% endif %}', montant: '{{ f.solde|quantite }}', envoi: false,
+                   noms: { {% for valeur, nom in modes %}'{{ valeur }}': '{{ nom|lower|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %} } }">
+      <div class="h-28" aria-hidden="true"></div>
+      <div class="au-dessus-onglets fixed inset-x-0 z-20 border-t-2 border-bordure bg-nuit/95 px-4 py-3 backdrop-blur">
+        <button type="button" @click="feuille = true" class="mx-auto flex min-h-[72px] w-full max-w-xl flex-col items-center justify-center rounded-2xl bg-ok px-4 text-nuit">
+          <span class="text-2xl font-bold">Reçu {{ f.solde|argent }}</span>
+          <span class="text-sm font-semibold" x-text="mode ? noms[mode] : 'choisir le mode de paiement'"></span>
+        </button>
+      </div>
+      <div x-show="feuille" x-cloak class="fixed inset-0 z-30 flex items-end bg-nuit/80" @click.self="feuille = false" @keydown.escape.window="feuille = false">
+        <section class="zone-sure max-h-[92vh] w-full overflow-y-auto rounded-t-[28px] border-t-2 border-bordure bg-carte p-5 pb-8" role="dialog" aria-modal="true" aria-labelledby="titre-paiement">
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <h2 id="titre-paiement" class="text-xl font-bold">Paiement reçu</h2>
+            <button type="button" @click="feuille = false" class="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-bordure text-2xl" aria-label="Fermer">×</button>
+          </div>
+          <form method="post" action="{% url 'terrain:paiement' f.pk %}" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }" class="space-y-4">{% csrf_token %}
+            <input name="montant" x-model="montant" class="champ min-h-16 text-right text-[2rem] font-bold" inputmode="decimal" aria-label="Montant reçu" required>
+            <div class="grid grid-cols-2 gap-2">
+              {% for valeur, nom in modes %}
+                <label class="flex min-h-14 cursor-pointer items-center justify-center rounded-xl border-2 px-2 text-center font-semibold"
+                       :class="mode == '{{ valeur }}' ? 'border-accent bg-accent/10 text-accent' : 'border-bordure'">
+                  <input type="radio" name="mode" value="{{ valeur }}" class="sr-only" x-model="mode" required>{{ nom }}
+                </label>
+              {% endfor %}
+            </div>
+            <label class="block" x-show="mode == 'interac' || mode == 'cheque'">
+              <span class="mb-2 block text-gray-300" x-text="mode == 'cheque' ? 'Numéro du chèque' : 'Référence du virement'"></span>
+              <input name="reference" class="champ" maxlength="100" autocomplete="off">
             </label>
-          {% endfor %}
-        </div>
-        <label class="block">
-          <span class="mb-2 block text-gray-300">Montant reçu</span>
-          <input name="montant" class="champ text-right text-2xl font-bold" inputmode="decimal" value="{{ f.solde|quantite }}" required>
-        </label>
-        <label class="block" x-show="mode == 'interac' || mode == 'cheque'">
-          <span class="mb-2 block text-gray-300" x-text="mode == 'cheque' ? 'Numéro du chèque' : 'Référence du virement'"></span>
-          <input name="reference" class="champ" maxlength="100" autocomplete="off">
-        </label>
-        <label class="flex min-h-12 cursor-pointer items-center gap-3 text-sm text-gray-300">
-          <input type="checkbox" name="surplus" value="1" class="h-6 w-6 accent-[#f5c400]">
-          <span>Le client a payé plus : garder le surplus en crédit au compte</span>
-        </label>
-        <details>
-          <summary class="flex min-h-12 cursor-pointer items-center text-gray-400">Reçu un autre jour?</summary>
-          <input type="date" name="date" class="champ mt-2" max="{{ aujourdhui|date:'Y-m-d' }}">
-        </details>
-        {% if client.cellulaire or client.courriel %}
-          <label class="flex min-h-12 cursor-pointer items-center gap-3">
-            <input type="checkbox" name="recu" value="1" checked class="h-6 w-6 accent-[#f5c400]">
-            <span>Envoyer un reçu au client</span>
-          </label>
-        {% endif %}
-        <div class="grid grid-cols-[1fr_2fr] gap-3">
-          <button type="reset" class="gros-bouton border-2 border-bordure text-gray-300" @click="mode = ''">Annuler</button>
-          <button class="gros-bouton bg-ok text-nuit" :disabled="!mode" :class="{ 'opacity-60': envoi }">Enregistrer le paiement</button>
-        </div>
-      </form>
-    </section>
+            <label class="flex min-h-14 cursor-pointer items-center gap-4 rounded-xl border-2 border-bordure px-4 py-2">
+              <input type="checkbox" name="surplus" value="1" class="h-[30px] w-[30px] shrink-0 accent-[#f5c400]">
+              <span>Le client a payé plus : garder le surplus en crédit au compte</span>
+            </label>
+            {% if client.cellulaire or client.courriel %}
+              <label class="flex min-h-14 cursor-pointer items-center gap-4 rounded-xl border-2 border-bordure px-4 py-2">
+                <input type="checkbox" name="recu" value="1" checked class="h-[30px] w-[30px] shrink-0 accent-[#f5c400]">
+                <span>Envoyer un reçu au client</span>
+              </label>
+            {% endif %}
+            <button class="gros-bouton min-h-[72px] bg-ok text-xl font-bold text-nuit" :disabled="!mode" :class="{ 'opacity-60': envoi || !mode }"
+                    x-text="mode ? 'Enregistrer ' + montant + ' $ ' + noms[mode] : 'Choisir le mode de paiement'">Enregistrer le paiement</button>
+            <details>
+              <summary class="flex min-h-12 cursor-pointer items-center text-gray-400">Reçu un autre jour?</summary>
+              <input type="date" name="date" class="champ mt-2" max="{{ aujourdhui|date:'Y-m-d' }}">
+            </details>
+          </form>
+        </section>
+      </div>
+    </div>
   {% endif %}
 
   {% if f.statut == "emise" and not paiements %}

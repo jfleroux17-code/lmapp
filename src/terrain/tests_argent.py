@@ -59,7 +59,7 @@ class ArgentTerrainTests(TestCase):
         f.emettre()
         page = self.client.get(f"/factures/{f.pk}/")
         self.assertContains(page, "Paiement reçu")
-        self.assertContains(page, 'value="114,98"')  # le solde est proposé
+        self.assertContains(page, "montant: '114,98'")  # le solde est proposé
         r = self.client.post(f"/factures/{f.pk}/paiement/", {"mode": "comptant", "montant": "50"}, follow=True)
         self.assertContains(r, "Comptant de 50,00 $ enregistré. Reste 64,98 $.")
         r = self.client.post(f"/factures/{f.pk}/paiement/", {"mode": "comptant", "montant": "50"}, follow=True)
@@ -110,7 +110,7 @@ class ArgentTerrainTests(TestCase):
         self.assertEqual(r.context["plus_de_60"], D("1379.70"))
         self.assertEqual(r.context["brouillons"], 1)
         self.assertEqual([l["client"].nom for l in self.client.get("/comptes/?tri=montant").context["lignes"]], ["Tremblay", "Côté"])
-        self.assertContains(self.client.get(f"/clients/{self.c.pk}/"), "Doit 1 379,70 $")
+        self.assertContains(self.client.get(f"/clients/{self.c.pk}/"), "1 379,70 $</div>")
         self.assertEqual(len(self.client.get("/factures/").context["brouillons"]), 1)
 
     def test_lecture_seule_consulte_sans_modifier(self):

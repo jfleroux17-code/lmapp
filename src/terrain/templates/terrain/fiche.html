@@ -31,11 +31,12 @@
 {% block contenu %}
 <a href="{% url 'terrain:accueil' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Clients</a>
 
-<div class="mb-4 flex items-start justify-between gap-3">
+{# Haut de la fiche (audit UX) : qui, où, l'appeler, combien il doit; le reste plus bas #}
+<div class="mb-1 flex items-start justify-between gap-3">
   <h1 class="text-2xl font-bold leading-tight">{{ client.nom_affiche }}</h1>
   {% include "terrain/_statut.html" %}
 </div>
-{% if modifier_clients or ecriture %}<div class="mb-4 -mt-2 flex flex-wrap gap-x-6">{% if modifier_clients %}<a href="{% url 'terrain:modifier_client' client.pk %}" class="inline-flex min-h-12 items-center text-accent">Modifier le client</a>{% endif %}{% if ecriture and client.cellulaire or ecriture and client.courriel %}<a href="{% url 'terrain:ecrire' client.pk %}" class="inline-flex min-h-12 items-center text-accent">Écrire un texto ou un courriel</a>{% endif %}{% if ecriture %}<a href="{% url 'terrain:noter_appel' client.pk %}" class="inline-flex min-h-12 items-center text-accent">Noter un appel</a>{% endif %}</div>{% endif %}
+{% with a=adresses.0 %}{% if a %}<p class="mb-3 text-gray-300">{{ a.objet.ligne1 }}{% if a.rang and a.objet.secteur %} · <span class="text-gray-400">{% if a.rang == 1 %}1<sup>er</sup>{% else %}{{ a.rang }}<sup>e</sup>{% endif %} arrêt, secteur {{ a.objet.secteur.nom }}</span>{% elif a.rang %} · <span class="text-gray-400">{% if a.rang == 1 %}1<sup>er</sup>{% else %}{{ a.rang }}<sup>e</sup>{% endif %} arrêt</span>{% endif %}</p>{% endif %}{% endwith %}
 
 {% if client.statut == "liste_noire" %}
   <p class="mb-4 rounded-2xl border border-danger bg-danger/10 p-4 font-semibold text-danger">Liste noire : ne pas servir.</p>
@@ -43,10 +44,47 @@
   <p class="mb-4 rounded-2xl border border-danger/50 bg-danger/10 p-4 text-danger">Compte en recouvrement.</p>
 {% endif %}
 
-{% if client.cellulaire %}
-  <a href="tel:{{ client.cellulaire }}" class="gros-bouton mb-3 bg-ok text-nuit">Appeler {{ cellulaire }}</a>
+<div class="mb-4 grid grid-cols-3 gap-2">
+  {% if client.cellulaire %}<a href="tel:{{ client.cellulaire }}" class="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold bg-ok text-nuit" aria-label="Appeler {{ cellulaire }}">{% include "terrain/_icone.html" with nom="appel" %}Appeler</a>
+  {% elif client.telephone_autre %}<a href="tel:{{ client.telephone_autre }}" class="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold bg-ok text-nuit" aria-label="Appeler {{ autre_telephone }}">{% include "terrain/_icone.html" with nom="appel" %}Appeler</a>
+  {% else %}<span class="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold border-2 border-bordure text-gray-500">{% include "terrain/_icone.html" with nom="appel" %}Pas de numéro</span>{% endif %}
+  {% if ecriture and client.cellulaire or ecriture and client.courriel %}<a href="{% url 'terrain:ecrire' client.pk %}" class="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold border-2 border-accent text-accent">{% include "terrain/_icone.html" with nom="texto" %}Écrire</a>
+  {% else %}<span class="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold border-2 border-bordure text-gray-500">{% include "terrain/_icone.html" with nom="texto" %}Écrire</span>{% endif %}
+  {% with a=adresses.0 %}{% if a %}<a href="{{ a.navigation.0.1 }}" class="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold border-2 border-bordure" rel="noopener">{% include "terrain/_icone.html" with nom="itineraire" %}Itinéraire</a>
+  {% else %}<span class="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold border-2 border-bordure text-gray-500">{% include "terrain/_icone.html" with nom="itineraire" %}Itinéraire</span>{% endif %}{% endwith %}
+</div>
+
+<section class="carte mb-4 p-4">
+  {% if du %}
+    <div class="text-sm text-gray-400">Doit</div>
+    <div class="text-[1.6rem] font-bold leading-tight text-danger">{{ du|argent }}</div>
+    <div class="mb-3 text-sm text-gray-400">{{ nb_dues }} facture{{ nb_dues|pluralize }} · la plus vieille : {% if jours_plus_vieille %}{{ jours_plus_vieille }} jour{{ jours_plus_vieille|pluralize }}{% else %}d'aujourd'hui{% endif %}</div>
+    {% if ecriture %}<div class="grid grid-cols-2 gap-2">
+      <a href="{% url 'terrain:facture' plus_vieille.pk %}?payer=1" class="gros-bouton min-h-16 bg-ok text-nuit">Encaisser</a>
+      {% if relance %}<a href="#relancer" class="gros-bouton min-h-16 border-2 border-accent text-accent" onclick="document.getElementById('argent').open = true">Relancer</a>{% endif %}
+    </div>{% endif %}
+  {% else %}
+    <div class="text-lg font-bold text-ok">Rien à payer</div>
+  {% endif %}
+  {% if credit > 0 %}<p class="mt-3 rounded-xl bg-ok/15 p-3 font-semibold text-ok">Crédit au compte : {{ credit|argent }} (payera la prochaine facture)</p>{% endif %}
+  {% if cheques_client %}<p class="mt-3 text-sm text-gray-300">{{ cheques_client|length }} chèque{{ cheques_client|length|pluralize }} postdaté{{ cheques_client|length|pluralize }} en main (détail plus bas)</p>{% endif %}
+</section>
+
+{% if modifier_clients or ecriture %}
+<details class="carte mb-4">
+  <summary class="flex min-h-14 cursor-pointer items-center justify-between px-4 font-semibold"><span>Autres actions</span><span class="text-gray-400" aria-hidden="true">•••</span></summary>
+  <div class="divide-y divide-bordure border-t border-bordure">
+    {% if ecriture %}<a href="{% url 'terrain:nouvelle_facture' client.pk %}" class="rangee-lien"><span>+ Nouvelle facture</span><span aria-hidden="true">›</span></a>
+    <a href="{% url 'terrain:nouveau_cheque' client.pk %}" class="rangee-lien"><span>+ Chèque postdaté</span><span aria-hidden="true">›</span></a>
+    <a href="{% url 'terrain:noter_appel' client.pk %}" class="rangee-lien"><span>Noter un appel</span><span aria-hidden="true">›</span></a>
+    <a href="{% url 'terrain:nouvelle_demande' %}?client={{ client.pk }}" class="rangee-lien"><span>+ Demande</span><span aria-hidden="true">›</span></a>{% endif %}
+    {% if modifier_clients %}<a href="{% url 'terrain:modifier_client' client.pk %}" class="rangee-lien"><span>Modifier le client</span><span aria-hidden="true">›</span></a>{% endif %}
+    {% if factures_client %}<a href="{% url 'facturation:etat_compte' client.pk %}" class="rangee-lien" target="_blank" rel="noopener"><span>État de compte (PDF)</span><span aria-hidden="true">›</span></a>{% endif %}
+  </div>
+</details>
 {% endif %}
-{% if client.telephone_autre %}
+
+{% if client.cellulaire and client.telephone_autre %}
   <a href="tel:{{ client.telephone_autre }}" class="gros-bouton mb-3 border-2 border-ok text-ok">Autre numéro {{ autre_telephone }}</a>
 {% endif %}
 
@@ -69,7 +107,7 @@
 
 {% for a in adresses %}
   <section class="carte mb-4 p-4">
-    <div class="mb-1 text-sm text-gray-400">{% if a.objet.secteur %}{{ a.objet.secteur }}{% if a.objet.ordre_tournee %} · arrêt {{ a.objet.ordre_tournee }}{% endif %}{% else %}Adresse de service{% endif %}</div>
+    <div class="mb-1 text-sm text-gray-400">{% if a.objet.secteur %}{{ a.objet.secteur }}{% if a.rang %} · {% if a.rang == 1 %}1<sup>er</sup>{% else %}{{ a.rang }}<sup>e</sup>{% endif %} arrêt{% endif %}{% else %}Adresse de service{% endif %}</div>
     <div class="text-xl font-semibold">{{ a.objet.ligne1 }}{% if a.objet.ligne2 %}, {{ a.objet.ligne2 }}{% endif %}</div>
     <div class="mb-3 text-gray-300">{{ a.objet.ville }}{% if a.objet.code_postal %} {{ a.objet.code_postal }}{% endif %}</div>
 
@@ -122,12 +160,8 @@
 {% endfor %}
 {% if modifier_clients %}<a href="{% url 'terrain:nouvelle_adresse' client.pk %}" class="gros-bouton mb-4 border-2 border-bordure">+ Adresse de service</a>{% endif %}
 
-<section class="mb-4">
-  <div class="mb-2 flex items-end justify-between">
-    <h2 class="text-lg font-bold">Argent</h2>
-    {% if du %}<span class="text-lg font-bold text-danger">Doit {{ du|argent }}</span>{% else %}<span class="text-ok">Rien à payer</span>{% endif %}
-  </div>
-  {% if credit > 0 %}<p class="mb-2 rounded-xl bg-ok/15 p-3 font-semibold text-ok">Crédit au compte : {{ credit|argent }} (payera la prochaine facture)</p>{% endif %}
+<details id="argent" class="mb-4" {% if request.GET.argent %}open{% endif %}>
+  <summary class="carte mb-2 flex min-h-14 cursor-pointer items-center justify-between px-4 font-bold"><span>Factures, contrats et relances</span><span class="text-sm font-normal text-gray-400">{% if factures_client %}{{ factures_client|length }} facture{{ factures_client|length|pluralize }} ›{% else %}›{% endif %}</span></summary>
   {% for c in contrats %}
     <div class="carte mb-3 p-4" x-data="{ envoi: false }">
       <div class="flex items-start justify-between gap-3">
@@ -152,16 +186,13 @@
       <a href="{% url 'terrain:cheques' %}" class="mt-1 inline-flex min-h-12 items-center text-accent">Chèques à déposer ›</a>
     </div>
   {% endif %}
-  {% if ecriture %}<a href="{% url 'terrain:nouvelle_facture' client.pk %}" class="gros-bouton mb-3 border-2 border-accent text-accent">+ Nouvelle facture</a>
-    <a href="{% url 'terrain:nouveau_cheque' client.pk %}" class="gros-bouton mb-3 border-2 border-bordure">+ Chèque postdaté</a>{% endif %}
-  {% if relance %}{% include "terrain/argent/_relance.html" %}{% endif %}
+  {% if relance %}<div id="relancer">{% include "terrain/argent/_relance.html" %}</div>{% endif %}
   {% if factures_client %}
     <div class="carte divide-y divide-bordure">
       {% for f in factures_client %}{% include "terrain/argent/_ligne_facture.html" %}{% endfor %}
     </div>
-    <a href="{% url 'facturation:etat_compte' client.pk %}" class="mt-2 inline-flex min-h-12 items-center text-accent" target="_blank" rel="noopener">État de compte (PDF)</a>
   {% endif %}
-</section>
+</details>
 
 {% if demandes_client or ecriture %}
 <section class="mb-4">

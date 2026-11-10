@@ -44,7 +44,9 @@
   .rangee-lien { @apply flex min-h-16 items-center justify-between gap-3 px-4 py-3 text-lg active:bg-bordure; }
   /* Barre d'onglets fixe en bas, à portée du pouce (audit UX) */
   .barre-onglets { @apply fixed inset-x-0 bottom-0 z-20 border-t-2 border-bordure bg-nuit/95 backdrop-blur; padding-bottom: env(safe-area-inset-bottom); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
-  .onglet-bas { @apply relative flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl text-[0.68rem] font-semibold text-gray-300; }
+  .onglet-bas { @apply relative flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-xl text-[0.68rem] font-semibold text-gray-300; }
+  /* Barre d'action collée juste au-dessus des onglets (ex. « Reçu 344,93 $ » d'une facture due) */
+  .au-dessus-onglets { bottom: calc(3.25rem + 0.5rem + 2px + env(safe-area-inset-bottom)); }
   .onglet-bas-actif { @apply bg-accent/15 text-accent; }
   .compteur { @apply absolute top-1 left-1/2 ml-2 min-w-6 rounded-full px-1.5 text-center text-xs leading-6 font-bold text-nuit; }
   /* Onglets dans une page (balises : à poser, à retirer) : actif plein, jaune sur noir */
