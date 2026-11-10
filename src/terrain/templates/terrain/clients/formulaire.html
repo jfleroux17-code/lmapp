@@ -1,5 +1,6 @@
 {% extends "terrain/base.html" %}
 {% block titre %}{{ titre }}{% endblock %}
+{% block barre_onglets %}{% endblock %}
 {% block contenu %}
 <h1 class="mb-4 text-2xl font-bold">{{ titre }}</h1>
 <form method="post" class="space-y-6" x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }" novalidate>{% csrf_token %}

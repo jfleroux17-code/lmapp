@@ -5,17 +5,17 @@
 <div class="pt-4">
   <p class="mb-1 text-gray-400">{{ ent.nom }}{% if telephone_affiche %} · <a href="tel:{{ ent.telephone }}" class="text-accent">{{ telephone_affiche }}</a>{% endif %}</p>
   <h1 class="mb-1 text-2xl font-bold">{% if solde_ouverture %}Solde de votre compte{% if f.saison_origine %} (saison {{ f.saison_origine }}){% endif %}{% else %}Facture n° {{ f.numero }}{% endif %}</h1>
-  <p class="mb-4 text-gray-300">{{ client.nom_affiche }}{% if not solde_ouverture %} · {{ f.date_facture|date:"j F Y" }}{% endif %}</p>
+  <p class="mb-4 text-gray-300">{{ client.nom_affiche }}{% if not solde_ouverture %} · {{ f.date_facture|date_qc:"j F Y" }}{% endif %}</p>
 
   {% if annulee %}
-    <p class="mb-4 rounded-2xl border border-bordure p-4">Cette facture a été annulée le {{ f.annulee_le|date:"j F Y" }}. Rien à payer.</p>
+    <p class="mb-4 rounded-2xl border border-bordure p-4">Cette facture a été annulée le {{ f.annulee_le|date_qc:"j F Y" }}. Rien à payer.</p>
   {% elif f.payee %}
     <p class="mb-4 rounded-2xl bg-ok/15 p-4 text-lg font-semibold text-ok">Payée. Merci!</p>
   {% else %}
     <div class="carte mb-4 p-4">
       <div class="text-gray-400">À payer</div>
       <div class="text-3xl font-bold">{{ solde|argent }}</div>
-      {% if f.date_echeance %}<div class="mt-1 text-gray-300">au plus tard le {{ f.date_echeance|date:"j F Y" }}</div>{% endif %}
+      {% if f.date_echeance %}<div class="mt-1 text-gray-300">au plus tard le {{ f.date_echeance|date_qc:"j F Y" }}</div>{% endif %}
     </div>
   {% endif %}
 
@@ -29,7 +29,7 @@
     {% endif %}
     <div class="flex justify-between gap-3 p-4 font-bold"><span>Total</span><span class="whitespace-nowrap">{{ f.total|argent }}</span></div>
     {% for p in paiements %}
-      <div class="flex justify-between gap-3 p-4 text-gray-300"><span>Reçu le {{ p.date|date:"j F Y" }} ({{ p.get_mode_display|lower }})</span><span class="whitespace-nowrap">-{{ p.montant|argent }}</span></div>
+      <div class="flex justify-between gap-3 p-4 text-gray-300"><span>Reçu le {{ p.date|date_qc:"j F Y" }} ({{ p.get_mode_display|lower }})</span><span class="whitespace-nowrap">-{{ p.montant|argent }}</span></div>
     {% endfor %}
   </section>
 

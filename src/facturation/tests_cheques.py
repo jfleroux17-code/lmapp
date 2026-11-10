@@ -118,7 +118,7 @@ class ChequesTests(TestCase):
         page = self.client.get("/cheques/")
         self.assertContains(page, "À déposer")
         self.assertContains(page, "À venir")
-        self.assertContains(self.client.get("/comptes/"), "1 chèque à déposer")
+        self.assertContains(self.client.get("/comptes/"), 'Chèques à déposer (396,00\u202f$)</span><span class="pastille bg-ok text-nuit">1</span>')
         self.client.post(f"/cheques/{c.pk}/", {"action": "deposer"})
         c.refresh_from_db()
         self.assertEqual(c.statut, S.DEPOSE)

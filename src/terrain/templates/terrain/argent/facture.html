@@ -7,7 +7,7 @@
 <div class="mb-4 flex items-start justify-between gap-3">
   <div>
     <h1 class="text-2xl font-bold leading-tight">{% if f.genre == "solde_ouverture" %}Solde antérieur{% elif f.numero %}Facture n° {{ f.numero }}{% else %}Brouillon{% endif %}</h1>
-    <p class="text-gray-400">{{ f.date_facture|date:"j F Y" }}{% if f.date_echeance and f.statut == "emise" and not f.payee %} · payable le {{ f.date_echeance|date:"j F" }}{% endif %}{% if f.saison_origine %} · saison {{ f.saison_origine }}{% endif %}</p>
+    <p class="text-gray-400">{{ f.date_facture|date_qc:"j F Y" }}{% if f.date_echeance and f.statut == "emise" and not f.payee %} · payable le {{ f.date_echeance|date_qc:"j F" }}{% endif %}{% if f.saison_origine %} · saison {{ f.saison_origine }}{% endif %}</p>
   </div>
   {% if f.statut == "brouillon" %}<span class="pastille bg-accent/20 text-accent">Brouillon</span>
   {% elif f.statut == "annulee" %}<span class="pastille bg-danger/20 text-danger">Annulée</span>
@@ -42,10 +42,10 @@
     {% endif %}
     <div class="flex justify-between pt-1 text-xl font-bold"><span>Total</span><span>{{ f.total|argent }}</span></div>
     {% for p in paiements %}
-      <div class="flex justify-between text-sm text-ok"><span>{{ p.get_mode_display }}, {{ p.date|date:"j F" }}{% if p.reference %} ({{ p.reference }}){% endif %}</span><span>-{{ p.montant|argent }}</span></div>
+      <div class="flex justify-between text-sm text-ok"><span>{{ p.get_mode_display }}, {{ p.date|date_qc:"j F" }}{% if p.reference %} ({{ p.reference }}){% endif %}</span><span>-{{ p.montant|argent }}</span></div>
     {% endfor %}
     {% for c in cheques %}
-      <div class="flex justify-between text-sm text-gray-300"><span>Chèque postdaté en main{% if c.numero %} n° {{ c.numero }}{% endif %}, daté du {{ c.date_cheque|date:"j F" }}</span><span>{{ c.montant|argent }}</span></div>
+      <div class="flex justify-between text-sm text-gray-300"><span>Chèque postdaté en main{% if c.numero %} n° {{ c.numero }}{% endif %}, daté du {{ c.date_cheque|date_qc:"j F" }}</span><span>{{ c.montant|argent }}</span></div>
     {% endfor %}
     {% if f.statut == "emise" and paiements %}
       <div class="flex justify-between pt-1 text-xl font-bold {% if f.payee %}text-ok{% else %}text-accent{% endif %}"><span>Reste à payer</span><span>{{ f.solde|argent }}</span></div>
@@ -54,7 +54,7 @@
 </section>
 
 {% if f.statut == "annulee" %}
-  <p class="carte mb-4 p-4 text-gray-300">Annulée le {{ f.annulee_le|date:"j F Y" }} : {{ f.raison_annulation }}</p>
+  <p class="carte mb-4 p-4 text-gray-300">Annulée le {{ f.annulee_le|date_qc:"j F Y" }} : {{ f.raison_annulation }}</p>
 {% endif %}
 
 <a href="{% url 'facturation:pdf' f.pk %}" class="gros-bouton mb-4 border-2 border-bordure" target="_blank" rel="noopener">Voir le PDF</a>
@@ -78,12 +78,12 @@
       <p class="mb-4 text-sm text-gray-400">Ni courriel ni cellulaire dans la fiche du client : impossible d'envoyer la facture.</p>
     {% endif %}
   {% endif %}
-  {% if f.consultee_le %}<p class="mb-4 text-sm text-ok">Ouverte par le client le {{ f.consultee_le|date:"j F, H \h i" }}.</p>{% endif %}
+  {% if f.consultee_le %}<p class="mb-4 text-sm text-ok">Ouverte par le client le {{ f.consultee_le|date_qc:"j F, H \h i" }}.</p>{% endif %}
   {% if envois %}
     <div class="carte mb-4 divide-y divide-bordure">
       {% for m in envois %}
         <div class="flex items-start justify-between gap-3 p-3 text-sm">
-          <div class="min-w-0"><div class="truncate">{{ m.destinataire }}</div><div class="text-gray-400">{{ m.cree_le|date:"j F, H \h i" }}{% if m.erreur %} · {{ m.erreur }}{% endif %}</div></div>
+          <div class="min-w-0"><div class="truncate">{{ m.destinataire }}</div><div class="text-gray-400">{{ m.cree_le|date_qc:"j F, H \h i" }}{% if m.erreur %} · {{ m.erreur }}{% endif %}</div></div>
           <span class="pastille {% if m.statut == 'envoye' %}bg-ok/20 text-ok{% elif m.statut == 'echec' %}bg-danger/20 text-danger{% else %}bg-bordure text-gray-300{% endif %}">{% if m.statut == "prepare" %}Préparé{% elif m.statut == "bloque" %}Bloqué{% elif m.statut == "en_file" %}En file{% else %}{{ m.get_statut_display }}{% endif %}</span>
         </div>
       {% endfor %}

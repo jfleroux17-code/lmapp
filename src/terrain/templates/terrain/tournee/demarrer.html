@@ -56,7 +56,7 @@
     {% for o in dernieres %}
       <div class="flex justify-between gap-3 p-4">
         <span>{{ o.get_type_display }}</span>
-        <span class="text-gray-400">{{ o.debut|date:"j F, H \h i" }}</span>
+        <span class="text-gray-400">{{ o.debut|date_qc:"j F, H \h i" }}</span>
       </div>
     {% endfor %}
   </div>

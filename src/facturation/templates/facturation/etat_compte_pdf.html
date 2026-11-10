@@ -18,7 +18,7 @@
   </div>
   <div class="titre">
     <h2>ÉTAT DE COMPTE</h2>
-    <table><tr><td>Au</td><td><strong>{{ date|date:"j F Y" }}</strong></td></tr></table>
+    <table><tr><td>Au</td><td><strong>{{ date|date_qc:"j F Y" }}</strong></td></tr></table>
   </div>
 </div>
 
@@ -35,7 +35,7 @@
   <tbody>
   {% for l in lignes %}
     <tr>
-      <td style="white-space: nowrap">{{ l.date|date:"j F Y" }}</td>
+      <td style="white-space: nowrap">{{ l.date|date_qc:"j F Y" }}</td>
       <td>{{ l.quoi }}</td>
       <td class="nombre">{% if l.debit is not None %}{{ l.debit|argent }}{% endif %}</td>
       <td class="nombre">{% if l.credit is not None %}{{ l.credit|argent }}{% endif %}</td>

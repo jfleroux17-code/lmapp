@@ -2,7 +2,7 @@
 <a href="{% url 'terrain:facture' f.pk %}" class="flex min-h-16 items-center justify-between gap-3 p-4 active:bg-bordure">
   <div class="min-w-0">
     <div class="truncate font-semibold">{% if montrer_client %}{{ f.client.nom_affiche }}{% elif f.genre == "solde_ouverture" %}Solde antérieur{% elif f.numero %}Facture n° {{ f.numero }}{% else %}Brouillon{% endif %}</div>
-    <div class="text-sm text-gray-400">{% if montrer_client %}{% if f.genre == "solde_ouverture" %}Solde antérieur{% elif f.numero %}n° {{ f.numero }}{% else %}Brouillon{% endif %} · {% endif %}{{ f.date_facture|date:"j F Y" }}</div>
+    <div class="text-sm text-gray-400">{% if montrer_client %}{% if f.genre == "solde_ouverture" %}Solde antérieur{% elif f.numero %}n° {{ f.numero }}{% else %}Brouillon{% endif %} · {% endif %}{{ f.date_facture|date_qc:"j F Y" }}</div>
   </div>
   <div class="text-right">
     <div class="whitespace-nowrap font-semibold">{{ f.total|argent }}</div>

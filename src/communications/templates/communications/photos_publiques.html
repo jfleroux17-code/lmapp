@@ -18,7 +18,7 @@
 <body>
 <main>
   <h1>{{ ent.nom }}</h1>
-  <p>Photo{{ images|length|pluralize }} envoyée{{ images|length|pluralize }} le {{ m.cree_le|date:"j F Y" }}.</p>
+  <p>Photo{{ images|length|pluralize }} envoyée{{ images|length|pluralize }} le {{ m.cree_le|date_qc:"j F Y" }}.</p>
   {% for n, legende in images %}
     <figure><img src="{% url 'photo_message' m.jeton n %}" alt="{{ legende }}" loading="lazy"><figcaption>{{ legende }}</figcaption></figure>
   {% endfor %}

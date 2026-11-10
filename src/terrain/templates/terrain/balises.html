@@ -14,7 +14,7 @@
       <a href="{% url 'terrain:fiche' l.adresse.client_id %}" class="min-w-0">
         <div class="truncate font-semibold">{{ l.adresse.client.nom_affiche }}</div>
         <div class="truncate text-sm text-gray-400">{{ l.adresse.ligne1 }}{% if l.adresse.secteur %} · {{ l.adresse.secteur.nom }}{% endif %}</div>
-        {% if l.balisage %}<div class="text-sm text-accent">{{ l.balisage.nombre }} posée{{ l.balisage.nombre|pluralize }} le {{ l.balisage.posees_le|date:"j F" }}</div>{% endif %}
+        {% if l.balisage %}<div class="text-sm text-accent">{{ l.balisage.nombre }} posée{{ l.balisage.nombre|pluralize }} le {{ l.balisage.posees_le|date_qc:"j F" }}</div>{% endif %}
       </a>
       {% if ecriture %}
         {% if vue == "poser" %}

@@ -5,13 +5,13 @@
 <div class="carte mb-4 p-4">
   <div class="mb-1 text-sm text-gray-400">
     {% if m.canal == "appel" %}{% if m.sens == "entrant" %}Appel reçu{% else %}Appel fait{% endif %}, noté à la main{% elif m.sens == "entrant" %}Reçu de {{ m.expediteur }}{% else %}{{ m.get_genre_display }} à {{ m.destinataire }}{% endif %}
-    · {{ m.get_canal_display|lower }} · {{ m.cree_le|date:"j F Y, H \h i" }}
+    · {{ m.get_canal_display|lower }} · {{ m.cree_le|date_qc:"j F Y, H \h i" }}
   </div>
   {% if m.sujet %}<h1 class="mb-3 text-xl font-bold">{{ m.sujet }}</h1>{% endif %}
   <div class="whitespace-pre-line break-words text-gray-100">{{ m.contenu }}</div>
   {% if photos %}<div class="mt-3 grid grid-cols-3 gap-2">{% for p, legende, url in photos %}<a href="{{ url }}" class="block overflow-hidden rounded-xl border-2 border-bordure"><img src="{{ url }}" alt="{{ legende }}" loading="lazy" class="aspect-square w-full object-cover"></a>{% endfor %}</div>
   <p class="mt-1 text-sm text-gray-400">{{ photos|length }} photo{{ photos|length|pluralize }} jointe{{ photos|length|pluralize }}{% if m.canal == "texto" %} (lien dans le texto){% endif %}</p>{% endif %}
-  {% if m.sens != "entrant" and m.canal != "appel" %}<p class="mt-3 text-sm text-gray-400">{{ m.get_statut_display }}{% if m.livre_le %}, livré le {{ m.livre_le|date:"j F, H \h i" }}{% endif %}{% if m.erreur %} : {{ m.erreur }}{% endif %}</p>{% endif %}
+  {% if m.sens != "entrant" and m.canal != "appel" %}<p class="mt-3 text-sm text-gray-400">{{ m.get_statut_display }}{% if m.livre_le %}, livré le {{ m.livre_le|date_qc:"j F, H \h i" }}{% endif %}{% if m.erreur %} : {{ m.erreur }}{% endif %}</p>{% endif %}
   {% if m.canal == "texto" and m.segments or m.cout is not None %}<p class="mt-1 text-sm text-gray-500">{% if m.segments %}{{ m.segments }} segment{{ m.segments|pluralize }}{% endif %}{% if m.cout is not None %} · coût {{ m.cout|floatformat:4 }} $ {{ m.cout_devise }}{% endif %}</p>{% endif %}
 </div>
 {% if m.client %}<a href="{% url 'terrain:fiche' m.client.pk %}" class="gros-bouton mb-3 border-2 border-bordure">Fiche de {{ m.client.nom_affiche }}</a>

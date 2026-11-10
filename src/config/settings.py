@@ -131,7 +131,9 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "core.context_processors.environnement",
                 "core.context_processors.messages_non_lus",
+                "core.context_processors.onglet",
             ],
+            "builtins": ["core.templatetags.dates_qc"],  # filtre date_qc partout, sans {% load %}
         },
     },
 ]

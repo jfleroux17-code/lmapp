@@ -11,7 +11,7 @@
   <div class="carte mb-3 p-4">
     <div class="flex items-start justify-between gap-3">
       <span class="text-2xl font-bold text-ok">{{ c.montant|argent }}</span>
-      <span class="text-sm {% if c.date_cheque < aujourdhui %}text-accent{% else %}text-gray-400{% endif %}">daté du {{ c.date_cheque|date:"j F" }}</span>
+      <span class="text-sm {% if c.date_cheque < aujourdhui %}text-accent{% else %}text-gray-400{% endif %}">daté du {{ c.date_cheque|date_qc:"j F" }}</span>
     </div>
     <a href="{% url 'terrain:fiche' c.client.pk %}" class="block font-semibold">{{ c.client.nom_affiche }}</a>
     <div class="text-sm text-gray-400">{% if c.numero %}N° {{ c.numero }} · {% endif %}{{ c.pour }}</div>
@@ -32,7 +32,7 @@
       <details class="p-4">
         <summary class="flex min-h-12 cursor-pointer items-start justify-between gap-3">
           <span class="min-w-0"><span class="block truncate font-semibold">{{ c.client.nom_affiche }}</span>
-            <span class="block text-sm text-gray-400">{{ c.date_cheque|date:"j F Y" }}{% if c.numero %} · n° {{ c.numero }}{% endif %} · {{ c.pour }}</span></span>
+            <span class="block text-sm text-gray-400">{{ c.date_cheque|date_qc:"j F Y" }}{% if c.numero %} · n° {{ c.numero }}{% endif %} · {{ c.pour }}</span></span>
           <span class="shrink-0 font-semibold">{{ c.montant|argent }}</span>
         </summary>
         {% if ecriture %}
@@ -52,7 +52,7 @@
       <details class="p-4">
         <summary class="flex min-h-12 cursor-pointer items-start justify-between gap-3">
           <span class="min-w-0"><span class="block truncate font-semibold">{{ c.client.nom_affiche }}</span>
-            <span class="block text-sm text-gray-400">{{ c.get_statut_display }}{% if c.depose_le %} le {{ c.depose_le|date:"j F" }}{% endif %}{% if c.numero %} · n° {{ c.numero }}{% endif %}{% if c.note %} · {{ c.note }}{% endif %}</span></span>
+            <span class="block text-sm text-gray-400">{{ c.get_statut_display }}{% if c.depose_le %} le {{ c.depose_le|date_qc:"j F" }}{% endif %}{% if c.numero %} · n° {{ c.numero }}{% endif %}{% if c.note %} · {{ c.note }}{% endif %}</span></span>
           <span class="shrink-0 font-semibold {% if c.statut == 'retourne' %}text-danger{% endif %}">{{ c.montant|argent }}</span>
         </summary>
         {% if ecriture and c.statut == 'depose' %}

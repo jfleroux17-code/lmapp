@@ -28,7 +28,7 @@
           <label class="relative block cursor-pointer overflow-hidden rounded-xl border-2" x-data="{ on: {{ p.choisie|yesno:'true,false' }} }" :class="on ? 'border-accent' : 'border-bordure'">
             <input type="checkbox" name="photo" value="{{ p.cle }}" x-model="on" {% if p.choisie %}checked{% endif %} class="absolute left-2 top-2 h-6 w-6 accent-[#f5c400]">
             <img src="{{ p.url }}" alt="" loading="lazy" class="aspect-square w-full object-cover">
-            <span class="block px-1 py-1 text-xs leading-tight text-gray-400">{{ p.legende }}<br>{{ p.quand|date:"j M" }}</span>
+            <span class="block px-1 py-1 text-xs leading-tight text-gray-400">{{ p.legende }}<br>{{ p.quand|date_qc:"j M" }}</span>
           </label>
         {% endfor %}
       </div>

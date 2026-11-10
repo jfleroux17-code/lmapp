@@ -23,12 +23,12 @@
 {% block contenu %}
 <a href="{% url 'terrain:demandes' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Demandes</a>
 <div class="carte mb-4 p-4">
-  <div class="mb-1 text-sm text-gray-400">{{ d.get_genre_display }} · {{ d.get_source_display|lower }} · {{ d.cree_le|date:"j F Y, H \h i" }}</div>
+  <div class="mb-1 text-sm text-gray-400">{{ d.get_genre_display }} · {{ d.get_source_display|lower }} · {{ d.cree_le|date_qc:"j F Y, H \h i" }}</div>
   <h1 class="mb-1 text-xl font-bold">{{ d.client.nom_affiche|default:d.contact|default:"Inconnu" }}{% if d.urgent and d.statut != "reglee" %} <span class="pastille bg-danger/20 text-danger">Urgent</span>{% endif %}</h1>
   {% if d.adresse %}<div class="mb-2 text-gray-300">{{ d.adresse.ligne1 }}</div>{% endif %}
   {% if d.client and d.contact %}<div class="mb-2 text-gray-300">{{ d.contact }}</div>{% endif %}
   <div class="whitespace-pre-line break-words">{{ d.description }}</div>
-  <p class="mt-3 text-sm text-gray-400">{{ d.get_statut_display }}{% if d.statut == "planifiee" and d.prevue_le %}, prévue le {{ d.prevue_le|date:"j F" }}{% endif %}{% if d.reglee_le %}, le {{ d.reglee_le|date:"j F" }}{% endif %}</p>
+  <p class="mt-3 text-sm text-gray-400">{{ d.get_statut_display }}{% if d.statut == "planifiee" and d.prevue_le %}, prévue le {{ d.prevue_le|date_qc:"j F" }}{% endif %}{% if d.reglee_le %}, le {{ d.reglee_le|date_qc:"j F" }}{% endif %}</p>
   {% if d.reglement %}<p class="mt-1 text-ok">{{ d.reglement }}</p>{% endif %}
 </div>
 {% if d.genre == "dommage" or d.photos.exists or d.entente or d.cout is not None %}

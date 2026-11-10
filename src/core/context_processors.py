@@ -24,3 +24,20 @@ def messages_non_lus(request):
             # Demandes : rouge = pas encore ouvertes (pas réglées), orange = ouvertes mais toujours « Ouverte »
             "demandes_non_lues": Demande.objects.filter(entreprise=ent, vue_le__isnull=True).exclude(statut=Demande.Statut.REGLEE).count(),
             "demandes_a_traiter": Demande.objects.filter(entreprise=ent, vue_le__isnull=False, statut=Demande.Statut.OUVERTE).count()}
+
+
+# Onglet de la barre du bas (audit UX, 9 novembre 2026) : déduit du début du chemin
+ONGLETS = (
+    ("tournee", ("/tournee", "/balises")),
+    ("argent", ("/comptes", "/factures", "/cheques", "/virements", "/depenses", "/contrats")),
+    ("messages", ("/messages",)),
+    ("plus", ("/plus", "/demandes")),
+)
+
+
+def onglet(request):
+    chemin = getattr(request, "path", "") or ""
+    for nom, prefixes in ONGLETS:
+        if chemin.startswith(prefixes):
+            return {"onglet": nom}
+    return {"onglet": "clients"}  # recherche, fiches, adresses, photos

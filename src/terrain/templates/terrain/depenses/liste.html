@@ -24,7 +24,7 @@
   {% for d in recentes %}
     <a href="{% url 'terrain:depense' d.pk %}" class="flex min-h-16 items-center justify-between gap-3 p-4 active:bg-bordure">
       <span class="min-w-0"><span class="block truncate font-semibold">{{ d.get_categorie_display }}</span>
-        <span class="block truncate text-sm text-gray-400">{{ d.date|date:"j F" }}{% if d.fournisseur %} · {{ d.fournisseur }}{% endif %}{% if not d.photo_taille %} · <span class="text-accent">sans photo</span>{% endif %}</span></span>
+        <span class="block truncate text-sm text-gray-400">{{ d.date|date_qc:"j F" }}{% if d.fournisseur %} · {{ d.fournisseur }}{% endif %}{% if not d.photo_taille %} · <span class="text-accent">sans photo</span>{% endif %}</span></span>
       <span class="shrink-0 font-semibold">{{ d.total|argent }}</span>
     </a>
   {% empty %}

@@ -30,7 +30,7 @@
       <td><a href="{% url 'admin:core_entreprise_change' l.entreprise.pk %}">{{ l.entreprise.nom }}</a>{% if not l.entreprise.active %} (inactive){% endif %}</td>
       {% for k, nom in colonnes %}
         <td{% if k == "boite_utilisee_mo" and l.boite_pourcent and l.boite_pourcent >= 80 %} class="alerte" title="{{ l.boite_pourcent }} % du quota"{% endif %}>
-          {% with v=l|dictget:k %}{% if v is None %}–{% elif k == "derniere_connexion" %}{{ v|date:"j M Y" }}{% elif k|slice:":7" == "montant" %}{{ v|argent }}{% else %}{{ v }}{% endif %}{% endwith %}
+          {% with v=l|dictget:k %}{% if v is None %}–{% elif k == "derniere_connexion" %}{{ v|date_qc:"j M Y" }}{% elif k|slice:":7" == "montant" %}{{ v|argent }}{% else %}{{ v }}{% endif %}{% endwith %}
         </td>
       {% endfor %}
     </tr>

@@ -209,7 +209,7 @@ class PdfTests(TestCase):
         from facturation import pdf
 
         h = pdf.html(self.f)
-        for attendu in ["Entretiens Essai", "Les Entretiens Essai inc.", "FACTURE", ">57<", "1 décembre 2026",
+        for attendu in ["Entretiens Essai", "Les Entretiens Essai inc.", "FACTURE", ">57<", "1er décembre 2026",
                         "C.P. 12", "Saint-Jérôme QC J7Z 1A1", "8, rue des Essais",  # facturation ailleurs : adresse du service aussi
                         "n° 123456789 RT0001", "n° 1234567890 TQ0001", "1 000,00 $", "50,00 $", "99,75 $",
                         "1 149,75 $", "-150,00 $", "999,75 $", "paiement@example.com", "numéro de facture 57"]:

@@ -1,0 +1,31 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Plus{% endblock %}
+{% block contenu %}
+<h1 class="mb-4 text-2xl font-bold">Plus</h1>
+<div class="carte mb-5 divide-y divide-bordure">
+  <a href="{% url 'terrain:demandes' %}" class="rangee-lien">
+    <span>Demandes des clients</span>
+    <span class="flex items-center gap-2">{% if demandes_non_lues %}<span class="pastille bg-danger/20 text-danger">{{ demandes_non_lues }} pas ouverte{{ demandes_non_lues|pluralize }}</span>{% elif demandes_a_traiter %}<span class="pastille bg-orange/20 text-orange">{{ demandes_a_traiter }} à régler</span>{% endif %}<span aria-hidden="true">›</span></span>
+  </a>
+  <a href="{% url 'terrain:balises' %}" class="rangee-lien"><span>Balises (poser, retirer)</span><span aria-hidden="true">›</span></a>
+  <a href="{% url 'terrain:a_collecter' %}" class="rangee-lien"><span>À collecter (comptant)</span><span aria-hidden="true">›</span></a>
+  <a href="{% url 'terrain:ordre' %}" class="rangee-lien"><span>Ordre de la tournée</span><span aria-hidden="true">›</span></a>
+  {% if responsable %}<a href="{% url 'terrain:carte_direct' %}" class="rangee-lien"><span>Carte en direct</span><span aria-hidden="true">›</span></a>{% endif %}
+</div>
+<div class="carte mb-5 divide-y divide-bordure">
+  <a href="{% url 'terrain:depenses' %}" class="rangee-lien"><span>Dépenses (photo du reçu)</span><span aria-hidden="true">›</span></a>
+  <a href="{% url 'terrain:rapport_saison' %}" class="rangee-lien"><span>Rapport de la saison</span><span aria-hidden="true">›</span></a>
+  <a href="{% url 'terrain:export_comptable' %}" class="rangee-lien"><span>Export pour le comptable</span><span aria-hidden="true">›</span></a>
+</div>
+<div class="carte mb-5 divide-y divide-bordure">
+  {% if ecriture %}<a href="{% url 'terrain:envoi_groupe' %}" class="rangee-lien"><span>Écrire à plusieurs clients</span><span aria-hidden="true">›</span></a>{% endif %}
+  <a href="{% url 'terrain:gabarits' %}" class="rangee-lien"><span>Messages types</span><span aria-hidden="true">›</span></a>
+  <div class="rangee-lien">
+    <span>Envois aux clients</span>
+    {% if envois_actifs %}<span class="pastille bg-danger/20 text-danger">Envois réels activés</span>{% else %}<span class="pastille bg-bordure text-gray-300">Simulation : rien ne part</span>{% endif %}
+  </div>
+</div>
+<form method="post" action="{% url 'terrain:deconnexion' %}" onsubmit="return confirm('Se déconnecter? Il faudra retaper le mot de passe.')">{% csrf_token %}
+  <button class="gros-bouton border-2 border-bordure text-gray-300">Déconnexion</button>
+</form>
+{% endblock %}

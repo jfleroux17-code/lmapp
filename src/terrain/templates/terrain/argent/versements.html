@@ -1,6 +1,7 @@
 {% extends "terrain/base.html" %}
 {% load argent %}
 {% block titre %}Versements à envoyer{% endblock %}
+{% block barre_onglets %}{% endblock %}
 {% block contenu %}
 <h1 class="mb-2 text-2xl font-bold">Versements à envoyer</h1>
 <p class="mb-4 text-gray-400">Factures des versements de contrat, préparées d'avance. Une tape les émet et les envoie à chaque client, par son moyen préféré. Rien ne part sans votre tape.</p>
@@ -17,8 +18,8 @@
           <div class="min-w-0 flex-1">
             <a href="{% url 'terrain:facture' l.f.pk %}" class="block truncate font-semibold underline-offset-4 active:underline">{{ l.f.client.nom_affiche }}</a>
             <div class="text-sm text-accent">Versement {{ l.f.versement.rang }} de {{ l.f.versement.contrat.versements.count }} · {{ l.f.versement.montant|argent }} avant taxes</div>
-            {% for c in l.cheques %}<div class="text-sm font-semibold text-ok">Chèque en main{% if c.numero %} n° {{ c.numero }}{% endif %} ({{ c.montant|argent }}, daté du {{ c.date_cheque|date:"j F" }}) : à déposer à sa date</div>{% endfor %}
-            <div class="text-sm text-gray-400">Payable le {{ l.f.date_echeance|date:"j F" }} · {% if l.canaux %}par {{ l.canaux }}{% else %}<span class="text-danger">pas de courriel ni de cellulaire : à remettre en main propre</span>{% endif %}</div>
+            {% for c in l.cheques %}<div class="text-sm font-semibold text-ok">Chèque en main{% if c.numero %} n° {{ c.numero }}{% endif %} ({{ c.montant|argent }}, daté du {{ c.date_cheque|date_qc:"j F" }}) : à déposer à sa date</div>{% endfor %}
+            <div class="text-sm text-gray-400">Payable le {{ l.f.date_echeance|date_qc:"j F" }} · {% if l.canaux %}par {{ l.canaux }}{% else %}<span class="text-danger">pas de courriel ni de cellulaire : à remettre en main propre</span>{% endif %}</div>
           </div>
         </div>
       {% endfor %}

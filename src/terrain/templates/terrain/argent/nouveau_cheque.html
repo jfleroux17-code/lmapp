@@ -8,7 +8,7 @@
 
 {% if deja %}
   <div class="carte mb-4 divide-y divide-bordure">
-    {% for c in deja %}<div class="p-3 text-sm"><span class="font-semibold">{{ c.montant|argent }}</span> daté du {{ c.date_cheque|date:"j F Y" }}{% if c.numero %} · n° {{ c.numero }}{% endif %} · <span class="text-gray-400">{{ c.pour }}</span></div>{% endfor %}
+    {% for c in deja %}<div class="p-3 text-sm"><span class="font-semibold">{{ c.montant|argent }}</span> daté du {{ c.date_cheque|date_qc:"j F Y" }}{% if c.numero %} · n° {{ c.numero }}{% endif %} · <span class="text-gray-400">{{ c.pour }}</span></div>{% endfor %}
   </div>
 {% endif %}
 

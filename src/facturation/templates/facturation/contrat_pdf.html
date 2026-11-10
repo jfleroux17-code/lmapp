@@ -19,8 +19,8 @@
     <h2>CONTRAT</h2>
     <table>
       <tr><td>Saison</td><td><strong>{{ c.saison.nom }}</strong></td></tr>
-      <tr><td>Du</td><td>{{ c.saison.debut|date:"j F Y" }}</td></tr>
-      <tr><td>Au</td><td>{{ c.saison.fin|date:"j F Y" }}</td></tr>
+      <tr><td>Du</td><td>{{ c.saison.debut|date_qc:"j F Y" }}</td></tr>
+      <tr><td>Au</td><td>{{ c.saison.fin|date_qc:"j F Y" }}</td></tr>
     </table>
   </div>
 </div>
@@ -60,7 +60,7 @@
 {% if versements %}
 <div class="bloc">
   <p><strong>Versements</strong> (une facture pour chacun)</p>
-  {% for x in versements %}<p>{{ x.v.rang }}. Le {{ x.v.date_prevue|date:"j F Y" }} : {{ x.total|argent }}{% if inscrit %} (taxes comprises){% endif %}</p>{% endfor %}
+  {% for x in versements %}<p>{{ x.v.rang }}. Le {{ x.v.date_prevue|date_qc:"j F Y" }} : {{ x.total|argent }}{% if inscrit %} (taxes comprises){% endif %}</p>{% endfor %}
 </div>
 {% endif %}
 
@@ -73,6 +73,6 @@
 </div>
 {% endif %}
 
-<p class="petit" style="margin-top: 10mm">Document remis le {{ date|date:"j F Y" }}.{% if ent.inscrit_taxes and ent.numero_tps %} TPS n° {{ ent.numero_tps }}{% if ent.numero_tvq %}, TVQ n° {{ ent.numero_tvq }}{% endif %}.{% endif %}</p>
+<p class="petit" style="margin-top: 10mm">Document remis le {{ date|date_qc:"j F Y" }}.{% if ent.inscrit_taxes and ent.numero_tps %} TPS n° {{ ent.numero_tps }}{% if ent.numero_tvq %}, TVQ n° {{ ent.numero_tvq }}{% endif %}.{% endif %}</p>
 </body>
 </html>

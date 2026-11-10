@@ -4,7 +4,7 @@
 {% block contenu %}
 <a href="{% url 'terrain:comptes' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Comptes</a>
 <h1 class="mb-1 text-2xl font-bold">Préparer la saison {{ a.nom }}</h1>
-<p class="mb-4 text-gray-400">À partir de la saison {{ a.saison.nom }} : mêmes clients actifs et mêmes contrats, prix ajustés, versements reportés d'un an ({{ a.debut|date:"j F Y" }} au {{ a.fin|date:"j F Y" }}). Rien n'est facturé ni envoyé.</p>
+<p class="mb-4 text-gray-400">À partir de la saison {{ a.saison.nom }} : mêmes clients actifs et mêmes contrats, prix ajustés, versements reportés d'un an ({{ a.debut|date_qc:"j F Y" }} au {{ a.fin|date_qc:"j F Y" }}). Rien n'est facturé ni envoyé.</p>
 {% if a.existe %}
   <p class="carte mb-4 p-4 text-accent">La saison {{ a.nom }} existe déjà.</p>
 {% else %}
@@ -28,7 +28,7 @@
   {% for l in a.lignes %}
     <div class="flex items-center justify-between gap-3 p-3">
       <div class="min-w-0"><div class="truncate font-semibold">{{ l.contrat.client.nom_affiche }}</div>
-        <div class="text-sm text-gray-400">{{ l.dates|length }} versement{{ l.dates|length|pluralize }}{% if l.dates %} : {% for d in l.dates %}{{ d|date:"j M Y" }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}</div></div>
+        <div class="text-sm text-gray-400">{{ l.dates|length }} versement{{ l.dates|length|pluralize }}{% if l.dates %} : {% for d in l.dates %}{{ d|date_qc:"j M Y" }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}</div></div>
       <div class="whitespace-nowrap text-right"><div class="text-sm text-gray-500 line-through">{{ l.avant|argent }}</div><div class="font-bold">{{ l.apres|argent }}</div></div>
     </div>
   {% empty %}

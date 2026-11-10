@@ -1,32 +1,53 @@
 {% extends "terrain/base.html" %}
 {% load argent %}
-{% block titre %}À recevoir{% endblock %}
+{% block titre %}Argent{% endblock %}
 {% block contenu %}
-<details class="carte mb-4 p-4" open>
-  <summary class="flex min-h-10 cursor-pointer items-center justify-between font-bold"><span>Saison {{ saison.nom }}</span><span class="text-sm font-normal text-gray-400">{{ saison.debut|date:"j M" }} au {{ saison.fin|date:"j M" }}</span></summary>
+<h1 class="mb-3 text-2xl font-bold">Argent</h1>
+<div class="carte mb-3 p-4">
+  <div class="text-sm text-gray-400">À recevoir</div><div class="text-3xl font-bold text-accent">{{ total|argent }}</div>
+  {% if plus_de_60 %}<div class="text-sm text-danger">dont {{ plus_de_60|argent }} depuis plus de 60 jours</div>{% endif %}
+</div>
+<div class="mb-4 grid grid-cols-2 gap-3">
+  <div class="carte p-4"><div class="text-sm text-gray-400">Facturé</div><div class="text-xl font-bold">{{ saison.facture|argent }}</div></div>
+  <div class="carte p-4"><div class="text-sm text-gray-400">Encaissé</div><div class="text-xl font-bold text-ok">{{ saison.encaisse|argent }}</div></div>
+</div>
+<details class="carte mb-5 p-4">
+  <summary class="flex min-h-10 cursor-pointer items-center justify-between gap-3 font-bold"><span>Saison {{ saison.nom }}<span class="block text-sm font-normal text-gray-400">{{ saison.debut|date_qc:"j M Y" }} au {{ saison.fin|date_qc:"j M Y" }}</span></span><span class="text-sm font-normal text-gray-400">Détails ›</span></summary>
   <div class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2">
-    <div><div class="text-sm text-gray-400">Facturé</div><div class="text-xl font-bold">{{ saison.facture|argent }}</div></div>
-    <div><div class="text-sm text-gray-400">Encaissé</div><div class="text-xl font-bold text-ok">{{ saison.encaisse|argent }}</div></div>
     <div><div class="text-sm text-gray-400">Clients servis</div><div class="text-xl font-bold">{{ saison.clients }}</div></div>
     <div><div class="text-sm text-gray-400">Opérations · passages</div><div class="text-xl font-bold">{{ saison.operations }} · {{ saison.passages }}</div></div>
+    <div><div class="text-sm text-gray-400">Encaissé, 30 derniers jours</div><div class="text-xl font-bold">{{ encaisse_30j|argent }}</div></div>
   </div>
   {% if saison.taxes or saison.tvq %}<p class="mt-2 text-sm text-gray-400">Taxes facturées : TPS {{ saison.taxes|argent }}, TVQ {{ saison.tvq|argent }}</p>{% endif %}
 </details>
-<div class="mb-4 grid grid-cols-2 gap-3">
-  <div class="carte p-4"><div class="text-sm text-gray-400">À recevoir</div><div class="text-2xl font-bold text-accent">{{ total|argent }}</div></div>
-  <div class="carte p-4"><div class="text-sm text-gray-400">Encaissé, 30 jours</div><div class="text-2xl font-bold text-ok">{{ encaisse_30j|argent }}</div></div>
-</div>
-{% if plus_de_60 %}<p class="mb-4 text-danger">Dont {{ plus_de_60|argent }} depuis plus de 60 jours.</p>{% endif %}
-{% if versements_prets %}<a href="{% url 'terrain:versements_a_envoyer' %}" class="mb-4 block rounded-2xl bg-accent/15 p-4 font-semibold text-accent">{{ versements_prets }} facture{{ versements_prets|pluralize }} de versement prête{{ versements_prets|pluralize }} à envoyer ›</a>{% endif %}
-{% if relances_pretes %}<a href="{% url 'terrain:relances_a_envoyer' %}" class="mb-4 block rounded-2xl bg-accent/15 p-4 font-semibold text-accent">{{ relances_pretes }} relance{{ relances_pretes|pluralize }} prête{{ relances_pretes|pluralize }} à envoyer ›</a>{% elif relances_pretes == 0 %}<a href="{% url 'terrain:relances_a_envoyer' %}" class="mb-4 block text-sm text-gray-400">Relances à envoyer : aucune aujourd'hui ›</a>{% endif %}
-{% if cheques.a_deposer %}<a href="{% url 'terrain:cheques' %}" class="mb-4 block rounded-2xl bg-ok/15 p-4 font-semibold text-ok">{{ cheques.a_deposer }} chèque{{ cheques.a_deposer|pluralize }} à déposer ({{ cheques.a_deposer_montant|argent }}) ›</a>{% elif cheques.en_main %}<a href="{% url 'terrain:cheques' %}" class="mb-4 block text-sm text-gray-400">Chèques postdatés en main : {{ cheques.en_main }} ({{ cheques.en_main_montant|argent }}) ›</a>{% else %}<a href="{% url 'terrain:cheques' %}" class="mb-4 block text-sm text-gray-400">Chèques postdatés ›</a>{% endif %}
-{% if virements_a_confirmer %}<a href="{% url 'terrain:virements' %}" class="mb-4 block rounded-2xl bg-ok/15 p-4 font-semibold text-ok">{{ virements_a_confirmer }} virement{{ virements_a_confirmer|pluralize }} Interac à confirmer ›</a>{% else %}<a href="{% url 'terrain:virements' %}" class="mb-4 block text-sm text-gray-400">Virements Interac reçus ›</a>{% endif %}
-<a href="{% url 'terrain:depenses' %}" class="gros-bouton mb-4 border-2 border-bordure">Dépenses (photo du reçu)</a>
-<a href="{% url 'terrain:rapport_saison' %}" class="mb-2 block text-sm text-gray-400">Rapport de la saison (par secteur, pour le comptable) ›</a>
-<a href="{% url 'terrain:export_comptable' %}" class="mb-4 block text-sm text-gray-400">Export pour le comptable (Excel) ›</a>
-{% if modifier_clients %}<a href="{% url 'terrain:saison_suivante' %}" class="mb-4 block text-sm text-gray-400">Préparer la saison suivante ›</a>{% endif %}
-{% if brouillons %}<a href="{% url 'terrain:factures' %}" class="mb-4 block rounded-2xl bg-accent/15 p-4 text-accent">{{ brouillons }} brouillon{{ brouillons|pluralize }} pas encore émis ›</a>{% endif %}
 
+{# À faire : seulement ce qui attend Louis, avec le nombre #}
+<h2 class="mb-2 text-lg font-bold">À faire</h2>
+{% if versements_prets or relances_pretes or brouillons or virements_a_confirmer or cheques.a_deposer %}
+<div class="carte mb-5 divide-y divide-bordure">
+  {% if versements_prets %}<a href="{% url 'terrain:versements_a_envoyer' %}" class="rangee-lien"><span>Factures de versement à envoyer</span><span class="pastille bg-accent text-nuit">{{ versements_prets }}</span></a>{% endif %}
+  {% if relances_pretes %}<a href="{% url 'terrain:relances_a_envoyer' %}" class="rangee-lien"><span>Relances à envoyer</span><span class="pastille bg-accent text-nuit">{{ relances_pretes }}</span></a>{% endif %}
+  {% if brouillons %}<a href="{% url 'terrain:factures' %}" class="rangee-lien"><span>Brouillons pas encore émis</span><span class="pastille bg-accent text-nuit">{{ brouillons }}</span></a>{% endif %}
+  {% if virements_a_confirmer %}<a href="{% url 'terrain:virements' %}" class="rangee-lien"><span>Virements Interac à confirmer</span><span class="pastille bg-ok text-nuit">{{ virements_a_confirmer }}</span></a>{% endif %}
+  {% if cheques.a_deposer %}<a href="{% url 'terrain:cheques' %}" class="rangee-lien"><span>Chèques à déposer ({{ cheques.a_deposer_montant|argent }})</span><span class="pastille bg-ok text-nuit">{{ cheques.a_deposer }}</span></a>{% endif %}
+</div>
+{% else %}
+<p class="carte mb-5 p-4 text-gray-400">Rien qui attend aujourd'hui.</p>
+{% endif %}
+
+<h2 class="mb-2 text-lg font-bold">Outils</h2>
+<div class="carte mb-5 divide-y divide-bordure">
+  <a href="{% url 'terrain:factures' %}" class="rangee-lien"><span>Toutes les factures</span><span aria-hidden="true">›</span></a>
+  <a href="{% url 'terrain:cheques' %}" class="rangee-lien"><span>Chèques postdatés{% if cheques.en_main %} <span class="text-gray-400">· {{ cheques.en_main }} en main ({{ cheques.en_main_montant|argent }})</span>{% endif %}</span><span aria-hidden="true">›</span></a>
+  <a href="{% url 'terrain:virements' %}" class="rangee-lien"><span>Virements Interac reçus</span><span aria-hidden="true">›</span></a>
+  {% if relances_pretes == 0 %}<a href="{% url 'terrain:relances_a_envoyer' %}" class="rangee-lien"><span>Relances <span class="text-gray-400">· aucune aujourd'hui</span></span><span aria-hidden="true">›</span></a>{% endif %}
+  <a href="{% url 'terrain:depenses' %}" class="rangee-lien"><span>Dépenses (photo du reçu)</span><span aria-hidden="true">›</span></a>
+  <a href="{% url 'terrain:rapport_saison' %}" class="rangee-lien"><span>Rapport de la saison</span><span aria-hidden="true">›</span></a>
+  <a href="{% url 'terrain:export_comptable' %}" class="rangee-lien"><span>Export pour le comptable</span><span aria-hidden="true">›</span></a>
+  {% if modifier_clients %}<a href="{% url 'terrain:saison_suivante' %}" class="rangee-lien"><span>Préparer la saison suivante</span><span aria-hidden="true">›</span></a>{% endif %}
+</div>
+
+<h2 class="mb-2 text-lg font-bold">À recevoir</h2>
 <div class="mb-3 grid grid-cols-2 gap-2">
   <a href="?tri=anciennete" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if tri != 'montant' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Plus vieux d'abord</a>
   <a href="?tri=montant" class="flex min-h-12 items-center justify-center rounded-xl border-2 font-semibold {% if tri == 'montant' %}border-accent text-accent{% else %}border-bordure text-gray-300{% endif %}">Plus gros d'abord</a>
@@ -38,7 +59,7 @@
       <div class="min-w-0">
         <div class="truncate font-semibold">{{ l.client.nom_affiche }}</div>
         <div class="text-sm {% if l.jours > 60 %}text-danger{% else %}text-gray-400{% endif %}">{% if l.jours %}depuis {{ l.jours }} jour{{ l.jours|pluralize }}{% else %}d'aujourd'hui{% endif %} · {{ l.factures }} facture{{ l.factures|pluralize }}</div>
-        {% if l.relance %}<div class="text-sm text-gray-400">{{ l.relance.get_genre_display }} le {{ l.relance.cree_le|date:"j F" }}</div>{% endif %}
+        {% if l.relance %}<div class="text-sm text-gray-400">{{ l.relance.get_genre_display }} le {{ l.relance.cree_le|date_qc:"j F" }}</div>{% endif %}
       </div>
       <div class="whitespace-nowrap text-lg font-bold">{{ l.du|argent }}</div>
     </a>

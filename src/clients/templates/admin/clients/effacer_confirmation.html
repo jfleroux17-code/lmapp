@@ -7,7 +7,7 @@
   <li>Sans facture émise : le nom et les adresses sont effacés aussi.</li>
 </ul>
 <p>Clients :</p>
-<ul>{% for c in clients %}<li>n° {{ c.pk }} : {{ c }}{% if c.efface_le %} (déjà effacé le {{ c.efface_le|date:"j F Y" }}){% endif %}</li>{% endfor %}</ul>
+<ul>{% for c in clients %}<li>n° {{ c.pk }} : {{ c }}{% if c.efface_le %} (déjà effacé le {{ c.efface_le|date_qc:"j F Y" }}){% endif %}</li>{% endfor %}</ul>
 <form method="post">{% csrf_token %}
   {% for pk in selection %}<input type="hidden" name="_selected_action" value="{{ pk }}">{% endfor %}
   <input type="hidden" name="action" value="{{ action }}">

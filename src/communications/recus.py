@@ -3,6 +3,7 @@
 Un seul reçu pour un encaissement réparti sur plusieurs factures (virement Interac, par exemple).
 Passe par les garde-fous habituels (interrupteur « envois réels », destinataires du test).
 """
+from core.templatetags.dates_qc import date_texte
 from django.utils import formats, timezone
 
 from communications import envoi, relances
@@ -22,7 +23,7 @@ def envoyer_recu(paiements):
     du = sum((f.solde_du for f in relances.factures_dues(client)), ZERO)
     variables = {
         "client": client.nom_affiche, "montant": argent(total), "mode": paiements[0].get_mode_display().lower(),
-        "date": formats.date_format(paiements[0].date, "j F Y"),
+        "date": date_texte(paiements[0].date),
         "factures": ", ".join(str(f).replace("Facture n°", "la facture n°").replace("Solde d'ouverture", "le solde antérieur").strip()
                               for f in factures),
         "solde": f"Solde restant à votre compte : {argent(du)}." if du > 0 else "Votre compte est payé au complet.",

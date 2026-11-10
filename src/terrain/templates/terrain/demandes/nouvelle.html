@@ -3,7 +3,7 @@
 {% block contenu %}
 <a href="{% if client %}{% url 'terrain:fiche' client.pk %}{% else %}{% url 'terrain:demandes' %}{% endif %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Retour</a>
 <h1 class="mb-1 text-2xl font-bold">Nouvelle demande</h1>
-<p class="mb-4 text-gray-400">{% if client %}{{ client.nom_affiche }}{% else %}Client pas dans l'app : noter comment le joindre.{% endif %}{% if message %} · à partir d'un {{ message.get_canal_display|lower }} reçu le {{ message.cree_le|date:"j F" }}{% endif %}</p>
+<p class="mb-4 text-gray-400">{% if client %}{{ client.nom_affiche }}{% else %}Client pas dans l'app : noter comment le joindre.{% endif %}{% if message %} · à partir d'un {{ message.get_canal_display|lower }} reçu le {{ message.cree_le|date_qc:"j F" }}{% endif %}</p>
 <form method="post" class="space-y-4" x-data="{ genre: '', urgent: false, envoi: false, urgents: {{ urgents|safe }} }"
       @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
   {% if client %}<input type="hidden" name="client" value="{{ client.pk }}">{% endif %}

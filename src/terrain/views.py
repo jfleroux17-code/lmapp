@@ -209,3 +209,12 @@ def abonner_notifications(request):
     except (KeyError, TypeError):
         return HttpResponseBadRequest("Abonnement illisible.")
     return JsonResponse({"ok": True})
+
+
+@membre_requis
+def plus(request):
+    """Onglet « Plus » de la barre du bas : ce qui sert moins souvent sur la route, et la déconnexion."""
+    from core.acces import est_responsable
+
+    return render(request, "terrain/plus.html", {"ecriture": peut_ecrire(request), "responsable": est_responsable(request),
+                                                 "envois_actifs": request.entreprise.envois_actifs})

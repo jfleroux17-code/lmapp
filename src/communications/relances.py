@@ -7,6 +7,7 @@ envoyé aussi aux désabonnés (LCAP). Au plus une relance par 24 heures (double
 """
 from datetime import timedelta
 
+from core.templatetags.dates_qc import date_texte
 from django.core.exceptions import ValidationError
 from django.utils import formats, timezone
 
@@ -75,7 +76,7 @@ def _texte(client, dues, genre):
     gabarit = Gabarit.texte_pour(ent, genre)
     try:
         texte = gabarit.format(client=client.nom_affiche, montant=argent(total), factures=_description(dues),
-                               depuis=formats.date_format(dues[0].date_facture, "j F Y"), paiement=paiement)
+                               depuis=date_texte(dues[0].date_facture), paiement=paiement)
     except (KeyError, IndexError, ValueError):
         texte = gabarit  # gabarit modifié avec une variable inconnue : envoyé tel quel plutôt que de bloquer
     return f"{texte.strip()}\n\n{ent.signature_messages or ent.nom}", total

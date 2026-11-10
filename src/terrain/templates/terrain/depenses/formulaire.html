@@ -33,7 +33,7 @@
 </script>{% endblock %}
 {% block contenu %}
 <a href="{% url 'terrain:depenses' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Dépenses</a>
-<h1 class="mb-4 text-2xl font-bold">{% if d.pk %}Dépense du {{ d.date|date:"j F Y" }}{% else %}Nouvelle dépense{% endif %}</h1>
+<h1 class="mb-4 text-2xl font-bold">{% if d.pk %}Dépense du {{ d.date|date_qc:"j F Y" }}{% else %}Nouvelle dépense{% endif %}</h1>
 
 {% if d.pk and d.photo_taille %}
   <a href="{% url 'terrain:photo_depense' d.pk %}" target="_blank" rel="noopener" class="mb-4 block"><img src="{% url 'terrain:photo_depense' d.pk %}" alt="Reçu" class="max-h-96 w-full rounded-2xl object-contain bg-carte"></a>

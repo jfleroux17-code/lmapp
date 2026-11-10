@@ -19,11 +19,11 @@
       <p class="text-gray-400">Pas de cellulaire ni de courriel dans la fiche : relance impossible.</p>
     {% endif %}
   {% endif %}
-  {% if client.ne_pas_relancer %}<p class="mt-3 text-sm text-gray-400">Exclu des relances proposées le matin (« ne pas relancer »).</p>{% elif client.relance_reportee_au %}<p class="mt-3 text-sm text-gray-400">Relance proposée reportée au {{ client.relance_reportee_au|date:"j F" }}.</p>{% endif %}
+  {% if client.ne_pas_relancer %}<p class="mt-3 text-sm text-gray-400">Exclu des relances proposées le matin (« ne pas relancer »).</p>{% elif client.relance_reportee_au %}<p class="mt-3 text-sm text-gray-400">Relance proposée reportée au {{ client.relance_reportee_au|date_qc:"j F" }}.</p>{% endif %}
   {% if relance.historique %}
     <div class="mt-3 space-y-1 text-sm text-gray-400">
       {% for m in relance.historique %}
-        <div>{{ m.get_genre_display }} · {{ m.get_canal_display|lower }} · {{ m.cree_le|date:"j F" }} ·
+        <div>{{ m.get_genre_display }} · {{ m.get_canal_display|lower }} · {{ m.cree_le|date_qc:"j F" }} ·
           <span class="{% if m.statut == 'envoye' %}text-ok{% elif m.statut == 'echec' %}text-danger{% endif %}">{% if m.statut == "prepare" %}préparé{% elif m.statut == "bloque" %}bloqué{% elif m.statut == "en_file" %}en file{% else %}{{ m.get_statut_display|lower }}{% endif %}</span></div>
       {% endfor %}
     </div>

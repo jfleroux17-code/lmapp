@@ -437,7 +437,7 @@ class RelanceTests(TestCase):
         self.assertEqual(relances.niveau_suivant(self.c), 2)
         ms = relances.relancer(self.c)
         self.assertEqual(ms[0].genre, "relance_2")
-        self.assertIn("impayé depuis le 1 octobre 2026", ms[0].contenu)
+        self.assertIn("impayé depuis le 1er octobre 2026", ms[0].contenu)
         Message.objects.update(cree_le=timezone.now() - timedelta(days=10))
         relances.relancer(self.c)
         Message.objects.update(cree_le=timezone.now() - timedelta(days=10))
@@ -671,7 +671,7 @@ class ReceptionTests(TestCase):
         self.client.defaults["HTTP_HOST"] = HOTE
         self.client.force_login(self.louis)
         accueil = self.client.get("/")
-        self.assertContains(accueil, "</svg> 1</a>")
+        self.assertContains(accueil, '<span class="compteur bg-accent">1</span>')
         liste = self.client.get("/messages/")
         self.assertEqual(liste.context["vue"], "recus")
         self.assertContains(liste, "Nouveau")

@@ -12,8 +12,8 @@
     {% if ent.numero_tps %}TPS n° {{ ent.numero_tps }}<br>{% endif %}{% if ent.numero_tvq %}TVQ n° {{ ent.numero_tvq }}{% endif %}</div>
   <div class="titre"><h2>RAPPORT DE LA SAISON</h2>
     <table><tr><td>Saison</td><td><strong>{{ saison.nom }}</strong></td></tr>
-      <tr><td>Du</td><td>{{ saison.debut|date:"j F Y" }}</td></tr><tr><td>Au</td><td>{{ saison.fin|date:"j F Y" }}</td></tr>
-      <tr><td>Produit le</td><td>{{ date|date:"j F Y" }}</td></tr></table></div>
+      <tr><td>Du</td><td>{{ saison.debut|date_qc:"j F Y" }}</td></tr><tr><td>Au</td><td>{{ saison.fin|date_qc:"j F Y" }}</td></tr>
+      <tr><td>Produit le</td><td>{{ date|date_qc:"j F Y" }}</td></tr></table></div>
 </div>
 {% include "facturation/_rapport_saison.html" %}
 <p class="petit" style="margin-top: 8mm">Factures, paiements et dépenses au détail : export pour le comptable (CSV) dans l'application. TPS et TVQ des dépenses : payées sur les reçus (crédits de taxe sur les intrants), calculées à partir du total quand elles n'ont pas été tapées.</p>

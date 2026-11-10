@@ -22,8 +22,8 @@
     <h2>{% if solde_ouverture %}SOLDE ANTÉRIEUR{% else %}FACTURE{% endif %}</h2>
     <table>
       {% if not solde_ouverture %}<tr><td>Numéro</td><td><strong>{% if f.numero %}{{ f.numero }}{% else %}à venir{% endif %}</strong></td></tr>{% endif %}
-      <tr><td>Date</td><td>{{ f.date_facture|date:"j F Y" }}</td></tr>
-      {% if f.date_echeance %}<tr><td>Échéance</td><td>{{ f.date_echeance|date:"j F Y" }}</td></tr>{% endif %}
+      <tr><td>Date</td><td>{{ f.date_facture|date_qc:"j F Y" }}</td></tr>
+      {% if f.date_echeance %}<tr><td>Échéance</td><td>{{ f.date_echeance|date_qc:"j F Y" }}</td></tr>{% endif %}
       {% if solde_ouverture and f.saison_origine %}<tr><td>Saison</td><td>{{ f.saison_origine }}</td></tr>{% endif %}
     </table>
   </div>
@@ -71,7 +71,7 @@
   {% endif %}
   <tr class="grand"><td>Total</td><td class="nombre">{{ f.total|argent }}</td></tr>
   {% for p in paiements %}
-  <tr><td class="petit">Reçu le {{ p.date|date:"j F Y" }} ({{ p.get_mode_display|lower }})</td><td class="nombre">-{{ p.montant|argent }}</td></tr>
+  <tr><td class="petit">Reçu le {{ p.date|date_qc:"j F Y" }} ({{ p.get_mode_display|lower }})</td><td class="nombre">-{{ p.montant|argent }}</td></tr>
   {% endfor %}
   {% if paiements %}
   <tr class="solde"><td>Solde à payer</td><td class="nombre">{{ f.solde|argent }}</td></tr>
@@ -80,10 +80,10 @@
 {% if not brouillon and not annulee and f.payee %}<p class="nombre payee">Payée. Merci!</p>{% endif %}
 
 {% if annulee %}
-<div class="bloc"><p><strong>Facture annulée</strong> le {{ f.annulee_le|date:"j F Y" }}{% if f.raison_annulation %} : {{ f.raison_annulation }}{% endif %}.</p><p>Rien à payer.</p></div>
+<div class="bloc"><p><strong>Facture annulée</strong> le {{ f.annulee_le|date_qc:"j F Y" }}{% if f.raison_annulation %} : {{ f.raison_annulation }}{% endif %}.</p><p>Rien à payer.</p></div>
 {% elif cheques and not f.payee %}
 <div class="bloc">
-  {% for c in cheques %}<p>Chèque postdaté{% if c.numero %} n° {{ c.numero }}{% endif %} de {{ c.montant|argent }}, daté du {{ c.date_cheque|date:"j F Y" }} : reçu, il sera déposé à sa date.</p>{% endfor %}
+  {% for c in cheques %}<p>Chèque postdaté{% if c.numero %} n° {{ c.numero }}{% endif %} de {{ c.montant|argent }}, daté du {{ c.date_cheque|date_qc:"j F Y" }} : reçu, il sera déposé à sa date.</p>{% endfor %}
   <p>Rien d'autre à faire.</p>
 </div>
 {% elif not f.payee %}

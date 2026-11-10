@@ -1,6 +1,7 @@
 {% extends "terrain/base.html" %}
 {% load argent %}
 {% block titre %}Relances à envoyer{% endblock %}
+{% block barre_onglets %}{% endblock %}
 {% block contenu %}
 <h1 class="mb-2 text-2xl font-bold">Relances à envoyer</h1>
 <p class="mb-4 text-gray-400">Rappel 15 jours après l'échéance, deuxième avis à 30, dernier avis à 60. Rien ne part sans votre tape.</p>
@@ -19,7 +20,7 @@
             <a href="{% url 'terrain:fiche' p.client.pk %}" class="block truncate font-semibold underline-offset-4 active:underline">{{ p.client.nom_affiche }}</a>
             <div class="text-sm {% if p.niveau == 3 %}text-danger{% else %}text-accent{% endif %}">{{ p.genre_label }}</div>
             <div class="text-sm text-gray-400">{{ p.du|argent }} · {{ p.factures }} facture{{ p.factures|pluralize }} · {{ p.jours }} jours après l'échéance</div>
-            <div class="text-sm text-gray-400">Par {{ p.canaux_texte }}{% if p.derniere %} · {{ p.derniere.get_genre_display }} le {{ p.derniere.cree_le|date:"j F" }}{% endif %}</div>
+            <div class="text-sm text-gray-400">Par {{ p.canaux_texte }}{% if p.derniere %} · {{ p.derniere.get_genre_display }} le {{ p.derniere.cree_le|date_qc:"j F" }}{% endif %}</div>
           </div>
           {% if ecriture %}<button form="reporter-{{ p.client.pk }}" class="min-h-12 shrink-0 rounded-xl border-2 border-bordure px-3 text-sm text-gray-300">Pas cette<br>semaine</button>{% endif %}
         </div>

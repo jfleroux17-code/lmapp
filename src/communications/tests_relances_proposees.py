@@ -99,7 +99,7 @@ class RelancesProposeesTests(TestCase):
         self.facture(autre, echeance=date(2026, 9, 1))
         self.client.defaults["HTTP_HOST"] = HOTE
         self.client.force_login(self.louis)
-        self.assertContains(self.client.get("/comptes/"), "2 relances prêtes à envoyer")
+        self.assertContains(self.client.get("/comptes/"), 'Relances à envoyer</span><span class="pastille bg-accent text-nuit">2</span>')
         r = self.client.get("/comptes/relances/")
         self.assertContains(r, "Tremblay")
         self.assertContains(r, "Rien ne part sans votre tape")
