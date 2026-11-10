@@ -750,6 +750,15 @@ class RecuTests(TestCase):
         self.client.post(f"/factures/{self.f.pk}/paiement/", {"mode": "interac", "montant": "250", "recu": "1"})
         self.assertIn("Votre compte est payé au complet.", Message.objects.filter(genre="recu_paiement").latest("pk").contenu)
 
+    def test_recu_avec_surplus_en_credit(self):
+        """Le reçu dit ce que le client a remis (surplus compris), pas seulement la part de la facture."""
+        self.client.post(f"/factures/{self.f.pk}/paiement/", {"mode": "interac", "montant": "430", "surplus": "1", "recu": "1"})
+        m = Message.objects.get(genre="recu_paiement")
+        self.assertIn("votre paiement de 430,00", m.contenu)
+        self.assertIn("(virement Interac)", m.contenu)
+        self.assertIn("Le surplus de 30,00", m.contenu)
+        self.assertIn("est porté en crédit à votre compte.", m.contenu)
+
     def test_sans_case_cochee_pas_de_recu(self):
         self.client.post(f"/factures/{self.f.pk}/paiement/", {"mode": "comptant", "montant": "150"})
         self.assertFalse(Message.objects.filter(genre="recu_paiement").exists())

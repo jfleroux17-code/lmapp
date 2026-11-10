@@ -20,8 +20,6 @@ from django.utils import timezone
 from clients.models import Adresse, Client, Secteur
 from core.models import Entreprise, VilleDesservie
 from facturation.models import Contrat, Facture, Paiement, Saison, Service
-from tournee.models import Operation
-from communications.models import Message
 
 ENTREPRISE = {
     "slug": "essai",
@@ -36,6 +34,9 @@ ENTREPRISE = {
     "numero_tps": "123456789 RT0001",
     "numero_tvq": "1234567890 TQ0001",
     "prochain_numero_facture": 1001,
+    # Comme Louis : 1er versement à l'approbation, les suivants à ces dates
+    "dates_versements": "15/01 15/02",
+    "versements_par_defaut": 2,
     "interac_courriel": "paiement@example.com",
     "interac_instructions": "Virement Interac à paiement@example.com (dépôt automatique, aucune question). Indiquez votre numéro de facture.",
 }
@@ -89,18 +90,7 @@ class Command(BaseCommand):
             if options["reinitialiser"]:
                 ancienne = Entreprise.objects.filter(slug=ENTREPRISE["slug"]).first()
                 if ancienne is not None:
-                    # Ordre imposé par les clés protégées : l'argent, puis adresses, clients, secteurs, l'entreprise
-                    Message.objects.filter(entreprise=ancienne).delete()
-                    Operation.objects.filter(entreprise=ancienne).delete()  # et leurs passages
-                    Paiement.objects.filter(entreprise=ancienne).delete()
-                    Facture.objects.filter(entreprise=ancienne).delete()
-                    Contrat.objects.filter(entreprise=ancienne).delete()
-                    Service.objects.filter(entreprise=ancienne).delete()
-                    Saison.objects.filter(entreprise=ancienne).delete()
-                    Adresse.objects.filter(entreprise=ancienne).delete()
-                    Client.objects.filter(entreprise=ancienne).delete()
-                    Secteur.objects.filter(entreprise=ancienne).delete()
-                    ancienne.delete()
+                    self._effacer(ancienne)
                     self.stdout.write(f"Entreprise d'essai « {ancienne} » effacée.")
             ent, creee = Entreprise.objects.get_or_create(slug=ENTREPRISE["slug"], defaults=ENTREPRISE)
             if not creee:
@@ -156,6 +146,37 @@ class Command(BaseCommand):
             f"« {ent} » créée : ville desservie {nom_ville}, {len(secteurs)} secteurs, {Client.objects.filter(entreprise=ent).count()} clients, "
             f"{Adresse.objects.filter(entreprise=ent).count()} adresses, {factures}."
         ))
+
+    def _effacer(self, ent):
+        """Efface tout ce qui appartient à l'entreprise d'essai, puis l'entreprise.
+
+        Les modèles sont trouvés par leur clé vers Entreprise (pas de liste à
+        tenir à jour). Les clés protégées entre eux imposent un ordre : on
+        efface ce qui peut l'être, et on recommence jusqu'à ce que tout soit
+        parti. Le registre des incidents ne s'efface jamais : s'il en a, refus.
+        """
+        from django.db import models as dj_models
+        from django.db.models import ProtectedError, RestrictedError
+
+        if ent.incidents.exists():
+            raise CommandError("Refusé : l'entreprise d'essai a des incidents de confidentialité inscrits (registre jamais effacé).")
+        restants = [
+            (rel.related_model, rel.field.name) for rel in Entreprise._meta.related_objects
+            if isinstance(rel.field, dj_models.ForeignKey) and rel.related_model is not Entreprise
+        ]
+        while restants:
+            bloques = []
+            for modele, champ in restants:
+                try:
+                    with transaction.atomic():
+                        modele._base_manager.filter(**{champ: ent}).delete()
+                except (ProtectedError, RestrictedError):
+                    bloques.append((modele, champ))
+            if len(bloques) == len(restants):
+                noms = ", ".join(m._meta.label for m, _ in bloques)
+                raise CommandError(f"Effacement bloqué (clés protégées) : {noms}")
+            restants = bloques
+        ent.delete()
 
     def _argent(self, ent):
         """Saison, services, contrats à versements, factures, un paiement et un solde d'ouverture (fictifs)."""

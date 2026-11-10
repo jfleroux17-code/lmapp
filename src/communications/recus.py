@@ -18,15 +18,22 @@ def envoyer_recu(paiements):
         return []
     client = paiements[0].facture.client
     ent = client.entreprise
-    total = sum((p.montant for p in paiements), ZERO)
+    from facturation.models import Credit
+
+    # Ce que le client a remis : la part appliquée aux factures, plus le surplus gardé en crédit (D7)
+    surplus = sum((c.montant for c in Credit.objects.filter(paiement__in=paiements)), ZERO)
+    total = sum((p.montant for p in paiements), ZERO) + surplus
+    mode = paiements[0].get_mode_display()
+    mode = mode[:1].lower() + mode[1:]  # « virement Interac », pas « virement interac »
     factures = list(dict.fromkeys(p.facture for p in paiements))
     du = sum((f.solde_du for f in relances.factures_dues(client)), ZERO)
     variables = {
-        "client": client.nom_affiche, "montant": argent(total), "mode": paiements[0].get_mode_display().lower(),
+        "client": client.nom_affiche, "montant": argent(total), "mode": mode,
         "date": date_texte(paiements[0].date),
         "factures": ", ".join(str(f).replace("Facture n°", "la facture n°").replace("Solde d'ouverture", "le solde antérieur").strip()
                               for f in factures),
-        "solde": f"Solde restant à votre compte : {argent(du)}." if du > 0 else "Votre compte est payé au complet.",
+        "solde": (f"Le surplus de {argent(surplus)} est porté en crédit à votre compte. " if surplus > 0 else "")
+                 + (f"Solde restant à votre compte : {argent(du)}." if du > 0 else "Votre compte est payé au complet."),
     }
     gabarit = Gabarit.texte_pour(ent, Genre.RECU_PAIEMENT)
     try:

@@ -145,6 +145,7 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - [ ] Saison d'été, paysagement (PRD T) : à définir avec Louis, plus tard.
 - [ ] Facturation des entreprises par l'app (Q2), quand les tarifs seront fixés.
 - [x] Avis « Ébauche » retiré de la politique de confidentialité, durées réelles écrites, `site.zip` refait (9 novembre 2026).
+- [x] **Répétition de bout en bout en test** (10 novembre 2026, demande de JF) : import fictif de 13 lignes (taxes incluses, extra, reçu avant l'app, solde antérieur, deux adresses d'un payeur, ex-client qui doit, ville non desservie, erreurs, doublon), relance de l'import sans doublon, brouillons de versement (tâche de nuit), « Émettre et envoyer 8 factures », crédit appliqué à l'émission, paiements avec reçu et surplus en crédit, relance, chèque postdaté, bilan et rapport de saison recomptés à la main. Corrigé : `donnees_essai --reinitialiser` plantait (virements, demandes); entreprise d'essai sans dates de versement; texte de l'import qui annonçait le 1er versement facturé « à l'import » (c'est la nuit suivante); reçu qui taisait le surplus gardé en crédit (600 $ remis, reçu de 570 $) et « virement interac » en minuscule.
 - [ ] Test de restauration chaque mois (`sh outils/tester_restauration.sh`), prochain vers le 7 décembre 2026.
 
 ### En attente

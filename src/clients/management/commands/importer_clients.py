@@ -83,7 +83,7 @@ class Command(BaseCommand):
                              if l.argent.get("type_contrat", "saisonnier") == "saisonnier")
             for nb, combien in sorted(par_nb.items()):
                 dates = " et ".join(f"{j:02d}/{m:02d}" for j, m in ent.liste_dates_versements()[:nb - 1])
-                w(f"         Échéancier : {combien} contrat(s) en {nb} versement(s) (1er à l'import, en brouillon"
+                w(f"         Échéancier : {combien} contrat(s) en {nb} versement(s) (1er daté de l'import, facture en brouillon la nuit suivante"
                   f"{', puis ' + dates if dates else ''}).")
 
         if a.statuts:
