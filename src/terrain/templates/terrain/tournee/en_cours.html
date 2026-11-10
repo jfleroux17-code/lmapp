@@ -66,7 +66,11 @@
         <li x-show="courant.pente" class="font-semibold text-accent">Entrée en pente</li>
         <li x-show="courant.consignes"><span class="text-gray-400">Consignes :</span> <span class="whitespace-pre-line" x-text="courant.consignes"></span></li>
       </ul>
-      <div class="mb-4 grid grid-cols-3 gap-2">
+      {# App de navigation choisie une fois dans Plus (gardée dans le cellulaire) : un seul gros bouton #}
+      <template x-if="navChoisie">
+        <a :href="navChoisie[1]" class="gros-bouton mb-4 min-h-16 border-2 border-accent text-accent" rel="noopener" x-text="'Itinéraire · ' + navChoisie[0]"></a>
+      </template>
+      <div class="mb-4 grid grid-cols-3 gap-2" x-show="!navChoisie">
         <template x-for="n in courant.navigation" :key="n[0]">
           <a :href="n[1]" class="flex min-h-14 items-center justify-center rounded-xl border-2 border-bordure px-2 text-center text-sm font-semibold" rel="noopener" x-text="n[0]"></a>
         </template>

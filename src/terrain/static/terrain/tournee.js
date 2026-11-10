@@ -17,6 +17,7 @@ document.addEventListener("alpine:init", () => {
     surveillance: null,
     dernierEnvoi: null,
     photoEnvoi: false,
+    navPref: localStorage.getItem("lmapp-nav") || "",  // app de navigation choisie dans Plus
     annulable: null,   // dernière tape, annulable 5 secondes (audit UX) : { item, precedent, adresse, reste }
     dernierePos: 0,    // heure de la dernière position reçue (indicateur GPS)
     horloge: Date.now(),
@@ -36,6 +37,7 @@ document.addEventListener("alpine:init", () => {
       setInterval(() => { this.horloge = Date.now(); }, 5000);
     },
 
+    get navChoisie() { return this.courant && this.navPref ? this.courant.navigation.find((n) => n[0] === this.navPref) || null : null; },
     get gpsCapte() { return this.gps && this.dernierePos && this.horloge - this.dernierePos < 60000; },
 
     // Téléphone sur le support : l'écran reste allumé pendant l'opération (Wake Lock; relâché par le

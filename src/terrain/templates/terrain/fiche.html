@@ -29,6 +29,15 @@
 </script>
 {% endblock %}
 {% block contenu %}
+{% if confirmation_paiement %}
+  {# Paiement enregistré : écran vert 2 secondes (se ferme aussi d'une tape) #}
+  <div x-data="{ ouvert: true }" x-init="setTimeout(() => ouvert = false, 2000)" x-show="ouvert" x-transition.opacity.duration.300ms @click="ouvert = false"
+       class="fixed inset-0 z-40 flex flex-col items-center justify-center bg-ok px-6 text-center text-nuit" role="status">
+    <svg viewBox="0 0 24 24" width="96" height="96" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+    <div class="mt-2 text-4xl font-bold">{{ confirmation_paiement.titre }}</div>
+    <div class="mt-2 text-xl font-semibold">{{ confirmation_paiement.detail }}</div>
+  </div>
+{% endif %}
 <a href="{% url 'terrain:accueil' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Clients</a>
 
 {# Haut de la fiche (audit UX) : qui, où, l'appeler, combien il doit; le reste plus bas #}
@@ -50,7 +59,7 @@
   {% else %}<span class="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold border-2 border-bordure text-gray-500">{% include "terrain/_icone.html" with nom="appel" %}Pas de numéro</span>{% endif %}
   {% if ecriture and client.cellulaire or ecriture and client.courriel %}<a href="{% url 'terrain:ecrire' client.pk %}" class="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold border-2 border-accent text-accent">{% include "terrain/_icone.html" with nom="texto" %}Écrire</a>
   {% else %}<span class="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold border-2 border-bordure text-gray-500">{% include "terrain/_icone.html" with nom="texto" %}Écrire</span>{% endif %}
-  {% with a=adresses.0 %}{% if a %}<a href="{{ a.navigation.0.1 }}" class="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold border-2 border-bordure" rel="noopener">{% include "terrain/_icone.html" with nom="itineraire" %}Itinéraire</a>
+  {% with a=adresses.0 %}{% if a %}<a href="{{ a.navigation.0.1 }}" x-data="{ liens: { {% for nom, lien in a.navigation %}'{{ nom|escapejs }}': '{{ lien|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %} } }" x-init="const p = localStorage.getItem('lmapp-nav'); if (liens[p]) $el.href = liens[p]" class="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold border-2 border-bordure" rel="noopener">{% include "terrain/_icone.html" with nom="itineraire" %}Itinéraire</a>
   {% else %}<span class="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold border-2 border-bordure text-gray-500">{% include "terrain/_icone.html" with nom="itineraire" %}Itinéraire</span>{% endif %}{% endwith %}
 </div>
 

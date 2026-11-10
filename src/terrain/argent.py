@@ -197,13 +197,18 @@ def paiement(request, pk):
                               + (f" Surplus de {argent(credit.montant)} gardé en crédit au compte"
                                  + (f" (reste {argent(credit.restant)} pour les prochaines factures)." if credit.restant > 0 else ", appliqué aux autres factures dues.")
                                  if credit else ""))
-    if d.get("recu") and p:
-        _annoncer_recu(request, [p])
-    return redirect("terrain:facture", pk=f.pk)
+    recu_parti = _annoncer_recu(request, [p]) if d.get("recu") and p else False
+    # Confirmation verte plein écran 2 secondes, puis la fiche du client avec son nouveau solde (audit UX)
+    request.session["confirmation_paiement"] = {
+        "titre": "Payée" if reste <= 0 else f"Reçu {argent(d['montant'])}",
+        "detail": f"{dict(Paiement.Mode.choices)[d['mode']]}" + (" · reçu envoyé" if recu_parti else "")
+                  + ("" if reste <= 0 else f" · reste {argent(reste)}"),
+    }
+    return redirect("terrain:fiche", pk=f.client_id)
 
 
 def _annoncer_recu(request, paiements):
-    """Envoie le reçu (C13) et dit à Louis s'il est parti."""
+    """Envoie le reçu (C13) et dit à Louis s'il est parti. Renvoie vrai s'il est parti."""
     from communications.recus import envoyer_recu
 
     envoyes = envoyer_recu(paiements)
@@ -212,6 +217,7 @@ def _annoncer_recu(request, paiements):
         messages.info(request, "Reçu en route : " + ", ".join(partis) + ".")
     elif envoyes:
         messages.info(request, f"Reçu pas envoyé : {envoyes[0].erreur}")
+    return bool(partis)
 
 
 @membre_requis

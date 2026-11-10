@@ -26,6 +26,18 @@
     {% if envois_actifs %}<span class="pastille bg-danger/20 text-danger">Envois réels activés</span>{% else %}<span class="pastille bg-bordure text-gray-300">Simulation : rien ne part</span>{% endif %}
   </div>
 </div>
+{# App de navigation de ce cellulaire : le bouton Itinéraire l'ouvre directement #}
+<section class="carte mb-5 p-4" x-data="{ nav: localStorage.getItem('lmapp-nav') || '' , choisir(n) { this.nav = n; localStorage.setItem('lmapp-nav', n) } }">
+  <h2 class="mb-1 text-lg font-bold">App de navigation</h2>
+  <p class="mb-3 text-sm text-gray-400">Le bouton Itinéraire l'ouvre directement (choix gardé dans ce cellulaire).</p>
+  <div class="grid grid-cols-3 gap-2">
+    {% for nom in apps_navigation %}
+      <button type="button" @click="choisir('{{ nom }}')" class="flex min-h-14 items-center justify-center rounded-xl border-2 px-2 text-center font-semibold leading-tight"
+              :class="nav === '{{ nom }}' ? 'border-accent bg-accent/10 text-accent' : 'border-bordure'" :aria-pressed="nav === '{{ nom }}'">{{ nom }}</button>
+    {% endfor %}
+  </div>
+  <button type="button" x-show="nav" @click="nav = ''; localStorage.removeItem('lmapp-nav')" class="mt-2 min-h-12 text-sm text-gray-400 underline">Montrer les trois boutons</button>
+</section>
 <form method="post" action="{% url 'terrain:deconnexion' %}" onsubmit="return confirm('Se déconnecter? Il faudra retaper le mot de passe.')">{% csrf_token %}
   <button class="gros-bouton border-2 border-bordure text-gray-300">Déconnexion</button>
 </form>

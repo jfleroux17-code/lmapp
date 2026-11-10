@@ -130,6 +130,7 @@ def fiche(request, pk):
         "messages_client": client.messages.order_by("-cree_le")[:10],
         "demandes_client": client.demandes.order_by("statut", "-cree_le")[:10],
         **resume_client(client),
+        "confirmation_paiement": request.session.pop("confirmation_paiement", None),
     }
     return render(request, "terrain/fiche.html", contexte)
 
@@ -229,6 +230,7 @@ def plus(request):
 
     return render(request, "terrain/plus.html", {"ecriture": peut_ecrire(request), "responsable": est_responsable(request),
                                                  "envois_actifs": request.entreprise.envois_actifs,
+                                                 "apps_navigation": ["Apple Plans", "Google Maps", "Waze"],
                                                  "meteo_ville": Meteo.objects.filter(entreprise=request.entreprise).values_list("ville_nom", flat=True).first()})
 
 
