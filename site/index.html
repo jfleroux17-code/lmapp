@@ -3,10 +3,90 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Le Déneigeur : le logiciel des entreprises de déneigement</title>
+  <title>Le Déneigeur : logiciel de gestion pour entreprises de déneigement au Québec</title>
   <meta name="description" content="Clients, tournée, factures avec TPS et TVQ, comptant, Interac et chèques, relances et avis aux clients par texto, sur le cellulaire et l'ordinateur. Pour les entreprises de déneigement du Québec.">
+  <link rel="canonical" href="https://ledeneigeur.com/">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="theme-color" content="#0d1117">
   <link rel="icon" type="image/svg+xml" href="images/icone.svg">
-  <link rel="stylesheet" href="style.css?v=20261111-2">
+  <link rel="icon" type="image/png" sizes="192x192" href="images/icone-192.png">
+  <link rel="apple-touch-icon" href="images/icone-180.png">
+  <!-- Partage (Facebook, Messenger, LinkedIn) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Le Déneigeur">
+  <meta property="og:locale" content="fr_CA">
+  <meta property="og:url" content="https://ledeneigeur.com/">
+  <meta property="og:title" content="Le Déneigeur : le logiciel du déneigeur, dans la poche du manteau">
+  <meta property="og:description" content="Le logiciel des entreprises de déneigement du Québec : tournée avec des gants, factures avec TPS et TVQ, paiements, relances et avis aux clients par texto. 99 $ par mois.">
+  <meta property="og:image" content="https://ledeneigeur.com/images/partage.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Le Déneigeur : l'écran de tournée et une facture sur le cellulaire">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "Organization",
+   "@id": "https://ledeneigeur.com/#organisation",
+   "name": "SLAPP Technologies Inc.",
+   "brand": {
+    "@type": "Brand",
+    "name": "Le Déneigeur"
+   },
+   "url": "https://ledeneigeur.com/",
+   "email": "info@ledeneigeur.com",
+   "telephone": "+1-514-360-3227",
+   "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Sainte-Thérèse",
+    "addressRegion": "QC",
+    "addressCountry": "CA"
+   },
+   "logo": "https://ledeneigeur.com/images/icone-192.png"
+  },
+  {
+   "@type": "SoftwareApplication",
+   "name": "Le Déneigeur",
+   "url": "https://ledeneigeur.com/",
+   "inLanguage": "fr-CA",
+   "applicationCategory": "BusinessApplication",
+   "applicationSubCategory": "Logiciel de gestion pour entreprises de déneigement",
+   "operatingSystem": "Web, iPhone, Android",
+   "description": "Clients, tournée, factures avec TPS et TVQ, comptant, Interac et chèques, relances et avis aux clients par texto, sur le cellulaire et l'ordinateur. Pour les entreprises de déneigement du Québec.",
+   "image": "https://ledeneigeur.com/images/partage.jpg",
+   "screenshot": [
+    "https://ledeneigeur.com/images/ecran-tournee.png",
+    "https://ledeneigeur.com/images/ecran-facture.png",
+    "https://ledeneigeur.com/images/bureau-fiche.png"
+   ],
+   "areaServed": {
+    "@type": "AdministrativeArea",
+    "name": "Québec"
+   },
+   "publisher": {
+    "@id": "https://ledeneigeur.com/#organisation"
+   },
+   "offers": {
+    "@type": "Offer",
+    "price": "99.00",
+    "priceCurrency": "CAD",
+    "priceSpecification": {
+     "@type": "UnitPriceSpecification",
+     "price": "99.00",
+     "priceCurrency": "CAD",
+     "unitText": "par mois",
+     "billingDuration": "P1M",
+     "valueAddedTaxIncluded": false
+    },
+    "description": "Abonnement annuel, facturé mensuellement. Un utilisateur compris; 25 $ par mois par utilisateur de plus; 0,03 $ par texto envoyé ou reçu; courriels gratuits. Taxes en sus."
+   }
+  }
+ ]
+}
+  </script>
+  <link rel="stylesheet" href="style.css?v=20261111-3">
 </head>
 <body>
 <header class="haut">
@@ -24,7 +104,7 @@
     <p>Vos clients, votre tournée, vos factures et votre argent à recevoir, sur le cellulaire et au bureau. Pensé pour la tempête : gros boutons qu'on touche avec des gants, et ça fonctionne même sans réseau.</p>
     <div class="actions"><a href="#contact" class="bouton">Demander une démonstration</a><a href="#fonctions" class="bouton secondaire">Voir ce qu'il fait</a></div>
   </div>
-  <div class="telephone"><img src="images/ecran-tournee.png" alt="Écran de tournée : le prochain arrêt, avec les boutons Fait et Sauté"></div>
+  <div class="telephone"><img width="860" height="1864" src="images/ecran-tournee.png" alt="Écran de tournée : le prochain arrêt, avec les boutons Fait et Sauté"></div>
 </div>
 
 <section id="fonctions">
@@ -67,21 +147,21 @@
     <p class="intro">Captures de l'application, avec des clients fictifs.</p>
     <h3 class="sous-titre">Sur le cellulaire</h3>
     <div class="ecrans">
-      <figure><img src="images/ecran-tournee.png" alt="Tournée en cours : le prochain arrêt, avec les boutons Fait et Sauté" loading="lazy"><figcaption>La tournée, arrêt par arrêt</figcaption></figure>
-      <figure><img src="images/ecran-fiche.png" alt="Fiche d'un client : appeler, écrire, itinéraire, solde dû" loading="lazy"><figcaption>La fiche du client</figcaption></figure>
-      <figure><img src="images/ecran-facture.png" alt="Facture avec TPS et TVQ et bouton de paiement reçu" loading="lazy"><figcaption>Une facture, payée d'une tape</figcaption></figure>
-      <figure><img src="images/ecran-argent.png" alt="Argent : à recevoir, facturé, encaissé, choses à faire" loading="lazy"><figcaption>L'argent de la saison</figcaption></figure>
-      <figure><img src="images/ecran-messages.png" alt="Textos et courriels reçus des clients" loading="lazy"><figcaption>Les messages des clients</figcaption></figure>
-      <figure><img src="images/ecran-demandes.png" alt="Demandes à traiter : dommage urgent, service planifié" loading="lazy"><figcaption>Les demandes à régler</figcaption></figure>
-      <figure><img src="images/ecran-cheques.png" alt="Chèques postdatés à déposer et à venir" loading="lazy"><figcaption>Les chèques postdatés</figcaption></figure>
-      <figure><img src="images/ecran-ordre.png" alt="Ordre de la tournée avec boutons haut et bas" loading="lazy"><figcaption>L'ordre de la tournée, avec des gants</figcaption></figure>
+      <figure><img width="860" height="1864" src="images/ecran-tournee.png" alt="Tournée en cours : le prochain arrêt, avec les boutons Fait et Sauté" loading="lazy"><figcaption>La tournée, arrêt par arrêt</figcaption></figure>
+      <figure><img width="860" height="1864" src="images/ecran-fiche.png" alt="Fiche d'un client : appeler, écrire, itinéraire, solde dû" loading="lazy"><figcaption>La fiche du client</figcaption></figure>
+      <figure><img width="860" height="1864" src="images/ecran-facture.png" alt="Facture avec TPS et TVQ et bouton de paiement reçu" loading="lazy"><figcaption>Une facture, payée d'une tape</figcaption></figure>
+      <figure><img width="860" height="1864" src="images/ecran-argent.png" alt="Argent : à recevoir, facturé, encaissé, choses à faire" loading="lazy"><figcaption>L'argent de la saison</figcaption></figure>
+      <figure><img width="860" height="1864" src="images/ecran-messages.png" alt="Textos et courriels reçus des clients" loading="lazy"><figcaption>Les messages des clients</figcaption></figure>
+      <figure><img width="860" height="1864" src="images/ecran-demandes.png" alt="Demandes à traiter : dommage urgent, service planifié" loading="lazy"><figcaption>Les demandes à régler</figcaption></figure>
+      <figure><img width="860" height="1864" src="images/ecran-cheques.png" alt="Chèques postdatés à déposer et à venir" loading="lazy"><figcaption>Les chèques postdatés</figcaption></figure>
+      <figure><img width="860" height="1864" src="images/ecran-ordre.png" alt="Ordre de la tournée avec boutons haut et bas" loading="lazy"><figcaption>L'ordre de la tournée, avec des gants</figcaption></figure>
     </div>
     <h3 class="sous-titre">Au bureau</h3>
     <div class="bureau">
-      <figure><img src="images/bureau-fiche.png" alt="Fiche d'un client sur l'ordinateur, en deux colonnes" loading="lazy"><figcaption>La fiche du client, en deux colonnes</figcaption></figure>
-      <figure><img src="images/bureau-argent.png" alt="Argent sur l'ordinateur : à recevoir par client" loading="lazy"><figcaption>Qui vous doit quoi</figcaption></figure>
-      <figure><img src="images/bureau-carte.jpg" alt="Carte en direct de la tournée en cours" loading="lazy"><figcaption>La carte en direct de la tournée</figcaption></figure>
-      <figure><img src="images/bureau-rapport.png" alt="Rapport de la saison : ventes, TPS et TVQ perçues" loading="lazy"><figcaption>Le rapport de la saison pour le comptable</figcaption></figure>
+      <figure><img width="2160" height="1350" src="images/bureau-fiche.png" alt="Fiche d'un client sur l'ordinateur, en deux colonnes" loading="lazy"><figcaption>La fiche du client, en deux colonnes</figcaption></figure>
+      <figure><img width="2160" height="1350" src="images/bureau-argent.png" alt="Argent sur l'ordinateur : à recevoir par client" loading="lazy"><figcaption>Qui vous doit quoi</figcaption></figure>
+      <figure><img width="2160" height="1350" src="images/bureau-carte.jpg" alt="Carte en direct de la tournée en cours" loading="lazy"><figcaption>La carte en direct de la tournée</figcaption></figure>
+      <figure><img width="2160" height="1350" src="images/bureau-rapport.png" alt="Rapport de la saison : ventes, TPS et TVQ perçues" loading="lazy"><figcaption>Le rapport de la saison pour le comptable</figcaption></figure>
     </div>
   </div>
 </section>
