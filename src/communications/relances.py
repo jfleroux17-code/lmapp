@@ -12,7 +12,7 @@ from django.core.exceptions import ValidationError
 from django.utils import formats, timezone
 
 from clients.models import Client
-from communications import envoi
+from communications import envoi, segments
 from communications.models import RELANCES, Gabarit, Genre, Message
 from facturation.models import Facture
 from facturation.templatetags.argent import argent
@@ -65,21 +65,37 @@ def _description(dues):
     return ", ".join(morceaux)
 
 
-def _texte(client, dues, genre):
+def _texte(client, dues, genre, texto=False):
+    """Par texto (201 caractères au plus) : numéros sans « facture », date sans l'année, Interac en bref; si le
+    gabarit ne tient pas, sans les instructions Interac, puis le strict minimum (genre, montant, factures)."""
     ent = client.entreprise
     total = sum(f.solde_du for f in dues)
+    signature = ent.signature_messages or ent.nom
+    factures = _description(dues)
+    depuis = date_texte(dues[0].date_facture)
     paiement = ""
     if ent.interac_courriel:
         numeros = [str(f.numero) for f in dues if f.numero]
         ref = f", en indiquant le{'s' if len(numeros) > 1 else ''} numéro{'s' if len(numeros) > 1 else ''} de facture {', '.join(numeros)}" if numeros else ""
         paiement = f"Paiement par virement Interac à {ent.interac_courriel}{ref}."
+    if texto:
+        factures = factures.replace("facture n°", "n°")
+        depuis = date_texte(dues[0].date_facture, "j F")
+        paiement = f"Interac : {ent.interac_courriel}" if ent.interac_courriel else ""
     gabarit = Gabarit.texte_pour(ent, genre)
-    try:
-        texte = gabarit.format(client=client.nom_affiche, montant=argent(total), factures=_description(dues),
-                               depuis=date_texte(dues[0].date_facture), paiement=paiement)
-    except (KeyError, IndexError, ValueError):
-        texte = gabarit  # gabarit modifié avec une variable inconnue : envoyé tel quel plutôt que de bloquer
-    return f"{texte.strip()}\n\n{ent.signature_messages or ent.nom}", total
+
+    def remplir(paiement):
+        try:
+            texte = gabarit.format(client=client.nom_affiche, montant=argent(total), factures=factures, depuis=depuis, paiement=paiement)
+        except (KeyError, IndexError, ValueError):
+            texte = gabarit  # gabarit modifié avec une variable inconnue : envoyé tel quel plutôt que de bloquer
+        return f"{texte.strip()}\n\n{signature}"
+
+    if not texto:
+        return remplir(paiement), total
+    court = f"{Genre(genre).label} : solde de {argent(total)} ({factures})."
+    return segments.premier_qui_entre(remplir(paiement), remplir(""), f"{court} {paiement}".strip() + f"\n{signature}",
+                                      f"{court}\n{signature}"), total
 
 
 def relancer(client, niveau=None):
@@ -97,12 +113,14 @@ def relancer(client, niveau=None):
         raise ValidationError("Niveau de relance inconnu.")
     genre = RELANCES[niveau - 1]
     texte, total = _texte(client, dues, genre)
+    texto, _ = _texte(client, dues, genre, texto=True)
     sujet = f"{Genre(genre).label} : solde de {argent(total)}, {client.entreprise.nom}"
     resultat = []
     for canal in choix:
         m = Message.objects.create(entreprise=client.entreprise, client=client, genre=genre, canal=canal,
                                    destinataire=client.courriel if canal == Message.Canal.COURRIEL else client.cellulaire,
-                                   sujet=sujet if canal == Message.Canal.COURRIEL else "", contenu=texte)
+                                   sujet=sujet if canal == Message.Canal.COURRIEL else "",
+                                   contenu=texte if canal == Message.Canal.COURRIEL else texto)
         if canal == Message.Canal.COURRIEL:
             m.factures_jointes.set(dues)
         resultat.append(envoi.envoyer(m))

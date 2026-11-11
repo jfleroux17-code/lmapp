@@ -40,7 +40,7 @@ GABARITS_PAR_DEFAUT = {
     # Relances (C8) : ton gradué, sans menace que Louis n'aurait pas décidée (modifiables dans l'administration)
     Genre.RELANCE_1: "Bonjour {client}, petit rappel : votre compte montre un solde de {montant} ({factures}). {paiement}",
     Genre.RELANCE_2: "Bonjour {client}, deuxième avis : le solde de {montant} ({factures}) est impayé depuis le {depuis}. Merci de le régler dès que possible. {paiement}",
-    Genre.RELANCE_3: "Bonjour {client}, dernier avis : le solde de {montant} ({factures}) est impayé depuis le {depuis}. Merci de le régler sans tarder, ou de nous appeler si le paiement pose problème. {paiement}",
+    Genre.RELANCE_3: "Bonjour {client}, dernier avis : le solde de {montant} ({factures}) est impayé depuis le {depuis}. Merci de le régler sans tarder ou de nous appeler. {paiement}",
     # Reçu de paiement (C13)
     Genre.RECU_PAIEMENT: "Bonjour {client}, nous avons bien reçu votre paiement de {montant} ({mode}) le {date}, pour {factures}. {solde} Merci!",
 }
@@ -67,6 +67,36 @@ def variables_inconnues(genre, texte):
     return sorted(noms - set(VARIABLES_PAR_GENRE.get(genre, [])))
 
 
+# Vérification de la longueur par texto (segments.LIMITE) : valeurs d'exemple plutôt longues, signature fictive
+EXEMPLES_TEXTO = {
+    "adresse": "1234, chemin du Mont-Gabriel", "minutes": "15", "heure": "14 h 35", "client": "Marie-Ève Tremblay",
+    "montant": "1 234,56 $", "factures": "n° 1002, n° 1003", "depuis": "15 novembre",
+    "paiement": "Interac : paiement@ledeneigeur.com", "mode": "virement Interac", "date": "15 novembre",
+    "solde": "Solde restant à votre compte : 1 234,56 $.",
+}
+SIGNATURE_EXEMPLE = "Déneigement des Laurentides"
+ENLEVABLES_PAR_TEXTO = ("paiement", "solde")  # enlevés d'un texto qui ne tiendrait pas (relances, reçus)
+
+
+def verifier_texto(genre, texte, signature=SIGNATURE_EXEMPLE):
+    """(erreur, avertissement) pour un gabarit envoyé par texto, d'après les valeurs d'exemple et la signature.
+    Erreur : trop long même sans {paiement} ni {solde}. Avertissement : ceux-ci seront enlevés par texto."""
+    from communications import segments
+
+    if variables_inconnues(genre, texte):
+        return "", ""
+    valeurs = {k: EXEMPLES_TEXTO.get(k, "") for k in VARIABLES_PAR_GENRE.get(genre, [])}
+    complet = f"{texte.format(**valeurs).strip()}\n\n{signature}"
+    if not segments.trop_long(complet):
+        return "", ""
+    reduit = f"{texte.format(**{k: '' if k in ENLEVABLES_PAR_TEXTO else v for k, v in valeurs.items()}).strip()}\n\n{signature}"
+    if reduit != complet and not segments.trop_long(reduit):
+        return "", (f"Par texto, avec un long nom, ce message dépasserait {segments.LIMITE} caractères : "
+                    "les instructions Interac (ou le solde) seront alors enlevées du texto.")
+    return (f"Trop long pour un texto : environ {segments.longueur(complet)} caractères avec la signature, "
+            f"{segments.LIMITE} au plus. Raccourcissez-le."), ""
+
+
 VARIABLES = ("{adresse}, {minutes}, {heure}, {client}; relances : {montant}, {factures}, {depuis}, {paiement}; "
              "reçu : {montant}, {mode}, {date}, {factures}, {solde}")
 
@@ -84,6 +114,10 @@ class Gabarit(Horodate):
     def __str__(self):
         return self.get_genre_display()
 
+    def signature_pour_texto(self):
+        ent = self.entreprise if getattr(self, "entreprise_id", None) else None
+        return (ent.signature_messages or ent.nom) if ent else SIGNATURE_EXEMPLE
+
     def clean(self):
         from django.core.exceptions import ValidationError
 
@@ -91,6 +125,9 @@ class Gabarit(Horodate):
         if inconnues:
             permises = ", ".join("{" + v + "}" for v in VARIABLES_PAR_GENRE.get(self.genre, [])) or "aucune"
             raise ValidationError({"texte": f"Variables inconnues : {', '.join(inconnues)}. Permises : {permises}."})
+        erreur, _ = verifier_texto(self.genre, self.texte, self.signature_pour_texto())
+        if erreur:
+            raise ValidationError({"texte": erreur})
 
     @classmethod
     def texte_pour(cls, entreprise, genre):
@@ -114,6 +151,10 @@ class GabaritParDefaut(Horodate):
     def __str__(self):
         return self.get_genre_display()
 
+    def signature_pour_texto(self):
+        ent = self.entreprise if getattr(self, "entreprise_id", None) else None
+        return (ent.signature_messages or ent.nom) if ent else SIGNATURE_EXEMPLE
+
     def clean(self):
         from django.core.exceptions import ValidationError
 
@@ -121,6 +162,9 @@ class GabaritParDefaut(Horodate):
         if inconnues:
             permises = ", ".join("{" + v + "}" for v in VARIABLES_PAR_GENRE.get(self.genre, [])) or "aucune"
             raise ValidationError({"texte": f"Variables inconnues : {', '.join(inconnues)}. Permises : {permises}."})
+        erreur, _ = verifier_texto(self.genre, self.texte, self.signature_pour_texto())
+        if erreur:
+            raise ValidationError({"texte": erreur})
 
     @classmethod
     def texte_de(cls, genre):

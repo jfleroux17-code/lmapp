@@ -410,22 +410,28 @@ def a_collecter(request):
 @ecriture_requise
 def envoi_groupe(request):
     """E10 : écrire à tous les clients servis ou à un secteur. Aperçu (nombre de destinataires), puis envoi."""
-    from communications import groupes
+    from communications import groupes, segments
 
     ent = request.entreprise
     secteurs = list(Secteur.objects.filter(entreprise=ent).order_by("ordre", "nom"))
     secteur = next((s for s in secteurs if str(s.pk) == request.POST.get("secteur")), None)
     commercial = request.POST.get("sorte") == "commercial"
     texte, sujet = request.POST.get("texte", "").strip(), request.POST.get("sujet", "").strip()[:200]
-    contexte = {"secteurs": secteurs, "secteur": secteur, "commercial": commercial, "texte": texte, "sujet": sujet}
+    contexte = {"secteurs": secteurs, "secteur": secteur, "commercial": commercial, "texte": texte, "sujet": sujet,
+                "limite": segments.LIMITE, "reserve_signature": segments.longueur(groupes.corps(ent, "")),
+                "reserve_arret": segments.longueur(groupes.ARRET)}
     if request.method == "POST":
         joignables, sans_contact = groupes.destinataires(ent, secteur, commercial)
         contexte.update({"apercu": True, "nombre": len(joignables), "sans_contact": sans_contact,
                          "textos": sum(1 for _, c in joignables if c == Message.Canal.TEXTO),
                          "courriels": sum(1 for _, c in joignables if c == Message.Canal.COURRIEL)})
+        trop_long = contexte["textos"] and segments.trop_long(groupes.corps(ent, texte, commercial))
         if not texte:
             messages.error(request, "Écrire le message.")
             contexte["apercu"] = False
+        elif trop_long:
+            messages.error(request, f"{segments.raison_trop_long(groupes.corps(ent, texte, commercial))} "
+                                    "Raccourcir le message : il part par texto à certains clients.")
         elif request.POST.get("action") == "envoyer":
             envoyes = groupes.envoyer(ent, texte, secteur, commercial, sujet)
             partis = sum(1 for m in envoyes if m.statut == Message.Statut.EN_FILE)

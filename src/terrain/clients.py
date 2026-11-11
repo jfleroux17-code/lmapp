@@ -233,7 +233,7 @@ def ecrire(request, pk):
     Photos jointes (E14) : en pièces jointes par courriel, par un lien secret par texto."""
     from django.core.exceptions import ValidationError
 
-    from communications import envoi, photos
+    from communications import envoi, photos, segments
     from communications.models import Genre, Message
     from demandes.models import Demande
 
@@ -267,6 +267,10 @@ def ecrire(request, pk):
                     if n and not courriel:
                         m.contenu = f"{texte}\nPhoto{'s' if n > 1 else ''} : {photos.lien_public(m)}\n\n{signature}"
                         m.save(update_fields=["contenu"])
+                    if not courriel and segments.trop_long(m.contenu):
+                        raise ValidationError(f"Texto trop long : {segments.longueur(m.contenu)} caractères avec la signature"
+                                              f"{' et le lien des photos' if n else ''} ({segments.LIMITE} au plus). "
+                                              f"Enlevez {segments.longueur(m.contenu) - segments.LIMITE} caractères.")
             except ValidationError as e:
                 messages.error(request, " ".join(e.messages))
             else:
@@ -280,6 +284,9 @@ def ecrire(request, pk):
         "client": client, "canaux": canaux, "signature": ent.signature_messages or ent.nom,
         "choisi": request.POST.get("canal") or (client.canal_prefere if client.canal_prefere in dict(canaux) else (canaux[0][0] if canaux else "")),
         "photos": disponibles, "maximum": photos.MAXIMUM, "texte": request.POST.get("texte", ""),
+        # Compteur du texto : ce qui reste pour le message, une fois la signature (et le lien des photos) comptée
+        "photos_choisies": sum(1 for d in disponibles if d["choisie"]), "limite": segments.LIMITE, "reserve_signature": segments.longueur(f"\n\n{ent.signature_messages or ent.nom}"),
+        "reserve_photos": segments.longueur(f"\nPhotos : https://{ent.domaine}/m/{'x' * 32}/"),
     })
 
 

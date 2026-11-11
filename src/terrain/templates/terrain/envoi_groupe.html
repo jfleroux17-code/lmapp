@@ -3,7 +3,9 @@
 {% block contenu %}
 <h1 class="mb-1 text-2xl font-bold">Écrire à plusieurs clients</h1>
 <p class="mb-4 text-gray-400">Chaque client reçoit un seul message, par texto ou par courriel selon sa préférence.</p>
-<form method="post" class="space-y-4" x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+<form method="post" class="space-y-4" x-data="{ envoi: false, texte: '{{ texte|escapejs }}', sorte: '{{ commercial|yesno:"commercial,service" }}',
+    get reste() { return {{ limite }} - {{ reserve_signature }} - (this.sorte === 'commercial' ? {{ reserve_arret }} : 0) - this.texte.length } }"
+  @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
   <label class="block"><span class="mb-2 block text-gray-300">À qui</span>
     <select name="secteur" class="min-h-14 w-full rounded-xl border-2 border-bordure bg-nuit px-3 text-lg">
       <option value="">Tous les clients servis</option>
@@ -11,13 +13,15 @@
     </select>
   </label>
   <fieldset class="space-y-2"><legend class="mb-2 text-gray-300">Sorte de message</legend>
-    <label class="flex min-h-12 cursor-pointer items-start gap-3"><input type="radio" name="sorte" value="service" class="mt-1 h-6 w-6 accent-[#f5c400]" {% if not commercial %}checked{% endif %}>
+    <label class="flex min-h-12 cursor-pointer items-start gap-3"><input type="radio" name="sorte" value="service" x-model="sorte" class="mt-1 h-6 w-6 accent-[#f5c400]" {% if not commercial %}checked{% endif %}>
       <span>Avis de service <span class="block text-sm text-gray-500">Tempête, fin de saison, changement d'horaire : à tous.</span></span></label>
-    <label class="flex min-h-12 cursor-pointer items-start gap-3"><input type="radio" name="sorte" value="commercial" class="mt-1 h-6 w-6 accent-[#f5c400]" {% if commercial %}checked{% endif %}>
+    <label class="flex min-h-12 cursor-pointer items-start gap-3"><input type="radio" name="sorte" value="commercial" x-model="sorte" class="mt-1 h-6 w-6 accent-[#f5c400]" {% if commercial %}checked{% endif %}>
       <span>Message commercial <span class="block text-sm text-gray-500">Renouvellement, offre : seulement aux clients qui l'ont accepté (loi anti-pourriel).</span></span></label>
   </fieldset>
   <label class="block"><span class="mb-2 block text-gray-300">Objet (courriels)</span><input name="sujet" class="champ" maxlength="200" value="{{ sujet }}"></label>
-  <label class="block"><span class="mb-2 block text-gray-300">Message</span><textarea name="texte" rows="5" class="champ" required>{{ texte }}</textarea></label>
+  <label class="block"><span class="mb-2 block text-gray-300">Message</span><textarea name="texte" rows="5" class="champ" x-model="texte" required>{{ texte }}</textarea></label>
+  <p class="font-semibold tabular-nums" :class="reste < 0 ? 'text-danger' : (reste < 20 ? 'text-accent' : 'text-gray-400')" aria-live="polite"
+     x-text="reste >= 0 ? ('Par texto : ' + reste + ' caractère' + (reste > 1 ? 's' : '') + ' restant' + (reste > 1 ? 's' : '') + ', signature comprise') : ('Trop long de ' + (-reste) + ' caractère' + (reste < -1 ? 's' : '') + ' pour un texto')"></p>
   {% if apercu %}
     <div class="carte p-4">
       <p class="text-lg font-bold">{{ nombre }} client{{ nombre|pluralize }} : {{ textos }} texto{{ textos|pluralize }}, {{ courriels }} courriel{{ courriels|pluralize }}.</p>

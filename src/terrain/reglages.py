@@ -47,6 +47,21 @@ SECTIONS = {
 }
 
 
+SIGNATURE_MAX = 40  # la signature compte dans les 201 caractères d'un texto (communications.segments.LIMITE)
+
+
+def _signature_courte(form):
+    from django.core.validators import MaxLengthValidator
+
+    champ = form.fields.get("signature_messages")
+    if champ:
+        champ.validators.append(MaxLengthValidator(SIGNATURE_MAX))
+        champ.widget.attrs["maxlength"] = SIGNATURE_MAX
+        champ.help_text = (f"À la fin des textos et des courriels (loi anti-pourriel), {SIGNATURE_MAX} caractères au plus : "
+                           "elle compte dans les 201 caractères d'un texto. Ex. « Louis Méthot Déneigement ».")
+    return form
+
+
 def _refus(request):
     return render(request, "terrain/refuse.html", {"message": "Seul un administrateur de l'entreprise change les réglages."}, status=403)
 
@@ -181,13 +196,13 @@ def section(request, cle):
     if request.method == "POST":
         if not est_responsable(request):
             return _refus(request)
-        form = _habiller(Form(request.POST, instance=ent))
+        form = _signature_courte(_habiller(Form(request.POST, instance=ent)))
         if form.is_valid():
             form.save()
             messages.success(request, f"{titre} : enregistré.")
             return redirect("terrain:reglages")
     else:
-        form = _habiller(Form(instance=ent))
+        form = _signature_courte(_habiller(Form(instance=ent)))
     return render(request, "terrain/reglages/section.html", _contexte(request, titre=titre, explication=explication, form=form, cle=cle, ent=ent))
 
 
@@ -344,8 +359,8 @@ def _envoyer_invitation(request, membre, cellulaire=""):
     if cellulaire:
         m = Message.objects.create(
             entreprise=ent, genre=Genre.MANUEL, canal=Message.Canal.TEXTO, destinataire=cellulaire,
-            contenu=f"{ent.nom} : un compte a été créé pour toi dans l'app. Nom d'utilisateur : {user.username}. "
-                    f"Choisis ton mot de passe ici (lien valide 3 jours) : {lien}")
+            contenu=f"{ent.nom} : ton compte dans l'app est prêt (utilisateur : {user.username}). "
+                    f"Choisis ton mot de passe d'ici 3 jours : {lien}")
         envoyer(m)
     request.session["invitation"] = {"membre": membre.pk, "lien": lien}
 

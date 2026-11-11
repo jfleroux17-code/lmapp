@@ -2,7 +2,7 @@
 from django.core.exceptions import ValidationError
 from django.utils import formats
 
-from communications import envoi
+from communications import envoi, segments
 from communications.models import Genre, Message
 from facturation.models import Facture
 from facturation.templatetags.argent import argent
@@ -28,7 +28,8 @@ def _texte(f):
 
 
 def _texto(f):
-    """Court : le montant, l'échéance et le lien vers la page de la facture (le PDF s'y télécharge)."""
+    """Court (201 caractères au plus) : le montant, l'échéance et le lien vers la page de la facture (le PDF s'y
+    télécharge). Si le nom ou la signature est long, on enlève d'abord la formule, puis l'échéance."""
     ent = f.entreprise
     if f.genre == Facture.Genre.SOLDE_OUVERTURE:
         quoi = f"le solde de votre compte : {argent(f.solde)}"
@@ -36,8 +37,15 @@ def _texto(f):
         quoi = f"votre facture n° {f.numero} : {argent(f.total)}"
         if f.solde != f.total:
             quoi += f", solde à payer {argent(f.solde)}"
-    echeance = f", à payer au plus tard le {formats.date_format(f.date_echeance, 'j F')}" if f.date_echeance and f.solde > 0 else ""
-    return f"Bonjour {f.client.nom_affiche}, voici {quoi}{echeance}. Pour la voir : {f.lien_public()}\n{ent.signature_messages or ent.nom}"
+    echeance = f", à payer d'ici le {formats.date_format(f.date_echeance, 'j F')}" if f.date_echeance and f.solde > 0 else ""
+    lien, signature = f.lien_public(), ent.signature_messages or ent.nom
+    Quoi = quoi[:1].upper() + quoi[1:]
+    return segments.premier_qui_entre(
+        f"Bonjour {f.client.nom_affiche}, voici {quoi}{echeance}. Pour la voir : {lien}\n{signature}",
+        f"Bonjour {f.client.nom_affiche}, {quoi}{echeance}. {lien}\n{signature}",
+        f"{Quoi}{echeance}. {lien}\n{signature}",
+        f"{Quoi}. {lien}\n{signature}",
+    )
 
 
 def sujet(f):

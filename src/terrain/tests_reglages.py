@@ -122,7 +122,7 @@ class ReglagesTests(TestCase):
         self.assertFalse(julie.has_usable_password())
         self.assertEqual(Membre.objects.get(utilisateur=julie).entreprise, self.ent)
         m = Message.objects.get(destinataire="+14505550109")
-        self.assertIn("Nom d'utilisateur : julie", m.contenu)
+        self.assertIn("(utilisateur : julie)", m.contenu)
         page = self.client.get("/plus/reglages/utilisateurs/")
         self.assertContains(page, "invitation pas encore acceptée")
         lien = page.context["invitation"]["lien"]

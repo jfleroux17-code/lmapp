@@ -1,7 +1,7 @@
 """Envoi des messages (PRD E2, G2 à G5, M1).
 
 `envoyer(message)` décide du sort du message, puis le worker l'envoie (`communications.tasks`) :
-  - Préparé (rien ne part) : fournisseur pas configuré (.env), envois réels éteints dans la fiche
+  - Préparé (rien ne part) : texto de plus de 201 caractères (segments.LIMITE), fournisseur pas configuré (.env), envois réels éteints dans la fiche
     de l'entreprise (`envois_actifs`, éteint par défaut), ou numéro de texto d'affaires manquant;
   - Bloqué : hors prod, destinataire absent de LMAPP_DESTINATAIRES_TEST (garde-fou du test);
   - En file, puis Envoyé ou Échec.
@@ -11,6 +11,7 @@ d'envoi est celle de la fiche (`courriel_reponse`) et doit être ce compte.
 from django.conf import settings
 from django.db import transaction
 
+from communications import segments
 from communications.models import Message
 
 
@@ -29,6 +30,8 @@ def destinataire_permis(destinataire):
 
 def _pourquoi_pas(message):
     ent = message.entreprise
+    if message.canal == Message.Canal.TEXTO and segments.trop_long(message.contenu):
+        return segments.raison_trop_long(message.contenu)
     if not fournisseur_configure(message.canal):
         return "Aucun fournisseur configuré."
     if not ent.envois_actifs:

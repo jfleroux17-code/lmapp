@@ -47,7 +47,7 @@ class PhotosJointesTests(TestCase):
 
     def test_courriel_avec_photos_en_pieces_jointes(self):
         r = self.client.get(f"/clients/{self.c.pk}/ecrire/?demande={self.d.pk}")
-        self.assertContains(r, f'value="d{self.pd.pk}" x-model="on" checked')  # photos de la demande cochées d'avance
+        self.assertContains(r, f'value="d{self.pd.pk}" x-model="on" @change="photos = $root.querySelectorAll(\'input[name=photo]:checked\').length" checked')  # photos de la demande cochées d'avance
         self.assertContains(r, f'value="p{self.pp.pk}"')
         self.assertNotContains(r, f'value="a{self.photo_autre.pk}"')
         self.client.post(f"/clients/{self.c.pk}/ecrire/", {"canal": "courriel", "texte": "Voici les photos de la haie.",

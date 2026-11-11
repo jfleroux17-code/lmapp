@@ -1,7 +1,7 @@
 """Envoi du contrat au client (PRD B6) : par courriel, PDF joint; par texto, le lien du PDF."""
 from django.core.exceptions import ValidationError
 
-from communications import envoi
+from communications import envoi, segments
 from communications.models import Genre, Message
 from facturation.templatetags.argent import argent
 
@@ -14,7 +14,10 @@ def envoyer_contrat(c, canal=Message.Canal.COURRIEL):
         if not client.cellulaire:
             raise ValidationError("Ce client n'a pas de cellulaire.")
         m = Message.objects.create(entreprise=ent, client=client, genre=Genre.CONTRAT, canal=canal, destinataire=client.cellulaire,
-                                   contrat=c, contenu=f"Bonjour {client.nom_affiche}, voici {quoi} : {c.lien_public()}\n{signature}")
+                                   contrat=c, contenu=segments.premier_qui_entre(
+                                       f"Bonjour {client.nom_affiche}, voici {quoi} : {c.lien_public()}\n{signature}",
+                                       f"Bonjour {client.nom_affiche}, votre contrat {c.saison.nom} : {c.lien_public()}\n{signature}",
+                                       f"Votre contrat {c.saison.nom} : {c.lien_public()}\n{signature}"))
         return envoi.envoyer(m)
     if not client.courriel:
         raise ValidationError("Ce client n'a pas d'adresse courriel.")

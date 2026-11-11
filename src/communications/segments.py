@@ -19,3 +19,29 @@ def compter(texte):
         return 1 if longueur <= 160 else math.ceil(longueur / 153)
     unites = len(texte.encode("utf-16-le")) // 2
     return 1 if unites <= 70 else math.ceil(unites / 67)
+
+
+# Longueur permise d'un texto (décision de JF, 11 novembre 2026) : 201 caractères, signature et liens compris,
+# soit 3 segments au plus même avec les accents (UCS-2 : 67 x 3). Les accents sont toujours gardés.
+LIMITE = 201
+
+
+def longueur(texte):
+    """Caractères comptés comme Twilio (et comme `.length` en JavaScript) : un emoji en vaut deux."""
+    return len((texte or "").encode("utf-16-le")) // 2
+
+
+def trop_long(texte):
+    return longueur(texte) > LIMITE
+
+
+def raison_trop_long(texte):
+    return f"Texto trop long : {longueur(texte)} caractères, signature comprise ({LIMITE} au plus)."
+
+
+def premier_qui_entre(*versions):
+    """La première version qui tient dans la limite, sinon la dernière (l'envoi la gardera « Préparé »)."""
+    for v in versions:
+        if not trop_long(v):
+            return v
+    return versions[-1]

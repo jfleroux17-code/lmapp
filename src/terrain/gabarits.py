@@ -8,7 +8,7 @@ from django.http import Http404
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
-from communications.models import GABARITS_PAR_DEFAUT, VARIABLES_PAR_GENRE, Gabarit, GabaritParDefaut, Genre
+from communications.models import GABARITS_PAR_DEFAUT, VARIABLES_PAR_GENRE, Gabarit, GabaritParDefaut, Genre, verifier_texto
 from core.acces import membre_requis, modification_clients_requise, peut_modifier_clients
 
 AIDE_VARIABLES = {
@@ -71,8 +71,11 @@ def modifier(request, genre):
         return redirect("terrain:gabarits")
     form = GabaritForm(request.POST or None, instance=copie)
     if request.method == "POST" and form.is_valid():
-        form.save()
+        copie = form.save()
         messages.success(request, f"« {Genre(genre).label} » enregistré.")
+        _, avertissement = verifier_texto(genre, copie.texte, copie.signature_pour_texto())
+        if avertissement:
+            messages.warning(request, avertissement)
         return redirect("terrain:gabarits")
     return render(request, "terrain/gabarits/modifier.html", {
         "form": form, "nom": Genre(genre).label, "genre": genre, "defaut": GabaritParDefaut.texte_de(genre),

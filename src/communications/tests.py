@@ -745,19 +745,18 @@ class RecuTests(TestCase):
         self.assertIn("Bonjour Ginette Tremblay, nous avons bien reçu votre paiement de 150,00", m.contenu)
         self.assertIn("(comptant)", m.contenu)
         self.assertIn("pour la facture n° 57", m.contenu)
-        self.assertIn("Solde restant à votre compte : 250,00", m.contenu)
+        self.assertIn("Solde restant : 250,00", m.contenu)  # par texto : en bref (201 caractères au plus)
         self.assertIsNotNone(self.f.paiements.get().recu_envoye_le)
         self.client.post(f"/factures/{self.f.pk}/paiement/", {"mode": "interac", "montant": "250", "recu": "1"})
-        self.assertIn("Votre compte est payé au complet.", Message.objects.filter(genre="recu_paiement").latest("pk").contenu)
+        self.assertIn("Compte payé au complet.", Message.objects.filter(genre="recu_paiement").latest("pk").contenu)
 
     def test_recu_avec_surplus_en_credit(self):
         """Le reçu dit ce que le client a remis (surplus compris), pas seulement la part de la facture."""
         self.client.post(f"/factures/{self.f.pk}/paiement/", {"mode": "interac", "montant": "430", "surplus": "1", "recu": "1"})
         m = Message.objects.get(genre="recu_paiement")
-        self.assertIn("votre paiement de 430,00", m.contenu)
-        self.assertIn("(virement Interac)", m.contenu)
-        self.assertIn("Le surplus de 30,00", m.contenu)
-        self.assertIn("est porté en crédit à votre compte.", m.contenu)
+        self.assertIn("Paiement de 430,00", m.contenu)  # texto trop long avec la formule : le minimum, solde compris
+        self.assertIn("Surplus de 30,00", m.contenu)
+        self.assertIn("gardé en crédit.", m.contenu)
 
     def test_sans_case_cochee_pas_de_recu(self):
         self.client.post(f"/factures/{self.f.pk}/paiement/", {"mode": "comptant", "montant": "150"})
@@ -912,6 +911,32 @@ class EnvoiGroupeTests(TestCase):
         self.assertContains(r, "2 messages en route.")
         self.assertEqual(sorted(Message.objects.values_list("canal", "genre")), [("courriel", "groupe_service"), ("texto", "groupe_service")])
         self.assertEqual(Message.objects.get(canal="courriel").sujet, "Tempête")
+
+    def test_texto_de_plus_de_201_caracteres_refuse(self):
+        """Décision de JF (11 novembre 2026) : 201 caractères au plus, signature comprise."""
+        long = "Tempête de neige annoncée cette nuit. " * 6
+        r = self.client.post("/messages/groupe/", {"secteur": self.village.pk, "sorte": "service", "texte": long, "action": "envoyer"})
+        self.assertContains(r, "Texto trop long")
+        self.assertFalse(Message.objects.exists())
+        with self.assertRaises(ValidationError):
+            from communications import groupes
+            groupes.envoyer(self.ent, long)
+        # Écrire à un client : refusé, rien n'est créé; le compteur connaît la limite
+        page = self.client.get(f"/clients/{self.a.pk}/ecrire/")
+        self.assertEqual(page.context["limite"], 201)
+        r = self.client.post(f"/clients/{self.a.pk}/ecrire/", {"canal": "texto", "texte": long})
+        self.assertContains(r, "Texto trop long")
+        self.assertFalse(Message.objects.exists())
+        # Le même texte part par courriel (pas de limite)
+        self.client.post(f"/clients/{self.b.pk}/ecrire/", {"canal": "courriel", "texte": long})
+        self.assertEqual(Message.objects.get().canal, "courriel")
+
+    def test_filet_a_l_envoi(self):
+        m = Message.objects.create(entreprise=self.ent, client=self.a, genre="manuel", canal="texto",
+                                   destinataire="+14505550101", contenu="é" * 202)
+        envoi.envoyer(m)
+        self.assertEqual(m.statut, "prepare")
+        self.assertIn("Texto trop long : 202 caractères", m.erreur)
 
 
 @override_settings(ALLOWED_HOSTS=["*"])
