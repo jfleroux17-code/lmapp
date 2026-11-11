@@ -50,3 +50,12 @@ footer .conteneur { display: flex; justify-content: space-between; gap: 20px; fl
   .prix { grid-template-columns: 1fr; }
   nav.menu { display: none; }
 }
+.sous-titre { font-size: 22px; margin: 36px 0 16px; color: var(--accent); }
+section .intro + .sous-titre { margin-top: 0; }
+.bureau { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 22px; }
+.bureau figure { margin: 0; }
+.bureau img { width: 100%; border-radius: 12px; border: 6px solid #22272e; }
+.bureau figcaption { color: var(--gris); font-size: 15px; margin-top: 8px; text-align: center; }
+.ligne-prix { display: flex; align-items: baseline; gap: 14px; padding: 8px 0; border-bottom: 1px solid var(--bordure); color: var(--gris); }
+.prix .montant.petit { font-size: 30px; min-width: 120px; }
+@media (max-width: 520px) { .bureau { grid-template-columns: 1fr; } }
