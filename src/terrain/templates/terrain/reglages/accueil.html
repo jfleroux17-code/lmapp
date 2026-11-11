@@ -20,6 +20,10 @@
 </div>
 </div>
 <div>
+{% if peut %}<h2 class="mb-2 text-lg font-bold">Abonnement</h2>
+<div class="carte mb-5 divide-y divide-bordure">
+  <a href="{% url 'terrain:reglages_abonnement' %}" class="rangee-lien"><span>Mon abonnement <span class="text-gray-400">· textos, courriels et factures du mois</span></span><span aria-hidden="true">›</span></a>
+</div>{% endif %}
 <h2 class="mb-2 text-lg font-bold">Réglé par la plateforme</h2>
 <div class="carte mb-5 p-4 text-sm">
   <p class="mb-3 text-gray-400">Pour changer l'un de ces réglages, écrire à info@ledeneigeur.com.</p>

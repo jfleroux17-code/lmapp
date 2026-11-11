@@ -206,6 +206,21 @@ METEO_API = env("METEO_API", "https://api.weather.gc.ca")
 from decimal import Decimal as _D  # noqa: E402
 
 LMAPP_COUT_NUMERO_TWILIO = _D(env("LMAPP_COUT_NUMERO_TWILIO", "1.15"))
+
+# Facturation des entreprises par la plateforme (PRD Q2; prix de JF, 11 novembre 2026), taxes en sus
+PLATEFORME_PRIX_ABONNEMENT = _D(env("PLATEFORME_PRIX_ABONNEMENT", "99.00"))  # par mois, un utilisateur compris
+PLATEFORME_PRIX_UTILISATEUR = _D(env("PLATEFORME_PRIX_UTILISATEUR", "25.00"))  # par mois, administrateur ou opérateur de plus
+PLATEFORME_PRIX_TEXTO = _D(env("PLATEFORME_PRIX_TEXTO", "0.03"))  # envoyé ou reçu; courriels et lecture seule gratuits
+PLATEFORME_NOM_LEGAL = env("PLATEFORME_NOM_LEGAL", "SLAPP Technologies Inc.")
+PLATEFORME_ADRESSE = env("PLATEFORME_ADRESSE", "Sainte-Thérèse (Québec)")  # lignes séparées par « | »
+PLATEFORME_TELEPHONE = env("PLATEFORME_TELEPHONE", "514 360-3227")
+PLATEFORME_COURRIEL = env("PLATEFORME_COURRIEL", "info@ledeneigeur.com")
+PLATEFORME_NUMERO_TPS = env("PLATEFORME_NUMERO_TPS", "")
+PLATEFORME_NUMERO_TVQ = env("PLATEFORME_NUMERO_TVQ", "")
+PLATEFORME_TAUX_TPS = _D(env("PLATEFORME_TAUX_TPS", "5"))
+PLATEFORME_TAUX_TVQ = _D(env("PLATEFORME_TAUX_TVQ", "9.975"))
+PLATEFORME_JOURS_PAIEMENT = int(env("PLATEFORME_JOURS_PAIEMENT", "15"))
+PLATEFORME_PAIEMENT = env("PLATEFORME_PAIEMENT", "")  # instructions de paiement imprimées sur la facture
 # Surveillance (PRD 6.7) : à qui les alertes, et seuils
 LMAPP_ALERTES_TEXTO = env("LMAPP_ALERTES_TEXTO", "")
 LMAPP_ALERTES_TEXTO_DE = env("LMAPP_ALERTES_TEXTO_DE", "")

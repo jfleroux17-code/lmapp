@@ -79,6 +79,10 @@ class Entreprise(Horodate):
         "adresse de réponse des courriels", blank=True,
         help_text="La boîte IMAP lue par l'app, ex. info@ledeneigeur.com.",
     )
+    # Abonnement à la plateforme (PRD Q2) : facture du mois préparée par l'app, émise et envoyée par JF
+    abonnement_facture = models.BooleanField(
+        "abonnement facturé", default=False,
+        help_text="Coché : la facture de la plateforme du mois passé est préparée le 1er du mois (brouillon, rien ne part sans JF).")
     envois_actifs = models.BooleanField(
         "envois réels activés", default=False,
         help_text="Éteint : les textos et courriels restent « Préparé », rien ne part. À allumer seulement quand on est prêt à écrire aux clients.",
@@ -419,3 +423,78 @@ class DemandeSite(models.Model):
         import zlib
 
         return zlib.decompress(bytes(self.brut))
+
+
+class FacturePlateforme(Horodate):
+    """Facture de la plateforme à une entreprise de déneigement (PRD Q2) : abonnement, utilisateurs de plus et textos
+    d'un mois. Brouillon préparé par l'app (lignes modifiables par JF), puis émise (numéro de la série de la
+    plateforme, taux et numéros de taxes copiés, plus rien ne change), envoyée par courriel, payée ou annulée."""
+
+    class Statut(models.TextChoices):
+        BROUILLON = "brouillon", "Brouillon"
+        EMISE = "emise", "Émise"
+        PAYEE = "payee", "Payée"
+        ANNULEE = "annulee", "Annulée"
+
+    entreprise = models.ForeignKey(Entreprise, on_delete=models.PROTECT, related_name="factures_plateforme")
+    mois = models.DateField(help_text="Premier jour du mois facturé.")
+    statut = models.CharField(max_length=10, choices=Statut.choices, default=Statut.BROUILLON)
+    numero = models.PositiveIntegerField("numéro", null=True, blank=True, unique=True)
+    date_facture = models.DateField("date", null=True, blank=True)
+    date_echeance = models.DateField("échéance", null=True, blank=True)
+    sous_total = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
+    taux_tps = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal("0"))
+    taux_tvq = models.DecimalField(max_digits=6, decimal_places=3, default=Decimal("0"))
+    numero_tps = models.CharField(max_length=30, blank=True)
+    numero_tvq = models.CharField(max_length=30, blank=True)
+    tps = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
+    tvq = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0"))
+    # Usage relevé à la préparation (gardé tel quel : la facture dit sur quoi elle se fonde)
+    textos_envoyes = models.PositiveIntegerField(default=0)
+    textos_recus = models.PositiveIntegerField(default=0)
+    courriels = models.PositiveIntegerField("courriels envoyés et reçus", default=0)
+    utilisateurs = models.PositiveIntegerField("utilisateurs facturables", default=0)
+    note = models.TextField(blank=True, help_text="Imprimée sur la facture (ex. rabais, premier mois).")
+    envoyee_le = models.DateTimeField("envoyée le", null=True, blank=True)
+    envoyee_a = models.EmailField("envoyée à", blank=True)
+    erreur_envoi = models.CharField(max_length=300, blank=True)
+    payee_le = models.DateField("payée le", null=True, blank=True)
+    raison_annulation = models.CharField("raison de l'annulation", max_length=200, blank=True)
+
+    class Meta:
+        verbose_name = "facture de la plateforme"
+        verbose_name_plural = "factures de la plateforme"
+        ordering = ["-mois", "entreprise__nom"]
+        constraints = [models.UniqueConstraint(fields=["entreprise", "mois"], condition=~models.Q(statut="annulee"),
+                                               name="une_facture_plateforme_par_mois")]
+
+    def __str__(self):
+        quoi = f"n° {self.numero}" if self.numero else "brouillon"
+        return f"{self.entreprise.nom}, {self.mois:%Y-%m} ({quoi})"
+
+    @property
+    def modifiable(self):
+        return self.statut == self.Statut.BROUILLON
+
+
+class LigneFacturePlateforme(models.Model):
+    facture = models.ForeignKey(FacturePlateforme, on_delete=models.CASCADE, related_name="lignes")
+    ordre = models.PositiveSmallIntegerField(default=0)
+    description = models.CharField(max_length=200)
+    quantite = models.DecimalField("quantité", max_digits=10, decimal_places=2, default=Decimal("1"))
+    prix_unitaire = models.DecimalField("prix", max_digits=10, decimal_places=4)
+
+    class Meta:
+        verbose_name = "ligne"
+        verbose_name_plural = "lignes"
+        ordering = ["ordre", "pk"]
+
+    def __str__(self):
+        return self.description
+
+    @property
+    def montant(self):
+        from facturation.calculs import arrondir
+
+        return arrondir(self.quantite * self.prix_unitaire)

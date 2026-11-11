@@ -134,3 +134,22 @@ def centre_ville_desservie(ville_id):
             geocoder_maintenant(a)
             n += 1
     return f"centre trouvé, {n} adresse(s) replacée(s)"
+
+
+# Facturation des entreprises par la plateforme (PRD Q2) : le 1er du mois, 12 h UTC (7 h ou 8 h au Québec)
+@app.periodic(cron="0 12 1 * *")
+@app.task(queue="facturation", queueing_lock="factures_plateforme")
+def preparer_factures_plateforme(timestamp):
+    """Brouillons du mois passé pour les entreprises dont l'abonnement est facturé. Rien n'est émis ni envoyé."""
+    from core import abonnement
+
+    return len(abonnement.preparer_mois_passe())
+
+
+@app.task(queue="communications")
+def envoyer_facture_plateforme(facture_id):
+    from core import abonnement
+    from core.models import FacturePlateforme
+
+    f = FacturePlateforme.objects.select_related("entreprise").filter(pk=facture_id).first()
+    return bool(f) and abonnement.envoyer(f)

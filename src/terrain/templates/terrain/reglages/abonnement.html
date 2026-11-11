@@ -1,0 +1,55 @@
+{% extends "terrain/base.html" %}{% load argent %}
+{% block titre %}Mon abonnement{% endblock %}
+{% block contenu %}
+<a href="{% url 'terrain:reglages' %}" class="mb-3 inline-block text-accent">‹ Réglages</a>
+<h1 class="mb-1 text-2xl font-bold">Mon abonnement</h1>
+<p class="mb-5 text-gray-400">Ce que la plateforme compte pour {{ ent.nom }} : les textos envoyés et reçus, les courriels et les utilisateurs.</p>
+<div class="bureau:grid bureau:grid-cols-2 bureau:gap-5">
+<div>
+<h2 class="mb-2 text-lg font-bold">{{ premier|date_qc:"F Y"|capfirst }}, jusqu'à aujourd'hui</h2>
+<div class="carte mb-5 p-4">
+  <dl class="space-y-2">
+    <div class="flex justify-between gap-3"><dt class="text-gray-400">Textos envoyés</dt><dd class="font-semibold tabular-nums">{{ courant.usage.textos_envoyes }}</dd></div>
+    <div class="flex justify-between gap-3"><dt class="text-gray-400">Textos reçus</dt><dd class="font-semibold tabular-nums">{{ courant.usage.textos_recus }}</dd></div>
+    <div class="flex justify-between gap-3"><dt class="text-gray-400">Courriels envoyés et reçus <span class="text-sm">(gratuits)</span></dt><dd class="font-semibold tabular-nums">{{ courant.usage.courriels_envoyes|add:courant.usage.courriels_recus }}</dd></div>
+    <div class="flex justify-between gap-3"><dt class="text-gray-400">Utilisateurs (administrateurs et opérateurs)</dt><dd class="font-semibold tabular-nums">{{ courant.usage.utilisateurs }}</dd></div>
+    <div class="flex justify-between gap-3"><dt class="text-gray-400">Lecture seule <span class="text-sm">(gratuit)</span></dt><dd class="font-semibold tabular-nums">{{ courant.usage.lecture_seule }}</dd></div>
+  </dl>
+  {% if facture %}
+  <div class="mt-4 border-t border-bordure pt-3">
+    {% for l in courant.lignes %}<div class="flex justify-between gap-3 text-sm"><span class="text-gray-400">{{ l.description }}</span><span class="tabular-nums">{{ l.montant|argent }}</span></div>{% endfor %}
+    <div class="mt-2 flex justify-between gap-3 text-sm"><span class="text-gray-400">TPS et TVQ</span><span class="tabular-nums">{{ courant.tps|argent }} + {{ courant.tvq|argent }}</span></div>
+    <div class="mt-2 flex justify-between gap-3 text-lg font-bold"><span>Total estimé</span><span class="tabular-nums text-accent">{{ courant.total|argent }}</span></div>
+    <p class="mt-2 text-sm text-gray-500">Estimé du mois en cours. La facture est faite au début du mois suivant.</p>
+  </div>
+  {% else %}
+  <p class="mt-4 border-t border-bordure pt-3 text-sm text-gray-400">Votre abonnement n'est pas facturé par l'app pour l'instant.</p>
+  {% endif %}
+</div>
+</div>
+<div>
+<h2 class="mb-2 text-lg font-bold">Mois passés</h2>
+<div class="carte mb-5 overflow-x-auto p-4">
+  <table class="w-full text-sm tabular-nums">
+    <thead><tr class="text-left text-gray-400"><th class="pb-2 font-normal">Mois</th><th class="pb-2 text-right font-normal">Textos envoyés</th><th class="pb-2 text-right font-normal">Reçus</th><th class="pb-2 text-right font-normal">Courriels</th>{% if facture %}<th class="pb-2 text-right font-normal">Facture</th>{% endif %}</tr></thead>
+    <tbody class="divide-y divide-bordure">
+    {% for m in mois %}<tr>
+      <td class="py-2">{{ m.mois|date_qc:"M Y" }}</td><td class="py-2 text-right">{{ m.usage.textos_envoyes }}</td><td class="py-2 text-right">{{ m.usage.textos_recus }}</td>
+      <td class="py-2 text-right">{{ m.usage.courriels_envoyes|add:m.usage.courriels_recus }}</td>
+      {% if facture %}<td class="py-2 text-right">{% if m.facture %}<a class="text-accent" href="{% url 'terrain:reglages_facture_plateforme_pdf' m.facture.pk %}" target="_blank">{{ m.facture.total|argent }}</a>{% else %}<span class="text-gray-500">-</span>{% endif %}</td>{% endif %}
+    </tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if factures %}
+<h2 class="mb-2 text-lg font-bold">Factures de Le Déneigeur</h2>
+<div class="carte mb-5 divide-y divide-bordure">
+  {% for f in factures %}<a href="{% url 'terrain:reglages_facture_plateforme_pdf' f.pk %}" target="_blank" class="rangee-lien">
+    <span>N° {{ f.numero }} · {{ f.mois|date_qc:"F Y" }} <span class="text-gray-400">· {% if f.statut == "payee" %}payée{% else %}à payer d'ici le {{ f.date_echeance|date_qc:"j F" }}{% endif %}</span></span>
+    <span class="tabular-nums">{{ f.total|argent }}</span></a>{% endfor %}
+</div>
+{% endif %}
+<p class="text-sm text-gray-500">Prix : 99 $ par mois (abonnement annuel, facturé mensuellement), un utilisateur compris; 25 $ par mois par utilisateur de plus; 0,03 $ par texto, envoyé ou reçu; courriels et lecture seule gratuits. Taxes en sus. Questions : info@ledeneigeur.com.</p>
+</div>
+</div>
+{% endblock %}

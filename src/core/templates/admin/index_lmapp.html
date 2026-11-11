@@ -12,6 +12,9 @@
     {% for nom, actifs in entreprises_envois %}<div class="detail"><strong>{{ nom }}</strong> : {% if actifs %}<span class="envois-actifs">ACTIVÉS</span>{% else %}<span class="envois-simulation">Simulation</span>{% endif %}</div>{% empty %}<div class="detail">Aucune entreprise active.</div>{% endfor %}</div>
   <div class="carte-etat {% if demandes_nouvelles %}alerte{% endif %}"><div>Demandes à info@</div><div class="chiffre">{{ demandes_nouvelles }} nouvelle{{ demandes_nouvelles|pluralize }}</div>
     <a href="{% url 'admin:core_demandesite_changelist' %}?statut__exact=nouvelle">Voir les demandes</a></div>
+  <div class="carte-etat {% if factures_plateforme_brouillons %}alerte{% endif %}"><div>Factures de la plateforme</div><div class="chiffre">{{ factures_plateforme_brouillons }} à émettre</div>
+    <div class="detail">{{ factures_plateforme_dues }} émise{{ factures_plateforme_dues|pluralize }}, pas encore payée{{ factures_plateforme_dues|pluralize }}</div>
+    <a href="{% url 'admin:core_factureplateforme_changelist' %}">Voir les factures</a></div>
   <div class="carte-etat"><div>Plateforme</div><div class="chiffre">Usage</div>
     <a href="{% url 'plateforme' %}">Courriels, textos, factures, espace par entreprise</a></div>
 </div>

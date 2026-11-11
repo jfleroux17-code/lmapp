@@ -16,6 +16,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.db import transaction
 from django.db.models import Count, Max, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.views.decorators.http import require_POST
@@ -449,3 +450,40 @@ def invitation(request, uidb64, jeton):
         messages.success(request, f"Bienvenue, {user.first_name or user.username}.")
         return redirect("terrain:accueil")
     return render(request, "terrain/reglages/invitation.html", {"form": form, "utilisateur": user})
+
+
+# Mon abonnement (PRD Q2) : ce que la plateforme compte et facture, pour les administrateurs de l'entreprise
+
+@membre_requis
+def abonnement(request):
+    from core import abonnement as ab
+    from core.models import FacturePlateforme
+
+    if not est_responsable(request):
+        return _refus(request)
+    ent = request.entreprise
+    premier = ab.debut_du_mois(timezone.localdate())
+    factures = {f.mois: f for f in FacturePlateforme.objects.filter(entreprise=ent).exclude(
+        statut__in=[FacturePlateforme.Statut.BROUILLON, FacturePlateforme.Statut.ANNULEE])}
+    mois, m = [], premier
+    for _ in range(6):
+        m = ab.mois_precedent(m)
+        mois.append({"mois": m, "usage": ab.usage(ent, m), "facture": factures.get(m)})
+    return render(request, "terrain/reglages/abonnement.html", _contexte(
+        request, ent=ent, courant=ab.estimation(ent, premier), premier=premier, mois=mois, facture=ent.abonnement_facture,
+        factures=sorted(factures.values(), key=lambda f: f.mois, reverse=True)))
+
+
+@membre_requis
+def facture_plateforme_pdf(request, pk):
+    from django.http import HttpResponse
+
+    from core import abonnement as ab
+    from core.models import FacturePlateforme
+
+    if not est_responsable(request):
+        return _refus(request)
+    f = get_object_or_404(FacturePlateforme.objects.exclude(statut=FacturePlateforme.Statut.BROUILLON), pk=pk, entreprise=request.entreprise)
+    r = HttpResponse(ab.pdf(f), content_type="application/pdf")
+    r["Content-Disposition"] = f'inline; filename="facture-le-deneigeur-{f.numero}.pdf"'
+    return r

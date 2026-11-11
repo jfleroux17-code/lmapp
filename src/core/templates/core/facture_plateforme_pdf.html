@@ -1,0 +1,71 @@
+{% load argent %}<!DOCTYPE html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<title>{% if f.numero %}Facture {{ f.numero }}{% else %}Brouillon{% endif %}, Le Déneigeur</title>
+{% include "facturation/_style_pdf.html" with ent=plateforme %}
+</head>
+<body>
+{% if f.statut == "brouillon" %}<div class="tampon">BROUILLON</div>{% elif f.statut == "annulee" %}<div class="tampon">ANNULÉE</div>{% endif %}
+
+<div class="entete">
+  <div class="entreprise">
+    <h1>Le Déneigeur</h1>
+    <div class="legal">{{ plateforme.nom }}</div>
+    {% for l in plateforme.adresse %}{{ l }}<br>{% endfor %}
+    {% if plateforme.telephone %}{{ plateforme.telephone }}<br>{% endif %}
+    {{ plateforme.courriel }}
+  </div>
+  <div class="titre">
+    <h2>FACTURE</h2>
+    <table>
+      <tr><td>Numéro</td><td><strong>{% if f.numero %}{{ f.numero }}{% else %}à venir{% endif %}</strong></td></tr>
+      <tr><td>Date</td><td>{% if f.date_facture %}{{ f.date_facture|date_qc:"j F Y" }}{% else %}à venir{% endif %}</td></tr>
+      {% if f.date_echeance %}<tr><td>Échéance</td><td>{{ f.date_echeance|date_qc:"j F Y" }}</td></tr>{% endif %}
+      <tr><td>Période</td><td>{{ f.mois|date_qc:"F Y" }}</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="parties">
+  <div>
+    <div class="etiquette">Facturé à</div>
+    <strong>{{ ent.nom_legal|default:ent.nom }}</strong><br>
+    {% if ent.nom_legal and ent.nom_legal != ent.nom %}{{ ent.nom }}<br>{% endif %}
+    {% if ent.adresse_ligne1 %}{{ ent.adresse_ligne1 }}<br>{% endif %}
+    {% if ent.adresse_ligne2 %}{{ ent.adresse_ligne2 }}<br>{% endif %}
+    {% if ent.ville %}{{ ent.ville }} {{ ent.province }}  {{ ent.code_postal }}{% endif %}
+  </div>
+  <div>
+    <div class="etiquette">Usage du mois</div>
+    Textos : {{ f.textos_envoyes }} envoyé{{ f.textos_envoyes|pluralize }}, {{ f.textos_recus }} reçu{{ f.textos_recus|pluralize }}<br>
+    Courriels : {{ f.courriels }} (gratuits)<br>
+    Utilisateurs facturables : {{ f.utilisateurs }} (lecture seule gratuite)
+  </div>
+</div>
+
+<table class="lignes">
+  <thead><tr><th>Description</th><th class="nombre col">Quantité</th><th class="nombre col">Prix</th><th class="nombre col">Montant</th></tr></thead>
+  <tbody>
+  {% for l in lignes %}
+    <tr><td>{{ l.description }}</td><td class="nombre">{{ l.quantite|quantite }}</td><td class="nombre">{{ l.prix_unitaire|argent }}</td><td class="nombre">{{ l.montant|argent }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<table class="totaux">
+  <tr><td>Sous-total</td><td class="nombre">{{ f.sous_total|argent }}</td></tr>
+  <tr><td>TPS ({{ f.taux_tps|pourcent }})<br><span class="petit">n° {{ f.numero_tps|default:"à inscrire" }}</span></td><td class="nombre">{{ f.tps|argent }}</td></tr>
+  <tr><td>TVQ ({{ f.taux_tvq|pourcent }})<br><span class="petit">n° {{ f.numero_tvq|default:"à inscrire" }}</span></td><td class="nombre">{{ f.tvq|argent }}</td></tr>
+  <tr class="grand"><td>Total</td><td class="nombre">{{ f.total|argent }}</td></tr>
+</table>
+{% if f.statut == "payee" %}<p class="nombre payee">Payée{% if f.payee_le %} le {{ f.payee_le|date_qc:"j F Y" }}{% endif %}. Merci!</p>{% endif %}
+
+{% if f.statut == "annulee" %}
+<div class="bloc"><p><strong>Facture annulée</strong>{% if f.raison_annulation %} : {{ f.raison_annulation }}{% endif %}.</p><p>Rien à payer.</p></div>
+{% elif f.statut != "payee" and plateforme.paiement %}
+<div class="bloc"><p><strong>Pour payer</strong></p><p class="note">{{ plateforme.paiement }}</p></div>
+{% endif %}
+{% if f.note %}<div class="bloc"><p class="note">{{ f.note }}</p></div>{% endif %}
+</body>
+</html>
