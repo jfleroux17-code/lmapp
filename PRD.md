@@ -316,6 +316,18 @@ Louis fait toute sa comptabilité à la main. Une dépense (essence, réparation
 
 Louis travaille aussi l'été, en paysagement. Prévoir un volet pour ses clients d'été (mêmes fiches de clients, autres services et contrats, saison estivale). À définir avec Louis; pas commencé.
 
+### U. Anglais et expansion hors du Québec (décision de JF, 11 novembre 2026 : phase 3)
+
+Marque anglaise : **The Snow Remover** (choisie par JF; domaines `thesnowremover.com` et `.ca` pas enregistrés le 11 novembre 2026, à acheter par JF, marque de commerce à vérifier au Canada). Ordre : **le Québec d'abord** (déneigeurs anglophones et clients anglophones des déneigeurs francophones), puis l'Ontario, le reste du Canada et les États-Unis.
+
+| Code | Fonctionnalité | État |
+|---|---|---|
+| U1 | **Application en anglais** : tous les textes de l'interface passés en traduction (Django, fichiers `.po`), langue choisie par utilisateur (`Membre`), français par défaut. Dates, montants et nombres au format de la langue. | Phase 3 |
+| U2 | **Langue de chaque client** (`Client.langue`) : textos, courriels, factures, contrats, reçus, relances et messages types dans sa langue; gabarits par défaut dans les deux langues (`GabaritParDefaut` par genre et par langue); limite de 201 caractères gardée. Import : colonne `langue`. | Phase 3 |
+| U3 | **Site The Snow Remover** : même site que `ledeneigeur.com`, traduit, sur son domaine, chez le même hébergeur; liens `hreflang` entre les deux langues, `llms.txt` et données structurées en anglais, image de partage en anglais. Sous-domaines de l'app pour les déneigeurs anglophones (`<nom>.thesnowremover.com`). | Phase 3 |
+| U4 | **Ontario et reste du Canada** : taxes par province (TVH en Ontario et dans l'Atlantique, TPS plus TVP dans l'Ouest, TPS seule ailleurs), province de l'entreprise et du client, rapports par taxe; lois sur les textos commerciaux (LCAP, déjà fédérale) et sur la vie privée (LPRPDE hors Québec). | Phase 3, après U1 à U3 |
+| U5 | **États-Unis** : dollar américain, taxes de vente par État (souvent nulles sur le déneigement résidentiel, à vérifier par État), formats (adresse, code ZIP, téléphone), lois sur les textos (TCPA, inscription 10DLC chez Twilio obligatoire), paiements (pas d'Interac : carte ou ACH, par Stripe), hébergement et contrat de service adaptés. | Phase 3, en dernier |
+
 ### P. Hors de la portée du projet (pour être clair)
 - Opérations d'été (tonte, aménagement).
 - Gestion de flotte et d'entretien mécanique.
@@ -520,6 +532,7 @@ Jalon : une tempête complète gérée dans l'app.
 
 ### Phase 3 : Consolidation et premier assistant IA (janvier et février)
 Fonctionnalités : A3, A4, A11, B5, B6, C9 à C12, D5, D7, E13, E14, F7, G6, H1 à H3, I1, J2, J3, J5, K4, O1, O2, O6.
+**Ajouté le 11 novembre 2026 (décision de JF)** : section U, l'anglais et l'expansion : U1 à U3 (application et site The Snow Remover, Québec d'abord), puis U4 (Ontario et reste du Canada) et U5 (États-Unis).
 
 **Fait le 9 novembre 2026** (en prod, essayé en test d'abord) : A3, A11, B5, B6, C9 (option B : proposées, envoyées d'une tape), C10, C12, D7, E13, E14, F7, H1 à H3, I1, J2, J3, K4, G6, plus la surveillance (6.7). A4 : déjà possible (plusieurs adresses par payeur). J5 : fait pour JF dans Q1; l'afficher aux déneigeurs dépend de la grille de tarifs (Q2). Reste de la phase : O1, O2, O6 (modèle d'IA à choisir par JF).
 Livrable : automatisation des relances, rapports pour le comptable, demandes de service, et l'assistant qui classe les messages entrants et propose des brouillons que Louis approuve en une tape. Le reste de la saison sert à mesurer la qualité des brouillons.
