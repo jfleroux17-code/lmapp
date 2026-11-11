@@ -318,7 +318,7 @@ Louis travaille aussi l'été, en paysagement. Prévoir un volet pour ses client
 
 ### U. Anglais et expansion hors du Québec (décision de JF, 11 novembre 2026 : phase 3)
 
-Marque anglaise : **The Snow Remover** (choisie par JF; domaines `thesnowremover.com` et `.ca` pas enregistrés le 11 novembre 2026, à acheter par JF, marque de commerce à vérifier au Canada). Ordre : **le Québec d'abord** (déneigeurs anglophones et clients anglophones des déneigeurs francophones), puis l'Ontario, le reste du Canada et les États-Unis.
+Marque anglaise : **The Snow Remover** (choisie par JF; domaines `thesnowremover.com` et `.ca` achetés par JF le 11 novembre 2026, marque de commerce à vérifier au Canada). Ordre : **le Québec d'abord** (déneigeurs anglophones et clients anglophones des déneigeurs francophones), puis l'Ontario, le reste du Canada et les États-Unis.
 
 | Code | Fonctionnalité | État |
 |---|---|---|
