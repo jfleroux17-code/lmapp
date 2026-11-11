@@ -27,3 +27,5 @@ conservation change dans l'app, la changer aussi dans `confidentialite.html`.
 
 `images/ecran-*.png` (cellulaire, 430 px de large, iPhone Pro Max) et `images/bureau-*` (ordinateur, 1440 px), prises dans l'environnement de test (clients fictifs, `donnees_essai` plus un scénario de tournée), au visuel C, bandeaux de test et de simulation retirés. Refaites le 11 novembre 2026.
 Aperçu local : ouvrir `index.html` dans un navigateur.
+
+Pas encore annoncé sur le site (décision de JF, 11 novembre 2026) : les **dépenses par photo du reçu** (S1, S2). Ne pas les ajouter avant son « go ».
