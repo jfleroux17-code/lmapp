@@ -29,3 +29,5 @@ conservation change dans l'app, la changer aussi dans `confidentialite.html`.
 Aperçu local : ouvrir `index.html` dans un navigateur.
 
 Pas encore annoncé sur le site (décision de JF, 11 novembre 2026) : les **dépenses par photo du reçu** (S1, S2). Ne pas les ajouter avant son « go ».
+
+**Cache de Cloudflare** : Cloudflare garde `style.css` 4 heures. Après un changement de `style.css`, changer le numéro dans `href="style.css?v=..."` de toutes les pages (date du jour), sinon les visiteurs voient l'ancienne feuille de style.
