@@ -1,0 +1,30 @@
+# Le Déneigeur
+
+> Le Déneigeur est un logiciel de gestion pour les entreprises de déneigement du Québec (déneigeurs résidentiels et commerciaux). Il gère les clients, la tournée de déneigement, les factures avec TPS et TVQ, les paiements (comptant, virement Interac, chèques postdatés), les comptes à recevoir, les relances et les avis aux clients par texto et par courriel. Application web sur le cellulaire (iPhone et Android) et sur l'ordinateur, en français. Exploité par SLAPP Technologies Inc., Sainte-Thérèse (Québec).
+
+## Pour qui
+
+- Entreprises de déneigement du Québec, du travailleur autonome avec un tracteur à l'équipe de plusieurs opérateurs.
+- Contrats saisonniers payés en versements, contrats au passage, clients résidentiels et commerciaux.
+
+## Ce que fait le logiciel
+
+- Tournée : arrêts dans l'ordre du déneigeur, « Fait » ou « Sauté » d'une tape, gros boutons utilisables avec des gants, fonctionne sans réseau, itinéraire dans Apple Plans, Google Maps ou Waze, photos et notes au passage, balises.
+- Avis aux clients par texto : début des opérations, « on arrive d'ici environ X minutes » selon la position du cellulaire, déneigement fait. Textos en bon français, avec les accents.
+- Factures : TPS et TVQ calculées, numérotation sans trou, PDF, envoi par courriel ou par texto avec un lien, versements des contrats saisonniers préparés d'avance.
+- Argent : paiements comptant, virements Interac reconnus dans les courriels, chèques postdatés, crédit au compte, comptes à recevoir, relances graduées (rappel, deuxième avis, dernier avis), reçus.
+- Messages : textos et courriels des clients au même endroit, demandes à régler (oubli, plainte, dommage), envoi à tous les clients ou à un secteur.
+- Bureau : vue sur l'ordinateur, carte en direct de la tournée, météo d'Environnement Canada, rapport de la saison et export pour le comptable.
+- Import de la liste de clients à partir d'un fichier Excel ou d'un autre logiciel.
+
+## Prix (taxes en sus)
+
+- 99 $ par mois par entreprise (abonnement annuel, facturé mensuellement), un utilisateur compris, avec tous les droits.
+- 25 $ par mois par utilisateur de plus (opérateur ou administrateur). Accès en lecture seule gratuits (ex. le comptable).
+- 0,03 $ par texto, envoyé ou reçu. Courriels gratuits.
+
+## Liens
+
+- [Site](https://ledeneigeur.com/) : fonctions, écrans, prix, questions.
+- [Politique de confidentialité](https://ledeneigeur.com/confidentialite.html) (Loi 25).
+- Contact : info@ledeneigeur.com, 514 360-3227.

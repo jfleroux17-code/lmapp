@@ -1,4 +1,32 @@
+# Tous les robots sont les bienvenus, y compris ceux des moteurs de recherche des assistants (ChatGPT, Claude, Perplexity, Gemini).
 User-agent: *
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Bingbot
 Allow: /
 
 Sitemap: https://ledeneigeur.com/sitemap.xml
