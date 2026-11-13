@@ -113,9 +113,9 @@ Ordre proposé : lot A, puis la facturation (une facture par saison, une par pas
 - [x] (10) Fluidité : analyse écran par écran du retour après un enregistrement (ex. message ouvert depuis la fiche : retour à la fiche; « Répondre » sur un message), **présentée à JF avant d'être appliquée** (accord de JF le 12 novembre 2026 : un seul retour, la flèche; retour d'où l'on vient après un enregistrement; Répondre, Appeler, Lier à un client sur un message). En prod.
 
 **Ajouts de JF (12 novembre 2026)**
-- [ ] Chaque utilisateur change lui-même son mot de passe (Plus, Mon compte).
+- [x] Chaque utilisateur change lui-même son mot de passe (Plus, « Mon mot de passe »). En prod le 12 novembre 2026.
 - [ ] Double authentification (MFA) par Google Authenticator (TOTP) : plan à présenter à JF.
-- [ ] Données de test riches dans test.ledeneigeur.com : tous les cas (clients, messages, factures, demandes, chèques, etc.) pour que JF essaie tout sans rien saisir.
+- [x] Données de test riches dans test.ledeneigeur.com (12 novembre 2026) : 19 clients, scénarios de tous les cas. Recommencer à neuf : `cd /srv/lmapp/test && docker compose run --rm app python manage.py donnees_essai --reinitialiser`.
 
 **Lot B : tournée avec ou sans avis aux clients (avant les premières neiges)**
 - [ ] (7) Au démarrage, chaque fois (jamais retenu par le cellulaire) : « Avec avis aux clients » ou « Sans avis aux clients » (choix de Louis, selon son jugement, pas de règle d'heure). Sans avis : position active pour les statistiques, **aucun avis** pendant toute l'opération (début, proximité, terminé, manuels). Bandeau visible sur l'écran de tournée. La position ne dépend plus des avis.
