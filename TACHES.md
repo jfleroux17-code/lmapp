@@ -109,8 +109,13 @@ Ordre proposé : lot A, puis la facturation (une facture par saison, une par pas
 - [x] (14) Encaisser : option « Chèque postdaté » (date future : chèque en main, déposé à sa date).
 - [x] (4) Dépenses : choisir une capture ou une photo de la photothèque (reçus de l'app Shell), pas seulement la caméra.
 - [x] (9) Flèche de retour en haut (sans enregistrer), partout sauf les 5 onglets.
-- Lot A en test le 12 novembre 2026 (380 tests, vérifié dans Chrome); prod avec le go de JF.
-- [ ] (10) Fluidité : analyse écran par écran du retour après un enregistrement (ex. message ouvert depuis la fiche : retour à la fiche; « Répondre » sur un message), **présentée à JF avant d'être appliquée** (analyse présentée le 12 novembre 2026, en attente de son accord).
+- **Lot A en prod le 12 novembre 2026** (383 tests, vérifié dans Chrome).
+- [x] (10) Fluidité : analyse écran par écran du retour après un enregistrement (ex. message ouvert depuis la fiche : retour à la fiche; « Répondre » sur un message), **présentée à JF avant d'être appliquée** (accord de JF le 12 novembre 2026 : un seul retour, la flèche; retour d'où l'on vient après un enregistrement; Répondre, Appeler, Lier à un client sur un message). En prod.
+
+**Ajouts de JF (12 novembre 2026)**
+- [ ] Chaque utilisateur change lui-même son mot de passe (Plus, Mon compte).
+- [ ] Double authentification (MFA) par Google Authenticator (TOTP) : plan à présenter à JF.
+- [ ] Données de test riches dans test.ledeneigeur.com : tous les cas (clients, messages, factures, demandes, chèques, etc.) pour que JF essaie tout sans rien saisir.
 
 **Lot B : tournée avec ou sans avis aux clients (avant les premières neiges)**
 - [ ] (7) Au démarrage, chaque fois (jamais retenu par le cellulaire) : « Avec avis aux clients » ou « Sans avis aux clients » (choix de Louis, selon son jugement, pas de règle d'heure). Sans avis : position active pour les statistiques, **aucun avis** pendant toute l'opération (début, proximité, terminé, manuels). Bandeau visible sur l'écran de tournée. La position ne dépend plus des avis.
