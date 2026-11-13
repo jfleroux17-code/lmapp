@@ -42,7 +42,7 @@
     <form method="post" enctype="multipart/form-data" action="{% url 'terrain:photo_demande' d.pk %}" class="mb-3" x-data="photoDemande" @submit.prevent="envoyer($el)">{% csrf_token %}
       <label class="gros-bouton cursor-pointer border-2 border-bordure" :class="{ 'opacity-60': envoi }">
         <span x-text="envoi ? 'Envoi de la photo...' : '+ Photo'">+ Photo</span>
-        <input type="file" name="photo" accept="image/*" capture="environment" class="sr-only" @change="envoyer($el.form)">
+        <input type="file" name="photo" accept="image/*" class="sr-only" @change="envoyer($el.form)">
       </label>
     </form>
     <form method="post" action="{% url 'terrain:dossier_demande' d.pk %}" class="space-y-3">{% csrf_token %}

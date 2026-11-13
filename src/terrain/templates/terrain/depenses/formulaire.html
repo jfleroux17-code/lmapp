@@ -7,15 +7,17 @@
     // La photo est réduite dans le cellulaire avant l'envoi (1600 px, JPEG), comme les autres photos
     Alpine.data("depense", () => ({
       envoi: false, apercu: "",
-      choisie(e) { const f = e.target.files[0]; this.apercu = f ? URL.createObjectURL(f) : ""; },
+      fichier: null,
+      choisie(e) { const f = e.target.files[0]; if (f) { this.fichier = f; } this.apercu = this.fichier ? URL.createObjectURL(this.fichier) : ""; },
       async envoyer(form) {
         if (this.envoi) return;
         this.envoi = true;
         const donnees = new FormData(form);
-        const fichier = form.photo.files[0];
+        donnees.delete("photo_bib");
+        const fichier = this.fichier;
         if (fichier) {
           const reduite = await window.reduirePhoto(fichier);
-          if (reduite) donnees.set("photo", reduite, "recu.jpg");
+          if (reduite) donnees.set("photo", reduite, "recu.jpg"); else donnees.set("photo", fichier);
         } else {
           donnees.delete("photo");
         }
@@ -42,10 +44,17 @@
 {% if ecriture %}
 <form method="post" enctype="multipart/form-data" action="{% if d.pk %}{% url 'terrain:depense' d.pk %}{% else %}{% url 'terrain:nouvelle_depense' %}{% endif %}"
       class="carte space-y-4 p-4" x-data="depense" @submit.prevent="envoyer($el)">{% csrf_token %}
-  <label class="gros-bouton cursor-pointer border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">
-    <span x-text="apercu ? 'Reprendre la photo' : '{% if d.photo_taille %}Remplacer la photo du reçu{% else %}Photo du reçu{% endif %}'">Photo du reçu</span>
-    <input type="file" name="photo" accept="image/*" capture="environment" class="sr-only" @change="choisie($event)">
-  </label>
+  {# Deux façons (demande de Louis) : la caméra, ou une photo ou une capture d'écran de la photothèque (reçus de l'app Shell) #}
+  <div class="grid grid-cols-2 gap-2">
+    <label class="gros-bouton cursor-pointer border-2 border-accent px-2 text-center text-accent" :class="{ 'opacity-60': envoi }">
+      <span x-text="apercu ? 'Reprendre' : '{% if d.photo_taille %}Nouvelle photo{% else %}Photo du reçu{% endif %}'">Photo du reçu</span>
+      <input type="file" name="photo" accept="image/*" capture="environment" class="sr-only" @change="choisie($event)">
+    </label>
+    <label class="gros-bouton cursor-pointer border-2 border-accent px-2 text-center text-accent" :class="{ 'opacity-60': envoi }">
+      <span>Mes photos ou captures</span>
+      <input type="file" name="photo_bib" accept="image/*" class="sr-only" @change="choisie($event)">
+    </label>
+  </div>
   <img x-show="apercu" :src="apercu" alt="Aperçu du reçu" class="max-h-72 w-full rounded-xl object-contain" x-cloak>
 
   <label class="block"><span class="mb-1 block font-semibold">Total payé (taxes comprises)</span>

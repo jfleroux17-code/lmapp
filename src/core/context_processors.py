@@ -38,9 +38,11 @@ ONGLETS = (
 )
 
 
+# Écrans de départ des onglets : pas de flèche de retour (demande de Louis, 12 novembre 2026)
+RACINES = {"tournee": "/tournee/", "clients": "/", "argent": "/comptes/", "messages": "/messages/", "plus": "/plus/"}
+
+
 def onglet(request):
     chemin = getattr(request, "path", "") or ""
-    for nom, prefixes in ONGLETS:
-        if chemin.startswith(prefixes):
-            return {"onglet": nom}
-    return {"onglet": "clients"}  # recherche, fiches, adresses, photos
+    nom = next((n for n, prefixes in ONGLETS if chemin.startswith(prefixes)), "clients")  # sinon : recherche, fiches, adresses, photos
+    return {"onglet": nom, "racine_onglet": RACINES[nom], "est_racine": chemin in RACINES.values()}
