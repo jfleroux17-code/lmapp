@@ -114,7 +114,9 @@ Ordre proposé : lot A, puis la facturation (une facture par saison, une par pas
 
 **Ajouts de JF (12 novembre 2026)**
 - [x] Chaque utilisateur change lui-même son mot de passe (Plus, « Mon mot de passe »). En prod le 12 novembre 2026.
-- [ ] Double authentification (MFA) par Google Authenticator (TOTP) : plan à présenter à JF.
+- [x] Double authentification (MFA) par Google Authenticator (13 novembre 2026) : en prod, **au choix pour l'instant** (`LMAPP_DOUBLE_AUTH_OBLIGATOIRE=0` dans le `.env` de la prod); en test, obligatoire pour les administrateurs.
+- [ ] **JF, avec Louis** : rendre la double authentification obligatoire en prod (`LMAPP_DOUBLE_AUTH_OBLIGATOIRE=1`, puis `docker compose up -d`); Louis installe Google Authenticator et note ses codes de secours.
+- [ ] **Audit de sécurité** (`docs/audit-securite.md`, 13 novembre 2026) : 19 recommandations à approuver par JF, ordre proposé à la fin du document.
 - [x] Données de test riches dans test.ledeneigeur.com (12 novembre 2026) : 19 clients, scénarios de tous les cas. Recommencer à neuf : `cd /srv/lmapp/test && docker compose run --rm app python manage.py donnees_essai --reinitialiser`.
 
 **Lot B : tournée avec ou sans avis aux clients (avant les premières neiges)**
