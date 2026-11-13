@@ -79,7 +79,7 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - [ ] **Sa liste de clients** dans le gabarit, ou en photos de ses papiers (noms, adresses, cellulaires, prix entendus, montants dus).
 - [x] **Services** (9 novembre 2026) : l'entrée au complet; un seul client de bordage.
 - [x] **Numéro de texto** (9 novembre 2026) : Louis accepte que les textos des clients arrivent sur le nouveau numéro d'affaires (450-300-1166). Son cellulaire reste pour les appels.
-- [ ] **Courriel et Interac** (9 novembre 2026) : virements reçus à son Gmail. **JF configure avec lui** le transfert des avis d'Interac vers `louis@ledeneigeur.com` (filtre Gmail). Gmail envoie d'abord un code de confirmation à `louis@` : il arrive dans les Messages de l'app (ou dans la boîte). Ensuite, valider la lecture sur un vrai avis.
+- [ ] **Courriel et Interac** (9 novembre 2026) : virements reçus à son Gmail (`entretiens.louismethot@gmail.com`), **inscrit au dépôt automatique** (confirmé par JF le 13 novembre 2026; instructions de paiement de sa fiche mises à jour : aucune question de sécurité). **JF configure avec lui** le transfert des avis d'Interac vers `louis@ledeneigeur.com` (filtre Gmail). Gmail envoie d'abord un code de confirmation à `louis@` : il arrive dans les Messages de l'app (ou dans la boîte). Ensuite, valider la lecture sur un vrai avis.
 - [x] **Paiements** (9 novembre 2026) : comptant, virements Interac et chèques, y compris **postdatés** (important). Pas de carte : Stripe reporté.
 - [x] **Territoire** : Sainte-Adèle seulement, seul (9 novembre 2026).
 - [x] **Comptabilité** (9 novembre 2026) : tout à la main. L'export et le rapport de saison pour le comptable deviennent importants.
