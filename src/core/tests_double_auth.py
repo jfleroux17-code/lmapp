@@ -67,11 +67,13 @@ class ConnexionTests(TestCase):
         self.assertRedirects(self.client.get("/clients/"), "/connexion/code/?suivant=/clients/", fetch_redirect_response=False)
         self.assertEqual(self.client.get("/plus/").status_code, 302)
         # Le code déjà utilisé à l'activation est refusé (même pas de 30 secondes); le suivant passe
-        r = self.client.post("/connexion/code/", {"code": da.code_pour(secret), "suivant": "/clients/"})
+        deja = DoubleAuthentification.objects.get(utilisateur=self.louis).dernier_pas
+        r = self.client.post("/connexion/code/", {"code": da._code(secret, deja), "suivant": "/clients/"})
         self.assertContains(r, "Code refusé")
         import time
-        with mock.patch("core.double_auth.time.time", return_value=time.time() + 30):
-            r = self.client.post("/connexion/code/", {"code": da.code_pour(secret, time.time() + 30), "suivant": "/clients/"})
+        plus_tard = (deja + 1) * da.PERIODE + 1  # le pas suivant celui déjà utilisé, quelle que soit l'heure du test
+        with mock.patch("core.double_auth.time.time", return_value=plus_tard):
+            r = self.client.post("/connexion/code/", {"code": da.code_pour(secret, plus_tard), "suivant": "/clients/"})
         self.assertRedirects(r, "/clients/", fetch_redirect_response=False)
         self.assertEqual(self.client.get("/").status_code, 200)
         # Code de secours : une seule fois

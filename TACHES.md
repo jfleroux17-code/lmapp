@@ -134,8 +134,8 @@ Ordre proposé : lot A, puis la facturation (une facture par saison, une par pas
 **Lot E : nouveau client en un passage**
 - [ ] (11b) Création : où mettre la neige, obstacles, nombre de versements, services et prix de la saison, puis contrat, facture PDF et « Envoyer la facture » dans la fiche. Client existant : prix des saisons précédentes dans la fiche.
 
-**Lot F : cartes**
-- [ ] (16) Entrées numérotées sur la carte en direct **et** dans « Ordre de la tournée » : jaune pas encore fait, vert fait, rouge sauté; adresses mal placées (géocodage à la ville près) listées à part.
+**Lot F : cartes** : fait et en prod le 13 novembre 2026.
+- [x] (16) Entrées numérotées sur la carte en direct **et** dans « Ordre de la tournée » : jaune pas encore fait, vert fait, rouge sauté; adresses mal placées (géocodage à la ville près) listées à part.
 
 **Lot G : météo**
 - [ ] (15) Option 1 retenue par JF : modèles d'Environnement Canada (GeoMet, grille fine) au point exact de chaque ville desservie; avertissements officiels de la page régionale.

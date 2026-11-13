@@ -1,0 +1,24 @@
+{# Entrées numérotées sur une carte Leaflet (demande de Louis) : jaune à faire, vert fait, rouge sauté. #}
+<style>
+  .pastille-carte { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 9999px;
+    font: 700 14px/1 system-ui, sans-serif; color: #000; border: 2px solid #000; box-shadow: 0 1px 4px rgba(0,0,0,.6); }
+  .pastille-carte.a_faire { background: #f5c400; } .pastille-carte.fait { background: #3fb950; } .pastille-carte.saute { background: #f85149; color: #fff; }
+</style>
+<script>
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  window.dessinerArrets = function (carte, groupe, arrets) {
+    groupe.clearLayers();
+    for (const a of arrets) {
+      const icone = L.divIcon({ className: "", html: '<div class="pastille-carte ' + a.etat + '">' + a.rang + "</div>", iconSize: [30, 30], iconAnchor: [15, 15] });
+      const etat = { a_faire: "à faire", fait: "fait", saute: "sauté" }[a.etat];
+      L.marker([a.lat, a.lng], { icon: icone, title: a.rang + " · " + a.adresse, zIndexOffset: a.etat === "a_faire" ? 500 : 0 })
+        .bindPopup("<strong>" + a.rang + ". " + esc(a.adresse) + "</strong><br>" + esc(a.client) + " · " + etat + '<br><a href="' + esc(a.fiche) + '">Fiche</a>')
+        .addTo(groupe);
+    }
+  };
+  window.listerAPlacer = function (el, a_placer) {
+    if (!el) return;
+    el.innerHTML = a_placer.length ? "<p class='mb-1 font-semibold text-accent'>À placer sur la carte (adresse trouvée à la ville près seulement) :</p>" +
+      a_placer.map((a) => "<a class='block min-h-12 py-2 text-accent underline' href='" + esc(a.lien) + "'>" + a.rang + ". " + esc(a.adresse) + " (" + esc(a.client) + ")</a>").join("") : "";
+  };
+</script>

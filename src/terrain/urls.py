@@ -90,6 +90,7 @@ urlpatterns = [
     path("tournee/position/", tournee.position, name="position"),
     path("tournee/avis/", tournee.avis_manuels, name="avis_manuels"),
     path("tournee/ordre/", tournee.ordre, name="ordre"),
+    path("tournee/carte/arrets/", tournee.carte_arrets, name="carte_arrets"),
     path("tournee/factures-passages/", tournee.factures_passages, name="factures_passages"),
     path("tournee/collecter/", tournee.a_collecter, name="a_collecter"),
     path("balises/", balises.liste, name="balises"),

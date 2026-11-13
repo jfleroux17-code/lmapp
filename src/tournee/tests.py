@@ -110,6 +110,21 @@ class EcransTests(TourneeBase):
     def donnees(self, url="/tournee/"):
         return self.client.get(url).context["donnees"]
 
+    def test_carte_des_entrees_numerotees(self):
+        from django.contrib.gis.geos import Point
+        Adresse.objects.filter(pk=self.a1.pk).update(position=Point(-74.13, 45.95, srid=4326), position_source="manuelle", position_precision="adresse")
+        Adresse.objects.filter(pk=self.a2.pk).update(position=Point(-74.12, 45.96, srid=4326), position_source="geocodage", position_precision="ville")
+        self.client.post("/tournee/demarrer/", {"type": "neige", "avis_clients": "0"})
+        op = Operation.en_cours_de(self.ent)
+        services.marquer(op, self.a1, "fait")
+        d = self.client.get("/tournee/carte/arrets/").json()
+        self.assertEqual([(a["rang"], a["adresse"], a["etat"]) for a in d["arrets"]], [(1, "1, rue Tremblay", "fait")])
+        self.assertEqual([a["rang"] for a in d["a_placer"]], [2, 3, 4])  # à la ville près, ou sans position
+        self.assertIn("/position/", d["a_placer"][0]["lien"])
+        self.assertContains(self.client.get("/tournee/ordre/"), "carte-ordre")
+        self.client.force_login(get_user_model().objects.create_user("x", password="x" * 12))
+        self.assertNotEqual(self.client.get("/tournee/carte/arrets/").status_code, 200)  # pas membre
+
     def synchro(self, *passages):
         import json
         return self.client.post("/tournee/synchro/", json.dumps({"passages": list(passages)}), content_type="application/json")

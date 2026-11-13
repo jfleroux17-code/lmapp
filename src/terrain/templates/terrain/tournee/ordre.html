@@ -1,8 +1,36 @@
 {% extends "terrain/base.html" %}
 {% block titre %}Ordre de la tournée{% endblock %}
+{% load static %}
+{% block tete %}<link rel="stylesheet" href="{% static 'vendor/leaflet-1.9.4/leaflet.css' %}">{% endblock %}
 {% block contenu %}
 <h1 class="mb-1 text-2xl font-bold">Ordre de la tournée</h1>
 <p class="mb-5 text-gray-400">{% if ecriture %}▲ et ▼ déplacent un arrêt d'une place dans son secteur, ou un secteur au complet. Toucher le numéro d'un arrêt pour lui donner un autre rang d'un coup.{% else %}Consultation seulement.{% endif %}</p>
 {% if en_cours %}<p class="carte mb-5 p-4 text-sm">Une opération est en cours : le nouvel ordre paraîtra à l'écran de tournée quand vous le rouvrirez.</p>{% endif %}
+<details class="carte mb-5" open>
+  <summary class="flex min-h-14 cursor-pointer items-center justify-between px-4 font-bold"><span>Carte des entrées</span><span class="text-sm font-normal text-gray-400"><span class="text-accent">●</span> à faire <span class="text-ok">●</span> fait <span class="text-danger">●</span> sauté</span></summary>
+  <div class="relative overflow-hidden rounded-b-2xl" style="height: 55dvh; min-height: 16rem;"><div id="carte-ordre" class="absolute inset-0"></div></div>
+  <div id="a-placer" class="px-4 pb-3 text-sm"></div>
+</details>
 <div id="ordre">{% include "terrain/tournee/_ordre.html" %}</div>
+<script src="{% static 'vendor/leaflet-1.9.4/leaflet.js' %}"></script>
+{% include "terrain/tournee/_carte_arrets.html" %}
+<script>
+  (function () {
+    const carte = L.map("carte-ordre").setView([45.95, -74.13], 13);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; contributeurs d'OpenStreetMap" }).addTo(carte);
+    const entrees = L.layerGroup().addTo(carte);
+    let cadre = false;
+    async function lire() {
+      try {
+        const r = await fetch("{% url 'terrain:carte_arrets' %}", { credentials: "same-origin" });
+        const d = await r.json();
+        dessinerArrets(carte, entrees, d.arrets);
+        listerAPlacer(document.getElementById("a-placer"), d.a_placer);
+        if (!cadre && d.arrets.length) { carte.fitBounds(d.arrets.map((a) => [a.lat, a.lng]), { padding: [30, 30] }); cadre = true; }
+      } catch (e) {}
+    }
+    lire();
+    document.body.addEventListener("htmx:afterSwap", (e) => { if (e.detail.target && e.detail.target.id === "ordre") lire(); });
+  })();
+</script>
 {% endblock %}

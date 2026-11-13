@@ -595,6 +595,35 @@ def carte(request):
     return render(request, "terrain/tournee/carte.html", {"op": Operation.en_cours_de(request.entreprise)})
 
 
+def arrets_carte(entreprise, op=None):
+    """Entrées de la tournée pour la carte (demande de Louis) : rang (même pastille que l'écran de tournée), position,
+    état (à faire, fait, sauté) dans l'opération en cours. Une adresse trouvée à la ville près seulement (ou pas du tout)
+    serait mal placée : elle va dans « à placer », avec le lien pour corriger sa position."""
+    from clients.models import Adresse
+
+    passages = dict(op.passages.values_list("adresse_id", "statut")) if op else {}
+    vagues = (Adresse.Precision.VILLE, Adresse.Precision.INTROUVABLE)
+    sur_carte, a_placer = [], []
+    for i, a in enumerate(arrets(entreprise), start=1):
+        etat = passages.get(a.pk, "a_faire")
+        if a.position is None or (a.position_source == "geocodage" and a.position_precision in vagues):
+            a_placer.append({"rang": i, "adresse": a.ligne1, "client": a.client.nom_affiche, "lien": reverse("terrain:position_adresse", args=[a.pk])})
+            continue
+        sur_carte.append({"rang": i, "lat": a.position.y, "lng": a.position.x, "adresse": a.ligne1, "client": a.client.nom_affiche,
+                          "etat": etat, "fiche": reverse("terrain:fiche", args=[a.client_id])})
+    return sur_carte, a_placer
+
+
+@membre_requis
+def carte_arrets(request):
+    """Entrées numérotées pour la carte de « Ordre de la tournée » (JSON; relue après chaque déplacement)."""
+    op = Operation.en_cours_de(request.entreprise)
+    sur_carte, a_placer = arrets_carte(request.entreprise, op)
+    r = JsonResponse({"arrets": sur_carte, "a_placer": a_placer})
+    r["Cache-Control"] = "no-store"
+    return r
+
+
 @_responsable_requis
 def carte_donnees(request):
     """Dernière position et trace des 3 dernières heures de l'opération en cours (JSON, rafraîchi aux 30 secondes)."""
@@ -607,7 +636,9 @@ def carte_donnees(request):
                .values_list("position", "moment", "precision_m"))
     dernier = pts[-1] if pts else None
     faits = op.passages.filter(statut=Passage.Statut.FAIT).count()
+    sur_carte, a_placer = arrets_carte(request.entreprise, op)
     r = JsonResponse({
+        "arrets": sur_carte, "a_placer": a_placer,
         "operation": {"type": op.get_type_display(), "debut": timezone.localtime(op.debut).strftime("%H h %M"), "faits": faits},
         "trace": [[p.y, p.x] for p, _, _ in pts],
         "dernier": {"lat": dernier[0].y, "lng": dernier[0].x, "precision": dernier[2],

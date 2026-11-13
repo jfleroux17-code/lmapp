@@ -6,8 +6,10 @@
 <h1 class="text-xl font-bold">Carte en direct</h1>
 <p id="etat" class="mb-2 min-h-6 text-sm text-gray-400" role="status">{% if not op %}Aucune opération en cours.{% else %}Chargement…{% endif %}</p>
 <div class="relative -mx-4 overflow-hidden" style="height: calc(100dvh - 15rem); min-height: 18rem;"><div id="carte" class="absolute inset-0"></div></div>
-<p class="mt-2 text-sm text-gray-500">Position envoyée par l'écran de tournée ouvert, quand « Activer la position » est allumé. Rafraîchie aux 30 secondes.</p>
+<div id="a-placer" class="mt-2 text-sm"></div>
+<p class="mt-2 text-sm text-gray-500"><span class="font-semibold text-accent">●</span> à faire · <span class="font-semibold text-ok">●</span> fait · <span class="font-semibold text-danger">●</span> sauté. Position envoyée par l'écran de tournée ouvert, quand « Activer la position » est allumé. Rafraîchie aux 30 secondes.</p>
 <script src="{% static 'vendor/leaflet-1.9.4/leaflet.js' %}"></script>
+{% include "terrain/tournee/_carte_arrets.html" %}
 <script>
   (function () {
     const carte = L.map("carte").setView([45.95, -74.13], 13);
@@ -16,6 +18,7 @@
     const point = L.circleMarker([0, 0], { radius: 10, color: "#000", weight: 3, fillColor: "#3fb950", fillOpacity: 1 });
     const zone = L.circle([0, 0], { radius: 0, color: "#3fb950", weight: 1, fillOpacity: 0.1 });
     const etat = document.getElementById("etat");
+    const entrees = L.layerGroup().addTo(carte);
     let centre = false;
     async function lire() {
       try {
@@ -23,6 +26,9 @@
         const d = await r.json();
         if (!d.operation) { etat.textContent = "Aucune opération en cours."; return; }
         trace.setLatLngs(d.trace);
+        dessinerArrets(carte, entrees, d.arrets || []);
+        listerAPlacer(document.getElementById("a-placer"), d.a_placer || []);
+        if (!centre && !d.dernier && d.arrets && d.arrets.length) { carte.fitBounds(d.arrets.map((a) => [a.lat, a.lng]), { padding: [30, 30] }); centre = true; }
         if (d.dernier) {
           const p = [d.dernier.lat, d.dernier.lng];
           point.setLatLng(p).addTo(carte); zone.setLatLng(p).setRadius(d.dernier.precision || 0).addTo(carte);
