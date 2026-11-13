@@ -99,8 +99,15 @@ def facture(request, pk):
         "envois": f.messages.order_by("-cree_le")[:5],
         "cellulaire": telephone.afficher(f.client.cellulaire),
         "cheques": _cheques_en_main_pour(f),
+        "canaux_envoi": _mots_canaux(f.client),
     }
     return render(request, "terrain/argent/facture.html", contexte)
+
+
+def _mots_canaux(client):
+    from communications.relances import canaux
+
+    return " et ".join(c.label.lower() for c in canaux(client))
 
 
 def _cheques_en_main_pour(f):
@@ -144,12 +151,29 @@ def retirer_ligne(request, pk, ligne_pk):
 @require_POST
 @ecriture_requise
 def emettre(request, pk):
+    """Émettre; avec « envoyer », aussi l'envoyer tout de suite au client par son moyen préféré (lot E de Louis :
+    créer le client, puis envoyer sa facture sans détour)."""
     f = _facture(request, pk)
     try:
         f.emettre()
         messages.success(request, f"Facture n° {f.numero} émise." if f.numero else "Solde émis.")
     except ValidationError as e:
         messages.error(request, " ".join(e.messages))
+        return redirect("terrain:facture", pk=f.pk)
+    if request.POST.get("envoyer"):
+        from communications.factures import envoyer_facture
+        from communications.relances import canaux
+
+        for canal in canaux(f.client):
+            try:
+                m = envoyer_facture(f, canal)
+            except ValidationError as e:
+                messages.error(request, " ".join(e.messages))
+                continue
+            if m.statut == m.Statut.EN_FILE:
+                messages.success(request, f"Facture en route vers {m.destinataire}.")
+            else:
+                messages.error(request, f"{m.get_canal_display()} pas envoyé : {m.erreur or m.get_statut_display().lower()}")
     return redirect("terrain:facture", pk=f.pk)
 
 

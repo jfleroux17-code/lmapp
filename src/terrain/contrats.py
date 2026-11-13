@@ -228,3 +228,77 @@ def solde_anterieur(request, client_pk):
     return render(request, "terrain/argent/contrat.html", {"form": form, "client": client, "titre": "Solde antérieur",
                                                            "explication": "Ce que le client devait avant l'app (saison passée). "
                                                                           "Il paraît tout de suite dans ce qu'il doit et dans les relances."})
+
+
+# Nouveau client en un seul passage (lot E, demande de Louis du 12 novembre 2026) : services choisis avec leur prix
+# pour la saison en cours, nombre de versements; le contrat, son échéancier et la facture de la saison (brouillon)
+# sont créés avec le client. On arrive ensuite sur la facture : « Émettre et envoyer » d'une tape.
+
+def saison_courante(entreprise):
+    from django.utils import timezone
+
+    jour = timezone.localdate()
+    qs = Saison.objects.filter(entreprise=entreprise)
+    return qs.filter(debut__lte=jour, fin__gte=jour).first() or qs.filter(debut__gt=jour).order_by("debut").first() or qs.order_by("-debut").first()
+
+
+def contexte_contrat_rapide(request):
+    ent = request.entreprise
+    services = list(Service.objects.filter(entreprise=ent, actif=True).order_by("ordre", "nom"))
+    choisis = set(request.POST.getlist("k-service"))
+    return {"saison": saison_courante(ent), "versements": range(1, 5), "inscrit": ent.inscrit_taxes,
+            "actif": request.method != "POST" or bool(request.POST.get("k-actif")),
+            "nb_versements": int(request.POST.get("k-versements") or ent.versements_par_defaut or 1),
+            "taxes_incluses": bool(request.POST.get("k-taxes_incluses")),
+            "services": [{"s": s, "choisi": str(s.pk) in choisis,
+                          "prix": request.POST.get(f"k-prix-{s.pk}", f"{s.prix_suggere:.2f}".replace(".", ",") if s.prix_suggere else "")}
+                         for s in services]}
+
+
+def contrat_rapide(request, client, adresse):
+    """Crée le contrat de la saison depuis la section du formulaire. Renvoie (facture brouillon ou None, erreurs)."""
+    if not request.POST.get("k-actif"):
+        return None, []
+    ent = request.entreprise
+    saison = saison_courante(ent)
+    if saison is None:
+        return None, ["Aucune saison : en créer une (Plus, Réglages, Saisons), ou décocher le contrat."]
+    champ = MontantField(max_digits=10, decimal_places=2, min_value=0)
+    lignes, erreurs = [], []
+    for s in Service.objects.filter(entreprise=ent, actif=True, pk__in=[x for x in request.POST.getlist("k-service") if x.isdigit()]).order_by("ordre", "nom"):
+        try:
+            prix = champ.clean(request.POST.get(f"k-prix-{s.pk}", ""))
+        except ValidationError:
+            erreurs.append(f"Prix de « {s.nom} » : un montant, ex. 450 ou 450,00.")
+            continue
+        lignes.append((s, prix))
+    if not lignes and not erreurs:
+        erreurs.append("Contrat : cocher au moins un service, avec son prix.")
+    if erreurs:
+        return None, erreurs
+    try:
+        nb = max(1, min(4, int(request.POST.get("k-versements") or 1)))
+    except ValueError:
+        nb = 1
+    total = sum((p for _, p in lignes), 0)
+    exact = True
+    if request.POST.get("k-taxes_incluses") and ent.inscrit_taxes:
+        total_entendu = total
+        total, exact = calculs.prix_avant_taxes(total, ent.taux_tps, ent.taux_tvq, 1)
+        texte = f"{', '.join(f'{s.nom} {p:.2f} $'.replace('.', ',') for s, p in lignes)} : {str(total_entendu).replace('.', ',')} $ taxes incluses"
+    else:
+        texte = " + ".join(f"{s.nom} {p:.2f} $".replace(".", ",") for s, p in lignes) + (" plus taxes" if ent.inscrit_taxes else "")
+    if nb > 1:
+        texte += f", en {nb} versements"
+    c = Contrat(entreprise=ent, client=client, adresse=adresse, saison=saison, prix=total, prix_texte=texte[:300])
+    try:
+        c.full_clean()
+        c.save()
+        c.services.set([s for s, _ in lignes])
+        c.creer_echeancier_par_defaut(nb)
+    except ValidationError as e:
+        return None, [" ".join(e.messages) + " (Plus, Réglages, Versements des contrats)"]
+    f = c.facturer_saison()
+    if not exact:
+        messages.warning(request, f"Taxes incluses : impossible au cent près (arrondi des taxes), prix avant taxes {c.prix} $.")
+    return f, []

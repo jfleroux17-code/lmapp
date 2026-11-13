@@ -112,7 +112,12 @@
     {% if lignes %}
       <form method="post" action="{% url 'terrain:emettre' f.pk %}" x-data="{ envoi: false }"
             @submit="if (envoi || !confirm('Émettre la facture? Elle recevra son numéro et ne pourra plus être modifiée.')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
-        <button class="gros-bouton mb-3 bg-accent text-nuit" :class="{ 'opacity-60': envoi }">Émettre la facture ({{ f.total|argent }})</button>
+        {% if canaux_envoi %}
+          <button name="envoyer" value="1" class="gros-bouton mb-3 bg-accent text-nuit" :class="{ 'opacity-60': envoi }">Émettre et envoyer par {{ canaux_envoi }} ({{ f.total|argent }})</button>
+          <button class="gros-bouton mb-3 border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">Émettre seulement</button>
+        {% else %}
+          <button class="gros-bouton mb-3 bg-accent text-nuit" :class="{ 'opacity-60': envoi }">Émettre la facture ({{ f.total|argent }})</button>
+        {% endif %}
       </form>
     {% endif %}
     <form method="post" action="{% url 'terrain:supprimer_brouillon' f.pk %}" @submit="if (!confirm('Supprimer ce brouillon?')) $event.preventDefault()">{% csrf_token %}

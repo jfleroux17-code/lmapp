@@ -124,3 +124,61 @@ class ContratsFicheTests(TestCase):
         self.assertEqual(self.client.post(f"/clients/{self.client_.pk}/contrats/nouveau/", self.donnees()).status_code, 403)
         self.assertEqual(self.client.post(f"/clients/{self.client_.pk}/solde-anterieur/", {"montant": "5"}).status_code, 403)
         self.assertFalse(Contrat.objects.exists())
+
+
+@override_settings(ALLOWED_HOSTS=["*"])
+class NouveauClientEnUnPassageTests(TestCase):
+    """Lot E : client, contrat de la saison, échéancier et facture en un seul passage; émettre et envoyer d'une tape."""
+
+    @classmethod
+    def setUpTestData(cls):
+        U = get_user_model()
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai", domaine=HOTE, inscrit_taxes=True, ville="Sainte-Adèle",
+                                            versements_par_defaut=2, dates_versements="15/01", prochain_numero_facture=700,
+                                            courriel_reponse="louis@exemple.test")
+        cls.louis = U.objects.create_user("louis", password="mot-de-passe-solide-123")
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="admin")
+        cls.saison = Saison.objects.create(entreprise=cls.ent, nom="2026-2027", debut=date(2026, 11, 1), fin=date(2027, 4, 30))
+        cls.entree = Service.objects.create(entreprise=cls.ent, nom="Entrée", prix_suggere=Decimal("450"))
+        cls.abrasif = Service.objects.create(entreprise=cls.ent, nom="Abrasif", prix_suggere=Decimal("50"))
+
+    def setUp(self):
+        self.client.defaults["HTTP_HOST"] = HOTE
+        self.client.force_login(self.louis)
+
+    def donnees(self, **kw):
+        d = {"c-prenom": "Marc", "c-nom": "Dubé", "c-cellulaire": "450 555-0198", "c-courriel": "marc@example.com", "c-canal_prefere": "courriel",
+             "c-mode_paiement": "interac", "c-statut": "actif", "c-avis_operations": "on",
+             "a-ligne1": "10, rue des Essais", "a-ville": "Sainte-Adèle", "a-code_postal": "J8B 1A1",
+             "k-actif": "1", "k-service": [self.entree.pk, self.abrasif.pk], f"k-prix-{self.entree.pk}": "480",
+             f"k-prix-{self.abrasif.pk}": "60", "k-versements": "2"}
+        d.update(kw)
+        return d
+
+    @mock.patch("django.utils.timezone.localdate", return_value=date(2026, 11, 13))
+    def test_client_contrat_et_facture_puis_emettre_et_envoyer(self, _):
+        page = self.client.get("/clients/nouveau/")
+        self.assertContains(page, "Contrat de la saison 2026-2027")
+        self.assertContains(page, 'name="k-prix-')
+        r = self.client.post("/clients/nouveau/", self.donnees())
+        c = Contrat.objects.get(client__nom="Dubé")
+        f = c.factures.get()
+        self.assertRedirects(r, f"/factures/{f.pk}/", fetch_redirect_response=False)
+        self.assertEqual((c.prix, sorted(c.services.values_list("nom", flat=True)), c.versements.count()), (Decimal("540.00"), ["Abrasif", "Entrée"], 2))
+        self.assertEqual(c.prix_texte, "Abrasif 60,00 $ + Entrée 480,00 $ plus taxes, en 2 versements")  # ordre du catalogue
+        self.assertEqual((f.statut, f.sous_total), ("brouillon", Decimal("540.00")))
+        page = self.client.get(f"/factures/{f.pk}/")
+        self.assertContains(page, "Émettre et envoyer par courriel")
+        r = self.client.post(f"/factures/{f.pk}/emettre/", {"envoyer": "1"}, follow=True)
+        f.refresh_from_db()
+        self.assertEqual((f.statut, f.numero), ("emise", 700))
+        self.assertEqual(f.messages.get().destinataire, "marc@example.com")
+        self.assertContains(self.client.get(f"/clients/{c.client_id}/"), "Prix : ")
+
+    def test_erreur_dans_le_contrat_rien_n_est_cree(self):
+        r = self.client.post("/clients/nouveau/", self.donnees(**{"k-service": []}))
+        self.assertContains(r, "cocher au moins un service")
+        self.assertFalse(Client.objects.filter(nom="Dubé").exists())
+        r = self.client.post("/clients/nouveau/", self.donnees(**{"k-actif": ""}))  # sans contrat : le client seul
+        self.assertRedirects(r, f"/clients/{Client.objects.get(nom='Dubé').pk}/", fetch_redirect_response=False)
+        self.assertFalse(Contrat.objects.exists())

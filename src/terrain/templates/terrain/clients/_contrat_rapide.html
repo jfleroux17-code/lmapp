@@ -1,0 +1,43 @@
+{% load argent %}
+{# Lot E : le contrat de la saison avec le client, en un seul passage #}
+<fieldset class="space-y-4" x-data="{ actif: {{ contrat_rapide.actif|yesno:'true,false' }} }">
+  <legend class="mb-2 text-lg font-bold text-accent">Contrat de la saison{% if contrat_rapide.saison %} {{ contrat_rapide.saison }}{% endif %}</legend>
+  {% for e in erreurs_contrat %}<p class="rounded-xl bg-danger/10 p-3 text-danger">{{ e }}</p>{% endfor %}
+  {% if not contrat_rapide.saison %}
+    <p class="text-sm text-gray-400">Aucune saison : en créer une dans Plus, Réglages, Saisons pour ajouter le contrat ici.</p>
+  {% else %}
+  <label class="flex min-h-14 cursor-pointer items-center gap-3">
+    <input type="checkbox" name="k-actif" value="1" x-model="actif" class="h-6 w-6 accent-[#f5c400]">
+    <span>Ajouter le contrat et préparer sa facture</span>
+  </label>
+  <div x-show="actif" x-cloak class="space-y-4">
+    {% if contrat_rapide.services %}
+    <div class="space-y-2">
+      <span class="block text-gray-300">Services et prix pour la saison {% if contrat_rapide.inscrit %}(avant taxes){% endif %}</span>
+      {% for x in contrat_rapide.services %}
+        <div class="flex items-center gap-3" x-data="{ on: {{ x.choisi|yesno:'true,false' }} }">
+          <label class="flex min-h-12 flex-1 cursor-pointer items-center gap-3">
+            <input type="checkbox" name="k-service" value="{{ x.s.pk }}" x-model="on" class="h-6 w-6 shrink-0 accent-[#f5c400]">
+            <span>{{ x.s.nom }}</span>
+          </label>
+          <input name="k-prix-{{ x.s.pk }}" value="{{ x.prix }}" inputmode="decimal" class="champ w-32 text-right" placeholder="0,00"
+                 aria-label="Prix de {{ x.s.nom }}" :disabled="!on" :class="{ 'opacity-40': !on }">
+        </div>
+      {% endfor %}
+    </div>
+    {% else %}
+      <p class="text-sm text-gray-400">Aucun service au catalogue : les ajouter dans Plus, Réglages, Services et prix.</p>
+    {% endif %}
+    {% if contrat_rapide.inscrit %}
+    <label class="flex min-h-12 cursor-pointer items-center gap-3">
+      <input type="checkbox" name="k-taxes_incluses" value="1" {% if contrat_rapide.taxes_incluses %}checked{% endif %} class="h-6 w-6 accent-[#f5c400]">
+      <span>Ces prix comprennent déjà les taxes</span>
+    </label>
+    {% endif %}
+    <label class="block"><span class="mb-2 block text-gray-300">Nombre de versements</span>
+      <select name="k-versements" class="champ">{% for n in contrat_rapide.versements %}<option value="{{ n }}" {% if n == contrat_rapide.nb_versements %}selected{% endif %}>{{ n }}</option>{% endfor %}</select>
+      <span class="mt-1 block text-sm text-gray-500">Le 1er aujourd'hui, les suivants aux dates de tes réglages. Une seule facture pour la saison, avec les versements dessus.</span>
+    </label>
+  </div>
+  {% endif %}
+</fieldset>

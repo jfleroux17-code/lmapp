@@ -37,6 +37,7 @@
 </div>
 {% with a=adresses.0 %}{% if a %}<p class="mb-3 text-gray-300">{{ a.objet.ligne1 }}{% if a.rang and a.objet.secteur %} · <span class="text-gray-400">{% if a.rang == 1 %}1<sup>er</sup>{% else %}{{ a.rang }}<sup>e</sup>{% endif %} arrêt, secteur {{ a.objet.secteur.nom }}</span>{% elif a.rang %} · <span class="text-gray-400">{% if a.rang == 1 %}1<sup>er</sup>{% else %}{{ a.rang }}<sup>e</sup>{% endif %} arrêt</span>{% endif %}</p>{% endif %}{% endwith %}
 
+{% if prix_saisons %}<p class="mb-2 text-sm text-gray-400">Prix : {% for c in prix_saisons %}<span class="mr-2 inline-block">{{ c.saison.nom }} <span class="text-gray-200">{{ c.prix|argent }}</span>{% if c.type == "au_passage" %} par passage{% endif %}{% if not forloop.last %} ·{% endif %}</span>{% endfor %} <span class="text-gray-500">(avant taxes)</span></p>{% endif %}
 {% if client.proprietaire_non_occupant %}<p class="mb-2 text-sm font-semibold text-accent">Propriétaire non occupant : avis des opérations aux locataires{% if not client.contacts.exists %} (aucun locataire inscrit){% endif %}, factures au propriétaire.</p>
 {% elif not client.avis_operations %}<p class="mb-2 text-sm font-semibold text-gray-400">Ne veut pas d'avis pendant les opérations.</p>{% endif %}
 {% if client.statut == "liste_noire" %}
@@ -100,7 +101,7 @@ dans l'ordre habituel (les colonnes sont en « display: contents », l'ordre vie
         <div><div class="font-semibold">Contrat {{ c.saison.nom }}</div>
           <div class="text-sm text-gray-400">{{ c.get_type_display }} · {{ c.prix|argent }} avant taxes{% if c.adresse %} · {{ c.adresse.ligne1 }}{% endif %}</div>
           {% if c.prix_texte %}<div class="text-sm text-gray-400">« {{ c.prix_texte }} »</div>{% endif %}
-          {% if c.versements.all %}<div class="mt-1 text-sm">{% for v in c.versements.all %}<span class="mr-3 inline-block tabular-nums">{{ v.date_prevue|date_qc:"j M" }} : {{ v.montant|argent }}{% if v.facture_id %} ✓{% endif %}</span>{% endfor %}</div>{% endif %}</div>
+          {% if c.versements.all %}<div class="mt-1 text-sm">{% for v in c.versements.all %}<span class="mr-3 inline-block tabular-nums">{{ v.date_prevue|date_qc:"j M" }} : {{ v.montant|argent }}</span>{% endfor %}</div>{% endif %}</div>
         <div class="flex shrink-0 flex-col items-end">
           <a href="{% url 'facturation:contrat_pdf' c.pk %}" class="flex min-h-12 items-center text-accent" target="_blank" rel="noopener">PDF</a>
           {% if modifier_clients and not c.nb_factures %}<a href="{% url 'terrain:modifier_contrat' c.pk %}" class="flex min-h-12 items-center text-accent">Modifier</a>{% endif %}

@@ -129,6 +129,8 @@ def fiche(request, pk):
         "contacts": [{"objet": k, "cellulaire": telephone.afficher(k.cellulaire)} for k in client.contacts.all()],
         "messages_client": client.messages.order_by("-cree_le")[:10],
         "demandes_client": client.demandes.order_by("statut", "-cree_le")[:10],
+        # Prix des saisons, d'un coup d'œil (lot E) : pour décider du prix de la prochaine
+        "prix_saisons": client.contrats.select_related("saison").order_by("saison__debut", "pk")[:6],
         **resume_client(client),
     }
     return render(request, "terrain/fiche.html", contexte)

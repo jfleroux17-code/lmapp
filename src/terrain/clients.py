@@ -165,18 +165,29 @@ def _enregistrer(form, **attributs):
 @modification_clients_requise
 def nouveau(request):
     ent = request.entreprise
+    from terrain import contrats
+
     fc = ClientForm(request.POST or None, instance=Client(entreprise=ent), prefix="c")
     fa = AdresseForm(request.POST or None, instance=Adresse(entreprise=ent), prefix="a", entreprise=ent)
+    erreurs_contrat = []
     if request.method == "POST":
         with transaction.atomic():
             client = _enregistrer(fc, entreprise=ent)
             adresse = _enregistrer(fa, entreprise=ent, client=client) if client else None
             if client and adresse:
-                messages.success(request, f"Client ajouté : {client.nom_affiche}.")
-                return redirect("terrain:fiche", pk=client.pk)
+                # Contrat de la saison, son échéancier et sa facture (lot E) : tout ou rien avec le client
+                facture, erreurs_contrat = contrats.contrat_rapide(request, client, adresse)
+                if not erreurs_contrat:
+                    if facture is not None:
+                        messages.success(request, f"Client ajouté : {client.nom_affiche}, avec son contrat. Sa facture de la saison "
+                                                  "est prête : « Émettre et envoyer ».")
+                        return redirect("terrain:facture", pk=facture.pk)
+                    messages.success(request, f"Client ajouté : {client.nom_affiche}.")
+                    return redirect("terrain:fiche", pk=client.pk)
             transaction.set_rollback(True)
     return render(request, "terrain/clients/formulaire.html", {
         "titre": "Nouveau client", "formulaires": [("Client", fc), ("Adresse de service", fa)], "annuler": "terrain:accueil",
+        "contrat_rapide": contrats.contexte_contrat_rapide(request), "erreurs_contrat": erreurs_contrat,
     })
 
 
