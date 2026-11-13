@@ -77,5 +77,25 @@
       </div>
     </nav>
   {% endblock %}{% endif %}
+  <script>
+    // Ancres (#argent, #relancer...) : arriver sous l'en-tête collé en haut, pas derrière (demande de Louis, 12 novembre 2026)
+    (function () {
+      const entete = document.querySelector("header.sticky");
+      const ajuster = () => { document.documentElement.style.scrollPaddingTop = ((entete ? entete.offsetHeight : 0) + 12) + "px"; };
+      ajuster(); window.addEventListener("resize", ajuster);
+      // Ouvrir le repli qui contient la cible, puis y aller une fois la page redessinée
+      window.allerA = function (id) {
+        const cible = document.getElementById(id);
+        if (!cible) return true;
+        let p = cible.closest("details");
+        while (p) { p.open = true; p = p.parentElement.closest("details"); }
+        requestAnimationFrame(() => requestAnimationFrame(() => { cible.scrollIntoView({ behavior: "smooth", block: "start" }); history.replaceState(null, "", "#" + id); }));
+        return false;
+      };
+      if (location.hash.length > 1 && document.getElementById(location.hash.slice(1))) {
+        window.addEventListener("load", () => window.allerA(location.hash.slice(1)));
+      }
+    })();
+  </script>
 </body>
 </html>

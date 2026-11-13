@@ -78,6 +78,30 @@ class ArgentTerrainTests(TestCase):
         self.assertEqual(f.paiements.get(mode="interac").reference, "CA1234")
         self.assertNotContains(self.client.get(f"/factures/{f.pk}/"), "Paiement reçu")
 
+    def test_cheque_postdate_depuis_encaisser(self):
+        from facturation.models import ChequePostdate
+        f, _ = self.creer()
+        f.emettre()
+        self.assertContains(self.client.get(f"/factures/{f.pk}/?payer=1"), "Chèque postdaté")
+        plus_tard = timezone.localdate() + timedelta(days=60)
+        r = self.client.post(f"/factures/{f.pk}/paiement/", {"mode": "postdate", "montant": "114,98", "reference": "205",
+                                                             "date_cheque": plus_tard.isoformat(), "recu": "1"}, follow=True)
+        self.assertContains(r, "noté (en main)")
+        c = ChequePostdate.objects.get()
+        self.assertEqual((c.facture, c.montant, c.date_cheque, c.numero, c.statut), (f, D("114.98"), plus_tard, "205", "en_main"))
+        f.refresh_from_db()
+        self.assertEqual(f.paiements.count(), 0)  # pas de l'argent reçu avant le dépôt
+        self.assertFalse(f.payee)
+        # Double tape : un seul chèque
+        self.client.post(f"/factures/{f.pk}/paiement/", {"mode": "postdate", "montant": "114,98", "date_cheque": plus_tard.isoformat()})
+        self.assertEqual(ChequePostdate.objects.count(), 1)
+        # Sans date : refusé
+        r = self.client.post(f"/factures/{f.pk}/paiement/", {"mode": "postdate", "montant": "10"}, follow=True)
+        self.assertContains(r, "date écrite sur le chèque")
+        # Daté d'aujourd'hui : un chèque ordinaire, encaissé tout de suite
+        self.client.post(f"/factures/{f.pk}/paiement/", {"mode": "postdate", "montant": "10", "date_cheque": timezone.localdate().isoformat()})
+        self.assertEqual(list(f.paiements.values_list("mode", "montant")), [("cheque", D("10.00"))])
+
     def test_paiement_d_un_autre_jour(self):
         f, _ = self.creer()
         f.emettre()

@@ -75,7 +75,7 @@ dans l'ordre habituel (les colonnes sont en « display: contents », l'ordre vie
     <div class="mb-3 text-sm text-gray-400">{{ nb_dues }} facture{{ nb_dues|pluralize }} · la plus vieille : {% if jours_plus_vieille %}{{ jours_plus_vieille }} jour{{ jours_plus_vieille|pluralize }}{% else %}d'aujourd'hui{% endif %}</div>
     {% if ecriture %}<div class="grid grid-cols-2 gap-2">
       <a href="{% url 'terrain:facture' plus_vieille.pk %}?payer=1" class="gros-bouton min-h-16 bg-ok text-nuit">Encaisser</a>
-      {% if relance %}<a href="#relancer" class="gros-bouton min-h-16 border-2 border-accent text-accent" onclick="document.getElementById('argent').open = true">Relancer</a>{% endif %}
+      {% if relance %}<a href="#relancer" class="gros-bouton min-h-16 border-2 border-accent text-accent" onclick="return allerA('relancer')">Relancer</a>{% endif %}
     </div>{% endif %}
   {% else %}
     <div class="text-lg font-bold text-ok">Rien à payer</div>

@@ -40,8 +40,13 @@ class LigneForm(forms.Form):
     prix = MontantField(max_digits=10, decimal_places=2, min_value=ZERO, error_messages={"required": "Indiquer le prix."})
 
 
+POSTDATE = "postdate"  # chèque daté plus tard : noté en main, pas de l'argent reçu (D9), depuis Encaisser (demande de Louis)
+
+
 class PaiementForm(forms.Form):
-    mode = forms.ChoiceField(choices=Paiement.MODES_RECUS, error_messages={"required": "Choisir le mode de paiement."})
+    mode = forms.ChoiceField(choices=list(Paiement.MODES_RECUS) + [(POSTDATE, "Chèque postdaté")],
+                             error_messages={"required": "Choisir le mode de paiement."})
+    date_cheque = forms.DateField(required=False)
     montant = MontantField(max_digits=10, decimal_places=2, min_value=Decimal("0.01"))
     reference = forms.CharField(max_length=100, required=False)
     date = forms.DateField(required=False)
@@ -88,7 +93,8 @@ def facture(request, pk):
         "f": f, "client": f.client, "lignes": f.lignes.all(), "paiements": f.paiements.order_by("date", "pk"),
         "ecriture": peut_ecrire(request), "services": _services(request),
         "form_ligne": LigneForm(), "form_paiement": PaiementForm(initial={"montant": f.solde}),
-        "modes": Paiement.MODES_RECUS, "aujourdhui": timezone.localdate(),
+        "modes": list(Paiement.MODES_RECUS) + [(POSTDATE, "Chèque postdaté")], "aujourdhui": timezone.localdate(),
+        "demain": timezone.localdate() + timedelta(days=1),
         "envois": f.messages.order_by("-cree_le")[:5],
         "cellulaire": telephone.afficher(f.client.cellulaire),
         "cheques": _cheques_en_main_pour(f),
@@ -179,6 +185,13 @@ def paiement(request, pk):
         messages.error(request, " ".join(e for errs in form.errors.values() for e in errs))
         return redirect("terrain:facture", pk=f.pk)
     d = form.cleaned_data
+    if d["mode"] == POSTDATE:
+        if not d.get("date_cheque"):
+            messages.error(request, "Indiquer la date écrite sur le chèque.")
+            return redirect(f"/factures/{f.pk}/?payer=1")
+        if d["date_cheque"] > timezone.localdate():
+            return _cheque_postdate(request, f, d)
+        d["mode"] = Paiement.Mode.CHEQUE  # daté d'aujourd'hui ou avant : un chèque ordinaire, encaissé tout de suite
     # Double tape (réseau lent, gants) : le même paiement il y a moins d'une minute n'est pas enregistré deux fois
     if f.paiements.filter(montant=d["montant"], mode=d["mode"], cree_le__gte=timezone.now() - timedelta(minutes=1)).exists():
         messages.info(request, "Ce paiement est déjà enregistré.")
@@ -204,6 +217,29 @@ def paiement(request, pk):
         "detail": f"{dict(Paiement.Mode.choices)[d['mode']]}" + (" · reçu envoyé" if recu_parti else "")
                   + ("" if reste <= 0 else f" · reste {argent(reste)}"),
     }
+    return redirect("terrain:fiche", pk=f.client_id)
+
+
+def _cheque_postdate(request, f, d):
+    """Chèque daté plus tard, remis à Louis pour cette facture : noté en main, déposé à sa date (écran des chèques)."""
+    from facturation.models import ChequePostdate
+    from facturation.templatetags.argent import argent
+
+    c = ChequePostdate(entreprise=f.entreprise, client=f.client, facture=f, montant=d["montant"],
+                       date_cheque=d["date_cheque"], numero=d.get("reference", "")[:30])
+    deja = ChequePostdate.objects.filter(facture=f, montant=c.montant, date_cheque=c.date_cheque,
+                                         cree_le__gte=timezone.now() - timedelta(minutes=1)).exists()
+    if deja:  # double tape
+        messages.info(request, "Ce chèque est déjà noté.")
+        return redirect("terrain:fiche", pk=f.client_id)
+    try:
+        c.full_clean()
+        c.save()
+    except ValidationError as e:
+        messages.error(request, " ".join(e.messages))
+        return redirect(f"/factures/{f.pk}/?payer=1")
+    messages.success(request, f"Chèque postdaté de {argent(c.montant)} daté du {c.date_cheque:%d/%m/%Y} noté (en main). "
+                              "Il sera à déposer à sa date (Argent, Chèques). La facture reste due d'ici là.")
     return redirect("terrain:fiche", pk=f.client_id)
 
 
