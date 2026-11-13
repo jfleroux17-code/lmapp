@@ -99,7 +99,7 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 
 ### Demandes de Louis du 12 novembre 2026 (relayées par JF, classées)
 
-Ordre proposé : lot A, puis B, C, D, E, F, G. Rien n'est commencé.
+Ordre proposé : lot A, puis la facturation (une facture par saison, une par passage : avant l'import du fichier de Louis), puis B, C, D, E, F, G. Rien n'est commencé.
 
 **Lot A : petites corrections d'écran**
 - [ ] (6) « + Nouvelle demande » : chercher et choisir le client; « Lier à un client » sur une demande qui n'en a pas.
@@ -137,7 +137,7 @@ Ordre proposé : lot A, puis B, C, D, E, F, G. Rien n'est commencé.
 - **Contrat au passage : une facture par passage, payable sur réception** (délai réglable dans les Réglages). À la fin de l'opération, écran « Factures des passages », tout coché, émises et envoyées d'une tape (un Fait corrigé en Sauté ne laisse rien à annuler).
 - Nouveau client (lot E) : la facture créée est donc celle de la saison au complet.
 - Taux de Louis : question ajoutée dans sa section.
-- Reste à confirmer : factures, relances et reçus d'un propriétaire non occupant seulement au propriétaire, jamais aux locataires (lot B).
+- **Propriétaire non occupant** (lot B) : factures, relances, reçus et contrat au propriétaire seulement, **jamais aux locataires**; avis des opérations (début, proximité, terminé, manuels) aux locataires seulement, **jamais au propriétaire**.
 
 **Android** : rien à refaire (app web). Essai de 10 minutes sur un vrai Android à faire en test (connexion, tournée, position, photo, notification).
 
