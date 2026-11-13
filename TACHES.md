@@ -117,6 +117,10 @@ Ordre proposé : lot A, puis la facturation (une facture par saison, une par pas
 - [x] Double authentification (MFA) par Google Authenticator (13 novembre 2026) : en prod, **au choix pour l'instant** (`LMAPP_DOUBLE_AUTH_OBLIGATOIRE=0` dans le `.env` de la prod); en test, obligatoire pour les administrateurs.
 - [ ] **JF, avec Louis** : rendre la double authentification obligatoire en prod (`LMAPP_DOUBLE_AUTH_OBLIGATOIRE=1`, puis `docker compose up -d`); Louis installe Google Authenticator et note ses codes de secours.
 - [x] **Nouveau `site.zip` déposé et vérifié en ligne** (13 novembre 2026 : fonctions à jour, 8 captures, 6 cellulaire et 2 bureau, style.css et consentement.js en version 20261113-1).
+- [ ] **JF : installer le minuteur de redémarrage par courriel** (audit, point 7), une fois, avec sudo :
+  `sudo install -m 755 -o root -g root /srv/lmapp/outils/redemarrage_hote.sh /usr/local/sbin/lmapp-redemarrage`
+  `sudo install -m 644 /srv/lmapp/outils/systemd/lmapp-redemarrage.service /srv/lmapp/outils/systemd/lmapp-redemarrage.timer /etc/systemd/system/`
+  `sudo systemctl daemon-reload && sudo systemctl enable --now lmapp-redemarrage.timer`
 - [ ] **Audit de sécurité** (`docs/audit-securite.md`, 13 novembre 2026) : 19 recommandations. **Faits (go de JF) : 5 (sessions de 12 h pour l'administration, « Déconnecter mes autres appareils »), 9 (alertes de sécurité par courriel), 10 (Argon2).** **4 et 6, étape 1 faite** (rapports DMARC à dmarc@, CSP en rapport seulement); vers le 20 novembre 2026 : lire `rapports_dmarc` et les rapports CSP, puis proposer à JF DMARC quarantine et la CSP active. Reste à décider : les autres, et le point 7 (redémarrage).
 - [x] Données de test riches dans test.ledeneigeur.com (12 novembre 2026) : 19 clients, scénarios de tous les cas. Recommencer à neuf : `cd /srv/lmapp/test && docker compose run --rm app python manage.py donnees_essai --reinitialiser`.
 
