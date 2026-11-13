@@ -85,6 +85,34 @@ class DemandesTests(TestCase):
         self.client.post("/demandes/nouvelle/", {"client": etranger.pk, "genre": "autre", "description": "x"})
         self.assertIsNone(Demande.objects.get().client)
 
+    def test_choisir_le_client_d_une_nouvelle_demande(self):
+        page = self.client.get("/demandes/nouvelle/")
+        self.assertContains(page, "Chercher un client")
+        r = self.client.get("/demandes/choisir-client/?q=tremb", HTTP_HX_REQUEST="true")
+        self.assertContains(r, f"/demandes/nouvelle/?client={self.c.pk}")
+        Client.objects.create(entreprise=self.autre, nom="Tremblay")  # autre entreprise : jamais proposé
+        self.assertEqual(len(self.client.get("/demandes/choisir-client/?q=tremb").context["clients"]), 1)
+        self.assertContains(self.client.get(f"/demandes/nouvelle/?client={self.c.pk}"), "changer de client")
+
+    def test_lier_une_demande_a_un_client(self):
+        m = Message.objects.create(entreprise=self.ent, genre="recu", canal="texto", sens="entrant", statut="recu",
+                                   contenu="Mon entrée est bloquée", expediteur="+14505550142")
+        d = Demande.objects.create(entreprise=self.ent, genre="oubli", description="Bloquée", contact="+14505550142", message=m)
+        page = self.client.get(f"/demandes/{d.pk}/")
+        self.assertContains(page, "Lier à un client")
+        r = self.client.get(f"/demandes/choisir-client/?q=tremb&demande={d.pk}")
+        self.assertContains(r, f"/demandes/{d.pk}/client/")
+        r = self.client.post(f"/demandes/{d.pk}/client/", {"client": self.c.pk}, follow=True)
+        self.assertContains(r, "Demande liée à Tremblay")
+        d.refresh_from_db()
+        m.refresh_from_db()
+        self.assertEqual((d.client, d.adresse, m.client), (self.c, None, self.c))  # deux adresses : pas de choix au hasard
+        self.assertNotContains(self.client.get(f"/demandes/{d.pk}/"), "Lier à un client")
+        etranger = Client.objects.create(entreprise=self.autre, nom="X")
+        self.assertEqual(self.client.post(f"/demandes/{d.pk}/client/", {"client": etranger.pk}).status_code, 404)
+        self.client.force_login(self.lecteur)
+        self.assertEqual(self.client.post(f"/demandes/{d.pk}/client/", {"client": self.c.pk}).status_code, 403)
+
 
 class DossierDommageTests(TestCase):
     """Dossier de dommage (H3) : photo, entente, coût, payé par; effacé avec le client (Loi 25)."""

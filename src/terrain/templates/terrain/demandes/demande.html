@@ -31,6 +31,7 @@
   <p class="mt-3 text-sm text-gray-400">{{ d.get_statut_display }}{% if d.statut == "planifiee" and d.prevue_le %}, prévue le {{ d.prevue_le|date_qc:"j F" }}{% endif %}{% if d.reglee_le %}, le {{ d.reglee_le|date_qc:"j F" }}{% endif %}</p>
   {% if d.reglement %}<p class="mt-1 text-ok">{{ d.reglement }}</p>{% endif %}
 </div>
+{% if ecriture and not d.client %}{% include "terrain/demandes/_recherche_client.html" with demande=d message=None %}{% endif %}
 {% if d.genre == "dommage" or d.photos.exists or d.entente or d.cout is not None %}
 <section class="carte mb-4 p-4">
   <h2 class="mb-2 text-lg font-bold">Dossier{% if d.genre == "dommage" %} de dommage{% endif %}</h2>

@@ -41,7 +41,7 @@ def nouvelle(request):
     ent = request.entreprise
     msg = Message.objects.filter(pk=request.GET.get("message") or request.POST.get("message") or 0, entreprise=ent).first()
     client = Client.objects.filter(pk=request.GET.get("client") or request.POST.get("client") or 0, entreprise=ent).first()
-    if client is None and msg is not None:
+    if client is None and msg is not None and not (request.GET.get("autre") or request.POST.get("autre")):
         client = msg.client
     adresses = list(client.adresses.filter(active=True)) if client else []
     if request.method == "POST":
@@ -68,6 +68,36 @@ def nouvelle(request):
         "description": request.POST.get("description") or (msg.contenu if msg else ""),
         "contact": request.POST.get("contact") or ("" if client or not msg else msg.expediteur),
     })
+
+
+@ecriture_requise
+def choisir_client(request):
+    """Résultats HTMX pendant la frappe : choisir le client d'une nouvelle demande, ou lier une demande existante."""
+    from terrain.views import _recherche
+    q = request.GET.get("q", "").strip()
+    clients = _recherche(request.entreprise, q)[0] if q else []
+    demande_pk = request.GET.get("demande")
+    d = Demande.objects.filter(pk=demande_pk, entreprise=request.entreprise).first() if demande_pk else None
+    return render(request, "terrain/demandes/_choisir_client.html", {
+        "clients": clients, "q": q, "demande": d, "message": request.GET.get("message", "")})
+
+
+@require_POST
+@ecriture_requise
+def lier_client(request, pk):
+    """Rattacher à un client une demande créée sans client (et le message d'où elle vient, s'il n'en avait pas)."""
+    d = get_object_or_404(Demande, pk=pk, entreprise=request.entreprise)
+    client = get_object_or_404(Client, pk=request.POST.get("client") or 0, entreprise=request.entreprise)
+    d.client = client
+    adresses = list(client.adresses.filter(active=True))
+    d.adresse = adresses[0] if len(adresses) == 1 else None
+    d.full_clean()
+    d.save()
+    if d.message_id and d.message.client_id is None:
+        d.message.client = client
+        d.message.save(update_fields=["client"])
+    messages.success(request, f"Demande liée à {client.nom_affiche}.")
+    return redirect("terrain:demande", pk=d.pk)
 
 
 @require_POST
