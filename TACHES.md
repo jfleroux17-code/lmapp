@@ -85,6 +85,7 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - [x] **Comptabilité** (9 novembre 2026) : tout à la main. L'export et le rapport de saison pour le comptable deviennent importants.
 - [x] **Clients commerciaux** : aucun pour l'instant (9 novembre 2026).
 - [ ] **Matériel** : support de téléphone et chargeur pour le tracteur.
+- [ ] **Taux à l'heure et au déplacement** (pour les jobs manuelles l'hiver, comme à Saint-Sauveur, et le paysagement l'été) : $ par heure, $ par km ou par déplacement, minimum facturé, prix du matériel courant; mêmes taux l'hiver et l'été? (JF ne les a pas, 12 novembre 2026; lots C et D : champs dans ses Réglages en attendant.)
 
 ## Claude Code
 
@@ -131,7 +132,12 @@ Ordre proposé : lot A, puis B, C, D, E, F, G. Rien n'est commencé.
 **Lot G : météo**
 - [ ] (15) Option 1 retenue par JF : modèles d'Environnement Canada (GeoMet, grille fine) au point exact de chaque ville desservie; avertissements officiels de la page régionale.
 
-**Questions à JF avant les lots concernés** : facture d'un nouveau client = 1er versement ou contrat au complet (E)? Taux de Louis pour le temps et le déplacement, l'hiver et l'été ($/heure, $/km, minimum) (C, D)? Factures d'un propriétaire non occupant jamais aux locataires (B)?
+**Décisions de JF (12 novembre 2026)** :
+- **Contrat saisonnier : une seule facture par client et par saison, pour le total**, émise à la signature, avec l'échéancier (montants et dates des versements) imprimé dessus; les paiements s'appliquent à cette facture. **À la date d'un versement, pas de nouvelle facture : un rappel de versement** au client (montant, date, lien de la facture), proposé à Louis d'une tape. Relances : retard compté depuis le versement échu non payé. Chèques postdatés rattachés au versement. Import : taxes une seule fois sur le total. **Remplace la facture par versement (B3)**; à faire avant l'import du fichier de Louis.
+- **Contrat au passage : une facture par passage, payable sur réception** (délai réglable dans les Réglages). À la fin de l'opération, écran « Factures des passages », tout coché, émises et envoyées d'une tape (un Fait corrigé en Sauté ne laisse rien à annuler).
+- Nouveau client (lot E) : la facture créée est donc celle de la saison au complet.
+- Taux de Louis : question ajoutée dans sa section.
+- Reste à confirmer : factures, relances et reçus d'un propriétaire non occupant seulement au propriétaire, jamais aux locataires (lot B).
 
 **Android** : rien à refaire (app web). Essai de 10 minutes sur un vrai Android à faire en test (connexion, tournée, position, photo, notification).
 
