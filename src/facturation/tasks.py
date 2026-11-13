@@ -37,6 +37,15 @@ def aviser_rappels_de_versement(aujourdhui=None):
                                f"{prets} facture{'s' if prets > 1 else ''} de saison à vérifier et envoyer. Rien ne part sans vous.",
                                url="/factures/versements/")
         n += prets
+        # Factures de saison dont l'envoi était prévu pour aujourd'hui (client inscrit d'avance)
+        from facturation.models import Facture
+
+        prevues = Facture.objects.filter(entreprise=ent, statut=Facture.Statut.BROUILLON, envoyer_le=aujourdhui).count()
+        if prevues:
+            notifier_plus_tard(ent.pk, "Factures prévues pour aujourd'hui",
+                               f"{prevues} facture{'s' if prevues > 1 else ''} de saison à envoyer aujourd'hui. Rien ne part sans vous.",
+                               url="/factures/versements/")
+        n += prevues
         # Avisé le jour où le rappel devient possible (pas tous les jours ensuite)
         nouveaux = [v for v, _ in a_rappeler(ent, aujourdhui) if v.date_prevue - timedelta(days=ent.jours_avance_versement) == aujourdhui]
         if nouveaux:

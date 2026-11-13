@@ -131,7 +131,7 @@ Ordre proposé : lot A, puis la facturation (une facture par saison, une par pas
 **Lot D : clients d'été (paysagement)** : fait et en prod le 13 novembre 2026 (taux de Louis à inscrire dans Réglages, Factures et taxes, quand on les aura).
 - [x] (5) Fiche du client : hiver, été, ou été et hiver. Factures à la pièce (temps, matériel, déplacement) depuis la fiche, PDF envoyé au client. Tournée, contrats et avis d'hiver sans les clients d'été seulement.
 
-**Lot E : nouveau client en un passage** : fait et en prod le 13 novembre 2026 (contrat de la saison dans « + Nouveau client », services et prix, versements; facture de la saison prête; « Émettre et envoyer » d'une tape; prix des saisons en haut de la fiche).
+**Lot E : nouveau client en un passage** : fait et en prod le 13 novembre 2026 (et date d'envoi de la facture, pour un client inscrit en plein été : demande de JF du 13 novembre) (contrat de la saison dans « + Nouveau client », services et prix, versements; facture de la saison prête; « Émettre et envoyer » d'une tape; prix des saisons en haut de la fiche).
 - [x] (11b) Création : où mettre la neige, obstacles, nombre de versements, services et prix de la saison, puis contrat, facture PDF et « Envoyer la facture » dans la fiche. Client existant : prix des saisons précédentes dans la fiche.
 
 **Lot F : cartes** : fait et en prod le 13 novembre 2026.

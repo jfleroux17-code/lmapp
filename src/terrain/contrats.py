@@ -243,12 +243,15 @@ def saison_courante(entreprise):
 
 
 def contexte_contrat_rapide(request):
+    from django.utils import timezone
+
     ent = request.entreprise
     services = list(Service.objects.filter(entreprise=ent, actif=True).order_by("ordre", "nom"))
     choisis = set(request.POST.getlist("k-service"))
     return {"saison": saison_courante(ent), "versements": range(1, 5), "inscrit": ent.inscrit_taxes,
             "actif": request.method != "POST" or bool(request.POST.get("k-actif")),
             "nb_versements": int(request.POST.get("k-versements") or ent.versements_par_defaut or 1),
+            "envoi": request.POST.get("k-envoi") or timezone.localdate().isoformat(), "aujourdhui": timezone.localdate().isoformat(),
             "taxes_incluses": bool(request.POST.get("k-taxes_incluses")),
             "services": [{"s": s, "choisi": str(s.pk) in choisis,
                           "prix": request.POST.get(f"k-prix-{s.pk}", f"{s.prix_suggere:.2f}".replace(".", ",") if s.prix_suggere else "")}
@@ -280,6 +283,16 @@ def contrat_rapide(request, client, adresse):
         nb = max(1, min(4, int(request.POST.get("k-versements") or 1)))
     except ValueError:
         nb = 1
+    # Date d'envoi de la facture (client qui s'inscrit d'avance, ex. en plein été) : jamais avant aujourd'hui
+    from django.utils import timezone
+    from django.utils.dateparse import parse_date
+
+    aujourdhui = timezone.localdate()
+    envoi = parse_date(request.POST.get("k-envoi") or "") or aujourdhui
+    if envoi < aujourdhui:
+        return None, ["Date d'envoi de la facture : aujourd'hui ou plus tard."]
+    if envoi > saison.fin:
+        return None, [f"Date d'envoi de la facture : au plus tard la fin de la saison ({saison.fin:%d/%m/%Y})."]
     total = sum((p for _, p in lignes), 0)
     exact = True
     if request.POST.get("k-taxes_incluses") and ent.inscrit_taxes:
@@ -295,10 +308,13 @@ def contrat_rapide(request, client, adresse):
         c.full_clean()
         c.save()
         c.services.set([s for s, _ in lignes])
-        c.creer_echeancier_par_defaut(nb)
+        c.creer_echeancier_par_defaut(nb, approbation=envoi)  # 1er versement à l'envoi de la facture
     except ValidationError as e:
         return None, [" ".join(e.messages) + " (Plus, Réglages, Versements des contrats)"]
     f = c.facturer_saison()
+    if envoi > aujourdhui:
+        f.envoyer_le = envoi
+        f.save(update_fields=["envoyer_le"])
     if not exact:
         messages.warning(request, f"Taxes incluses : impossible au cent près (arrondi des taxes), prix avant taxes {c.prix} $.")
     return f, []

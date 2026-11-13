@@ -182,3 +182,25 @@ class NouveauClientEnUnPassageTests(TestCase):
         r = self.client.post("/clients/nouveau/", self.donnees(**{"k-actif": ""}))  # sans contrat : le client seul
         self.assertRedirects(r, f"/clients/{Client.objects.get(nom='Dubé').pk}/", fetch_redirect_response=False)
         self.assertFalse(Contrat.objects.exists())
+
+
+    @mock.patch("django.utils.timezone.localdate", return_value=date(2026, 7, 10))
+    def test_client_inscrit_en_ete_facture_envoyee_plus_tard(self, _):
+        from facturation.models import Facture
+        from unittest import mock as m
+        r = self.client.post("/clients/nouveau/", self.donnees(**{"k-envoi": "2026-11-01"}))
+        c = Contrat.objects.get(client__nom="Dubé")
+        f = c.factures.get()
+        self.assertRedirects(r, f"/clients/{c.client_id}/", fetch_redirect_response=False)
+        self.assertEqual((f.statut, f.envoyer_le), ("brouillon", date(2026, 11, 1)))
+        self.assertEqual(c.versements.order_by("rang").first().date_prevue, date(2026, 11, 1))  # 1er versement à l'envoi
+        self.assertContains(self.client.get(f"/clients/{c.client_id}/"), "À envoyer le")  # (affiche aussi le message de confirmation)
+        self.assertNotContains(self.client.get("/factures/versements/"), "Dubé")  # pas encore proposée
+        # Le jour venu : proposée, puis datée du jour de l'émission
+        with m.patch("django.utils.timezone.localdate", return_value=date(2026, 11, 1)):
+            self.assertContains(self.client.get("/factures/versements/"), "Dubé")
+            f.emettre()
+        f.refresh_from_db()
+        self.assertEqual(f.date_facture, date(2026, 11, 1))
+        r = self.client.post("/clients/nouveau/", self.donnees(**{"c-nom": "Autre", "c-cellulaire": "", "k-envoi": "2026-07-01"}))
+        self.assertContains(r, "ou plus tard")  # apostrophe échappée dans la page

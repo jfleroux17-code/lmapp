@@ -183,6 +183,11 @@ def nouveau(request):
                 # Contrat de la saison, son échéancier et sa facture (lot E) : tout ou rien avec le client
                 facture, erreurs_contrat = contrats.contrat_rapide(request, client, adresse)
                 if not erreurs_contrat:
+                    if facture is not None and facture.envoyer_le:
+                        messages.success(request, f"Client ajouté : {client.nom_affiche}, avec son contrat. Sa facture de la saison "
+                                                  f"est prête en brouillon; elle sera proposée le {facture.envoyer_le:%d/%m/%Y} "
+                                                  "dans « Versements à envoyer ».")
+                        return redirect("terrain:fiche", pk=client.pk)
                     if facture is not None:
                         messages.success(request, f"Client ajouté : {client.nom_affiche}, avec son contrat. Sa facture de la saison "
                                                   "est prête : « Émettre et envoyer ».")

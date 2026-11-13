@@ -564,7 +564,10 @@ def _nb_rappels(entreprise):
 
 def _versements_prets(entreprise):
     """Factures de la saison en brouillon (une par contrat saisonnier), à émettre et envoyer."""
-    return (Facture.objects.filter(entreprise=entreprise, statut=Facture.Statut.BROUILLON, versements__isnull=False).distinct()
+    from django.db.models import Q
+
+    return (Facture.objects.filter(entreprise=entreprise, statut=Facture.Statut.BROUILLON, versements__isnull=False)
+            .filter(Q(envoyer_le=None) | Q(envoyer_le__lte=timezone.localdate())).distinct()
             .select_related("client", "contrat__saison").order_by("date_facture", "client__nom", "pk"))
 
 

@@ -34,9 +34,13 @@
       <span>Ces prix comprennent déjà les taxes</span>
     </label>
     {% endif %}
+    <label class="block"><span class="mb-2 block text-gray-300">Envoyer la facture le</span>
+      <input type="date" name="k-envoi" value="{{ contrat_rapide.envoi }}" min="{{ contrat_rapide.aujourdhui }}" class="champ">
+      <span class="mt-1 block text-sm text-gray-500">Aujourd'hui : on arrive sur la facture pour l'envoyer. Plus tard (ex. client inscrit en plein été) : elle attend en brouillon, puis elle est proposée ce jour-là dans « Versements à envoyer ». Le 1er versement est à cette date.</span>
+    </label>
     <label class="block"><span class="mb-2 block text-gray-300">Nombre de versements</span>
       <select name="k-versements" class="champ">{% for n in contrat_rapide.versements %}<option value="{{ n }}" {% if n == contrat_rapide.nb_versements %}selected{% endif %}>{{ n }}</option>{% endfor %}</select>
-      <span class="mt-1 block text-sm text-gray-500">Le 1er aujourd'hui, les suivants aux dates de tes réglages. Une seule facture pour la saison, avec les versements dessus.</span>
+      <span class="mt-1 block text-sm text-gray-500">Le 1er à l'envoi de la facture, les suivants aux dates de tes réglages. Une seule facture pour la saison, avec les versements dessus.</span>
     </label>
   </div>
   {% endif %}

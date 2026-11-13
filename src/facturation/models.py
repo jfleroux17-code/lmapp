@@ -256,6 +256,10 @@ class Facture(Horodate):
     numero = models.PositiveIntegerField("numéro", null=True, blank=True, help_text="Donné à l'émission.")
     date_facture = models.DateField("date de la facture", default=timezone.localdate)
     date_echeance = models.DateField("date d'échéance", null=True, blank=True)
+    envoyer_le = models.DateField(
+        "à envoyer le", null=True, blank=True,
+        help_text="Facture de la saison d'un client inscrit d'avance (ex. en plein été) : gardée en brouillon jusqu'à cette date, "
+                  "puis proposée dans « Versements à envoyer » (demande de JF, 13 novembre 2026). Datée du jour de l'émission.")
     saison_origine = models.CharField("saison d'origine", max_length=20, blank=True, help_text="Solde d'ouverture : ex. « 2024-2025 ».")
     note = models.TextField("note sur la facture", blank=True, help_text="Imprimée sur la facture.")
     note_interne = models.TextField("note interne", blank=True, help_text="Jamais montrée au client.")
@@ -347,6 +351,10 @@ class Facture(Horodate):
                 if ent.inscrit_taxes:
                     f.taux_tps, f.taux_tvq = ent.taux_tps, ent.taux_tvq
                     f.numero_tps, f.numero_tvq = ent.numero_tps, ent.numero_tvq
+            if f.envoyer_le:  # envoi prévu d'avance : datée du jour où elle part vraiment
+                f.date_facture = timezone.localdate()
+                if f.date_echeance and f.date_echeance < f.date_facture:
+                    f.date_echeance = f.date_facture
             f.statut = self.Statut.EMISE
             f.emise_le = timezone.now()
             f.save()

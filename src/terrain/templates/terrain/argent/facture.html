@@ -9,7 +9,7 @@
     <a href="{% url 'terrain:fiche' client.pk %}" class="inline-flex min-h-10 items-center text-lg font-semibold text-accent">{{ client.nom_affiche }}</a>
     <p class="text-gray-400">{{ f.date_facture|date_qc:"j F Y" }}{% if f.statut == "emise" and not f.payee %}{% if f.versements.exists %} · versement dû le {{ f.date_exigible|date_qc:"j F" }}{% elif f.date_echeance %} · payable le {{ f.date_echeance|date_qc:"j F" }}{% endif %}{% endif %}{% if f.saison_origine %} · saison {{ f.saison_origine }}{% endif %}</p>
   </div>
-  {% if f.statut == "brouillon" %}<span class="pastille bg-accent/20 text-accent">Brouillon</span>
+  {% if f.statut == "brouillon" %}<span class="pastille bg-accent/20 text-accent">{% if f.envoyer_le and f.envoyer_le > aujourdhui %}À envoyer le {{ f.envoyer_le|date_qc:"j F" }}{% else %}Brouillon{% endif %}</span>
   {% elif f.statut == "annulee" %}<span class="pastille bg-danger/20 text-danger">Annulée</span>
   {% elif f.payee %}<span class="pastille bg-ok/20 text-ok">Payée</span>
   {% else %}<span class="pastille bg-danger/20 text-danger">À payer</span>{% endif %}

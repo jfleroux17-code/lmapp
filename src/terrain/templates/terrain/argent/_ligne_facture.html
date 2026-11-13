@@ -7,7 +7,7 @@
   <div class="shrink-0 text-right">
     <div class="whitespace-nowrap font-semibold">{% if f.statut == "emise" and f.solde_du > 0 and f.solde_du != f.total %}{{ f.solde_du|argent }}{% else %}{{ f.total|argent }}{% endif %}</div>
     {# Pastille : mot et couleur, jamais la couleur seule #}
-    {% if f.statut == "brouillon" %}<span class="pastille bg-accent/15 text-accent">Brouillon</span>
+    {% if f.statut == "brouillon" %}<span class="pastille bg-accent/15 text-accent">{% if f.envoyer_le and f.envoyer_le > aujourdhui %}À envoyer le {{ f.envoyer_le|date_qc:"j M" }}{% else %}Brouillon{% endif %}</span>
     {% elif f.statut == "annulee" %}<span class="pastille bg-bordure text-gray-300">Annulée</span>
     {% elif f.solde_du > 0 %}{% if f.date_exigible < aujourdhui %}<span class="pastille bg-danger/15 text-danger">En retard</span>{% elif f.solde_du != f.total %}<span class="pastille bg-danger/15 text-danger">Reste dû</span>{% else %}<span class="pastille bg-danger/15 text-danger">Due</span>{% endif %}
     {% else %}<span class="pastille bg-ok/15 text-ok">Payée</span>{% endif %}
