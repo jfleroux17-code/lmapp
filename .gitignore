@@ -36,3 +36,6 @@ node_modules/
 
 # Silence des alertes de la surveillance (outils/silence.sh)
 /etat/
+
+# Captures et scripts de vérification dans le navigateur (Claude Code), jamais dans le dépôt
+test/apercu/
