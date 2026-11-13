@@ -16,6 +16,7 @@ HOTE = "louis.exemple.test"
 # Nom de la route : pourquoi elle répond sans compte.
 CHEMINS_PUBLICS = {
     "sante": "vérification de santé, répond seulement {app, base}",
+    "csp_rapport": "rapports CSP envoyés par le navigateur (POST seulement, 10 Ko au plus, une ligne au journal, rien gardé)",
     "terrain:connexion": "page de connexion (essais limités, core.connexions)",
     "terrain:deconnexion": "déconnexion (POST seulement)",
     "terrain:manifeste": "manifeste de la PWA (nom de l'entreprise)",

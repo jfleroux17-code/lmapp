@@ -6,6 +6,7 @@ from core import views, vues_double_auth, vues_plateforme
 
 urlpatterns = [
     path("sante/", views.sante, name="sante"),
+    path("csp-rapport/", views.csp_rapport, name="csp_rapport"),
     path("webhooks/twilio/textos/", webhooks.texto_recu, name="twilio_texto"),
     path("webhooks/twilio/statut/", webhooks.statut_texto, name="twilio_statut"),
     path("m/<str:jeton>/", vues_publiques.page, name="photos_message"),

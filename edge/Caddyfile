@@ -48,6 +48,11 @@
 		# HSTS : le navigateur refuse ensuite le HTTP pour ce domaine pendant un an.
 		# Pas de « preload » : ce serait très long à retirer.
 		Strict-Transport-Security "max-age=31536000"
+		# Audit de sécurité, point 6 (go de JF, 13 novembre 2026). Permissions : caméra et position pour l'app
+		# seulement, micro jamais. CSP d'abord en « rapport seulement » (rapports à /csp-rapport/, journal de l'app);
+		# Alpine.js exige 'unsafe-eval', et les pages ont de petits scripts et styles intégrés ('unsafe-inline').
+		Permissions-Policy "camera=(self), geolocation=(self), microphone=(), payment=(), usb=()"
+		Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self'; font-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; report-uri /csp-rapport/"
 	}
 
 	# Administration réservée aux IP de JF (LMAPP_IPS_ADMIN dans edge/.env, hors Git).
