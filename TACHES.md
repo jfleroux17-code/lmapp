@@ -117,7 +117,7 @@ Ordre proposé : lot A, puis la facturation (une facture par saison, une par pas
 - [x] Double authentification (MFA) par Google Authenticator (13 novembre 2026) : en prod, **au choix pour l'instant** (`LMAPP_DOUBLE_AUTH_OBLIGATOIRE=0` dans le `.env` de la prod); en test, obligatoire pour les administrateurs.
 - [ ] **JF, avec Louis** : rendre la double authentification obligatoire en prod (`LMAPP_DOUBLE_AUTH_OBLIGATOIRE=1`, puis `docker compose up -d`); Louis installe Google Authenticator et note ses codes de secours.
 - [x] **Nouveau `site.zip` déposé et vérifié en ligne** (13 novembre 2026 : fonctions à jour, 8 captures, 6 cellulaire et 2 bureau, style.css et consentement.js en version 20261113-1).
-- [ ] **JF : installer le minuteur de redémarrage par courriel** (audit, point 7), une fois, avec sudo :
+- [x] **Minuteur de redémarrage par courriel installé par JF** (13 novembre 2026, vérifié : actif chaque minute) (audit, point 7) :
   `sudo install -m 755 -o root -g root /srv/lmapp/outils/redemarrage_hote.sh /usr/local/sbin/lmapp-redemarrage`
   `sudo install -m 644 /srv/lmapp/outils/systemd/lmapp-redemarrage.service /srv/lmapp/outils/systemd/lmapp-redemarrage.timer /etc/systemd/system/`
   `sudo systemctl daemon-reload && sudo systemctl enable --now lmapp-redemarrage.timer`
