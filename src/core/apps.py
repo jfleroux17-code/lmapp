@@ -15,6 +15,9 @@ class CoreConfig(AppConfig):
         from core import double_auth
 
         user_logged_in.connect(double_auth.marquer_en_attente, dispatch_uid="double_auth_en_attente")
+        from core import securite
+
+        securite.brancher()  # audit, points 5 et 9 : sessions courtes pour l'administration, alertes à JF
         from core.admin_fr import franciser
 
         franciser()  # titres de l'administration (l'app admin a déjà chargé tous les admin.py)

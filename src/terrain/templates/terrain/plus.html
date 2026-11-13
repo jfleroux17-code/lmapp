@@ -43,6 +43,9 @@
 <div class="carte mb-4 divide-y divide-bordure">
   <a href="{% url 'terrain:mot_de_passe' %}" class="rangee-lien"><span>Mon mot de passe <span class="text-gray-400">· {{ user.username }}</span></span><span aria-hidden="true">›</span></a>
   <a href="{% url 'da_activer' %}" class="rangee-lien"><span>Double authentification <span class="text-gray-400">· Google Authenticator</span></span><span aria-hidden="true">›</span></a>
+  <form method="post" action="{% url 'terrain:deconnecter_autres' %}" onsubmit="return confirm('Déconnecter tous vos autres appareils (cellulaire, ordinateur)? Celui-ci reste connecté.')">{% csrf_token %}
+    <button class="rangee-lien w-full text-left"><span>Déconnecter mes autres appareils <span class="text-gray-400">· appareil perdu ou prêté</span></span><span aria-hidden="true">›</span></button>
+  </form>
 </div>
 <form method="post" action="{% url 'terrain:deconnexion' %}" onsubmit="return confirm('Se déconnecter? Il faudra retaper le mot de passe.')">{% csrf_token %}
   <button class="gros-bouton border-2 border-bordure text-gray-300">Déconnexion</button>

@@ -69,6 +69,16 @@ def noter_echec(sender, credentials, request=None, **kwargs):
         return  # refusé pendant un blocage : pas compté
     ip, nom = _ip(request), _nom(credentials.get("username"))
     EchecConnexion.objects.create(ip=ip, nom_utilisateur=nom)
+    # Audit, point 9 : alerte à JF au moment où un blocage commence (une fois par seuil atteint)
+    recents = EchecConnexion.objects.filter(moment__gte=_fenetre())
+    if ip and recents.filter(ip=ip).count() == settings.LMAPP_CONNEXION_MAX_IP:
+        from core.securite import blocage
+
+        blocage(ip, nom, f"{settings.LMAPP_CONNEXION_MAX_IP} échecs depuis la même adresse IP")
+    elif nom and recents.filter(nom_utilisateur=nom).count() == settings.LMAPP_CONNEXION_MAX_COMPTE:
+        from core.securite import blocage
+
+        blocage(ip, nom, f"{settings.LMAPP_CONNEXION_MAX_COMPTE} échecs pour le même utilisateur")
     EchecConnexion.objects.filter(moment__lt=timezone.now() - GARDER).delete()
     journal.info("échec de connexion : utilisateur=%r ip=%s", nom, ip)
 

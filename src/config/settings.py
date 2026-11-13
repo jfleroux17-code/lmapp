@@ -191,6 +191,17 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 # Session longue sur le cellulaire de Louis (K1) : 90 jours.
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 90
+# Audit, point 5 : 12 heures pour l'administration et les superutilisateurs (90 jours gardés pour le cellulaire de tournée)
+LMAPP_SESSION_ADMIN_HEURES = int(env("LMAPP_SESSION_ADMIN_HEURES", "12"))
+# Audit, point 9 : alertes de sécurité par courriel à LMAPP_ALERTES_COURRIEL
+LMAPP_ALERTES_SECURITE = env("LMAPP_ALERTES_SECURITE", "1") == "1"
+# Audit, point 10 : Argon2 d'abord; les anciens mots de passe (PBKDF2) sont convertis à la connexion suivante
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.ScryptPasswordHasher",
+]
 
 # Connexion des écrans de terrain
 LOGIN_URL = "terrain:connexion"

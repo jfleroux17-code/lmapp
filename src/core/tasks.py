@@ -153,3 +153,11 @@ def envoyer_facture_plateforme(facture_id):
 
     f = FacturePlateforme.objects.select_related("entreprise").filter(pk=facture_id).first()
     return bool(f) and abonnement.envoyer(f)
+
+
+@app.task(queue="communications")
+def alerte_securite(sujet, texte):
+    """Alerte de sécurité à JF (core/securite.py), par la boîte de la plateforme."""
+    from core.surveillance import envoyer_courriel
+
+    return envoyer_courriel(f"[Sécurité] {sujet}", texte)

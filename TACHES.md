@@ -117,7 +117,7 @@ Ordre proposé : lot A, puis la facturation (une facture par saison, une par pas
 - [x] Double authentification (MFA) par Google Authenticator (13 novembre 2026) : en prod, **au choix pour l'instant** (`LMAPP_DOUBLE_AUTH_OBLIGATOIRE=0` dans le `.env` de la prod); en test, obligatoire pour les administrateurs.
 - [ ] **JF, avec Louis** : rendre la double authentification obligatoire en prod (`LMAPP_DOUBLE_AUTH_OBLIGATOIRE=1`, puis `docker compose up -d`); Louis installe Google Authenticator et note ses codes de secours.
 - [x] **Nouveau `site.zip` déposé et vérifié en ligne** (13 novembre 2026 : fonctions à jour, 8 captures, 6 cellulaire et 2 bureau, style.css et consentement.js en version 20261113-1).
-- [ ] **Audit de sécurité** (`docs/audit-securite.md`, 13 novembre 2026) : 19 recommandations à approuver par JF, ordre proposé à la fin du document.
+- [ ] **Audit de sécurité** (`docs/audit-securite.md`, 13 novembre 2026) : 19 recommandations. **Faits (go de JF) : 5 (sessions de 12 h pour l'administration, « Déconnecter mes autres appareils »), 9 (alertes de sécurité par courriel), 10 (Argon2).** Reste à décider : les autres, et le point 7 (redémarrage).
 - [x] Données de test riches dans test.ledeneigeur.com (12 novembre 2026) : 19 clients, scénarios de tous les cas. Recommencer à neuf : `cd /srv/lmapp/test && docker compose run --rm app python manage.py donnees_essai --reinitialiser`.
 
 **Lot B : tournée avec ou sans avis aux clients (avant les premières neiges)** : fait et en prod le 13 novembre 2026.

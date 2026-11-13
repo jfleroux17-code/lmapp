@@ -481,6 +481,23 @@ def mot_de_passe(request):
     return render(request, "terrain/reglages/mot_de_passe.html", {"form": form})
 
 
+@require_POST
+@membre_requis
+def deconnecter_autres(request):
+    """Audit, point 5 : ferme toutes les sessions de cette personne, sauf celle de cet appareil (cellulaire perdu,
+    ordinateur prêté...)."""
+    from django.contrib.sessions.models import Session
+
+    ici, n = request.session.session_key, 0
+    for s in Session.objects.filter(expire_date__gt=timezone.now()).exclude(session_key=ici).iterator():
+        if s.get_decoded().get("_auth_user_id") == str(request.user.pk):
+            s.delete()
+            n += 1
+    messages.success(request, f"{n} autre{'s' if n > 1 else ''} appareil{'s' if n > 1 else ''} déconnecté{'s' if n > 1 else ''}."
+                     if n else "Aucun autre appareil n'était connecté.")
+    return redirect("terrain:plus")
+
+
 # Mon abonnement (PRD Q2) : ce que la plateforme compte et facture, pour les administrateurs de l'entreprise
 
 @membre_requis

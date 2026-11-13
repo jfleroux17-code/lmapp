@@ -11,6 +11,7 @@ urlpatterns = [
     path("plus/", views.plus, name="plus"),
     path("plus/meteo/", views.ville_meteo, name="ville_meteo"),
     path("plus/mot-de-passe/", reglages.mot_de_passe, name="mot_de_passe"),
+    path("plus/deconnecter-autres/", reglages.deconnecter_autres, name="deconnecter_autres"),
     path("plus/reglages/", reglages.accueil, name="reglages"),
     path("plus/reglages/fiche/<slug:cle>/", reglages.section, name="reglages_section"),
     path("plus/reglages/secteurs/", reglages.secteurs, name="reglages_secteurs"),
