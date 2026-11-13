@@ -137,8 +137,8 @@ Ordre proposé : lot A, puis la facturation (une facture par saison, une par pas
 **Lot F : cartes** : fait et en prod le 13 novembre 2026.
 - [x] (16) Entrées numérotées sur la carte en direct **et** dans « Ordre de la tournée » : jaune pas encore fait, vert fait, rouge sauté; adresses mal placées (géocodage à la ville près) listées à part.
 
-**Lot G : météo**
-- [ ] (15) Option 1 retenue par JF : modèles d'Environnement Canada (GeoMet, grille fine) au point exact de chaque ville desservie; avertissements officiels de la page régionale.
+**Lot G : météo** : fait et en prod le 13 novembre 2026 (`core/meteo_point.py`).
+- [x] (15) Option 1 retenue par JF : modèles d'Environnement Canada (GeoMet, grille fine) au point exact de chaque ville desservie; avertissements officiels de la page régionale.
 
 **Décisions de JF (12 novembre 2026)** :
 - [x] **Fait le 13 novembre 2026, en prod.** **Contrat saisonnier : une seule facture par client et par saison, pour le total**, émise à la signature, avec l'échéancier (montants et dates des versements) imprimé dessus; les paiements s'appliquent à cette facture. **À la date d'un versement, pas de nouvelle facture : un rappel de versement** au client (montant, date, lien de la facture), proposé à Louis d'une tape. Relances : retard compté depuis le versement échu non payé. Chèques postdatés rattachés au versement. Import : taxes une seule fois sur le total. **Remplace la facture par versement (B3)**; à faire avant l'import du fichier de Louis.

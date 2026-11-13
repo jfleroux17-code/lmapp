@@ -1,20 +1,40 @@
-{% if meteo and meteo.periodes %}
+{% if meteo and meteo.point or meteo and meteo.periodes %}
 <details class="carte mb-4 p-4" {% if ouvert or meteo.avertissements %}open{% endif %}>
   <summary class="flex min-h-10 cursor-pointer items-center justify-between gap-3 font-bold">
-    {# Une seule ligne, repliée : « Ce soir : neige 5 cm », le détail au tap #}
-    {% with p=meteo.periodes.0 %}<span class="min-w-0 truncate">{{ p.nom|capfirst }}{% if p.neige_cm %} : <span class="text-accent">neige {{ p.neige_cm }} cm</span>{% elif p.pluie_mm %} : <span class="font-normal text-gray-400">pluie {{ p.pluie_mm }} mm</span>{% endif %}</span>
-    <span class="shrink-0 text-sm font-normal text-gray-400">Météo ›</span>{% endwith %}
+    {% if meteo.point %}
+      {# Prévision au point exact de la ville desservie (modèle HRDPS d'Environnement Canada) #}
+      <span class="min-w-0 truncate">24 h à {{ meteo.point_lieu }} : {% if meteo.neige_24h %}<span class="text-accent">neige {{ meteo.neige_24h }} cm</span>{% else %}<span class="font-normal text-gray-300">pas de neige</span>{% endif %}{% if meteo.verglas_24h %} · <span class="text-danger">verglas {{ meteo.verglas_24h }} mm</span>{% endif %}</span>
+    {% else %}
+      {% with p=meteo.periodes.0 %}<span class="min-w-0 truncate">{{ p.nom|capfirst }}{% if p.neige_cm %} : <span class="text-accent">neige {{ p.neige_cm }} cm</span>{% elif p.pluie_mm %} : <span class="font-normal text-gray-400">pluie {{ p.pluie_mm }} mm</span>{% endif %}</span>{% endwith %}
+    {% endif %}
+    <span class="shrink-0 text-sm font-normal text-gray-400">Météo ›</span>
   </summary>
   {% for a in meteo.avertissements %}<p class="mt-3 rounded-xl bg-danger/15 p-3 font-semibold text-danger">{{ a }}</p>{% endfor %}
+  {% if meteo.point %}
   <div class="mt-3 divide-y divide-bordure">
-    {% for p in meteo.periodes %}
-      <div class="py-2">
-        <div class="flex items-baseline justify-between gap-3"><span class="font-semibold">{{ p.nom|capfirst }}</span>
-          {% if p.neige_cm %}<span class="pastille bg-accent text-nuit">Neige {{ p.neige_cm }} cm</span>{% elif p.pluie_mm %}<span class="text-sm text-gray-400">Pluie {{ p.pluie_mm }} mm</span>{% endif %}</div>
-        <div class="text-sm text-gray-300">{{ p.resume }}</div>
+    {% for x in meteo.tranches_point %}
+      <div class="flex items-baseline justify-between gap-3 py-2">
+        <span class="font-semibold">{{ x.debut|date_qc:"D H \h" }} à {{ x.fin|date_qc:"H \h" }}</span>
+        <span class="text-right text-sm">{% if x.neige_cm >= 0.5 %}<span class="pastille bg-accent text-nuit">Neige {{ x.neige_cm }} cm</span> {% endif %}{% if x.verglas_mm >= 0.2 %}<span class="pastille bg-danger/20 text-danger">Verglas {{ x.verglas_mm }} mm</span> {% endif %}{% if x.pluie_mm >= 0.5 %}<span class="text-gray-400">Pluie {{ x.pluie_mm }} mm</span> {% endif %}<span class="text-gray-400 tabular-nums">{{ x.temp_min }}° à {{ x.temp_max }}°</span></span>
       </div>
     {% endfor %}
   </div>
-  <p class="mt-2 text-xs text-gray-500">{% if meteo.ville_nom %}Prévisions pour {{ meteo.ville_nom }} (<a href="{% url 'terrain:ville_meteo' %}" class="underline">changer</a>). {% endif %}Source : Environnement et Changement climatique Canada{% if meteo.publiee_le %}, prévisions du {{ meteo.publiee_le|date_qc:"j F, H \h i" }}{% endif %}.{% if meteo.lien %} <a href="{{ meteo.lien }}" class="underline" rel="noopener">Détails</a>{% endif %}</p>
+  <p class="mt-2 text-xs text-gray-500">Au point exact de {{ meteo.point_lieu }} : modèle à haute résolution d'Environnement et Changement climatique Canada{% if meteo.point_modele_le %}, exécution du {{ meteo.point_modele_le|date_qc:"j F, H \h" }}{% endif %}. Neige estimée : 1 mm d'eau ≈ 1 cm.</p>
+  {% endif %}
+  {% if meteo.periodes %}
+  <details class="mt-3" {% if not meteo.point %}open{% endif %}>
+    <summary class="flex min-h-10 cursor-pointer items-center text-sm text-gray-400">Texte de la prévision{% if meteo.ville_nom %} pour {{ meteo.ville_nom }}{% endif %}</summary>
+    <div class="mt-2 divide-y divide-bordure">
+      {% for p in meteo.periodes %}
+        <div class="py-2">
+          <div class="flex items-baseline justify-between gap-3"><span class="font-semibold">{{ p.nom|capfirst }}</span>
+            {% if p.neige_cm %}<span class="pastille bg-accent text-nuit">Neige {{ p.neige_cm }} cm</span>{% elif p.pluie_mm %}<span class="text-sm text-gray-400">Pluie {{ p.pluie_mm }} mm</span>{% endif %}</div>
+          <div class="text-sm text-gray-300">{{ p.resume }}</div>
+        </div>
+      {% endfor %}
+    </div>
+    <p class="mt-2 text-xs text-gray-500">{% if meteo.ville_nom %}Prévisions pour {{ meteo.ville_nom }} (<a href="{% url 'terrain:ville_meteo' %}" class="underline">changer</a>). {% endif %}Source : Environnement et Changement climatique Canada{% if meteo.publiee_le %}, prévisions du {{ meteo.publiee_le|date_qc:"j F, H \h i" }}{% endif %}.{% if meteo.lien %} <a href="{{ meteo.lien }}" class="underline" rel="noopener">Détails</a>{% endif %}</p>
+  </details>
+  {% endif %}
 </details>
 {% endif %}

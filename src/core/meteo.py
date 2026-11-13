@@ -87,4 +87,14 @@ def relever(entreprise):
     except Exception as e:  # noqa: BLE001 : on garde les dernières prévisions et on réessaie plus tard
         m.erreur = f"{type(e).__name__} : {e}"[:300]
     m.save()
+    # Prévision au point exact (HRDPS), aux 3 heures : le modèle sort aux 6 heures
+    from datetime import timedelta
+
+    if m.point_lu_le is None or timezone.now() - m.point_lu_le > timedelta(hours=3):
+        try:
+            from core.meteo_point import relever_point
+
+            relever_point(m)
+        except Exception as e:  # noqa: BLE001
+            Meteo.objects.filter(pk=m.pk).update(erreur=f"Prévision au point : {type(e).__name__} : {e}"[:300])
     return m

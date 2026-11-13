@@ -209,6 +209,7 @@ LMAPP_CONNEXION_MAX_COMPTE = int(env("LMAPP_CONNEXION_MAX_COMPTE", "20"))
 LMAPP_CONNEXION_FENETRE_MIN = int(env("LMAPP_CONNEXION_FENETRE_MIN", "15"))
 # Prévisions d'Environnement Canada (I1) : API GeoMet
 METEO_API = env("METEO_API", "https://api.weather.gc.ca")
+METEO_WMS = env("METEO_WMS", "https://geo.weather.gc.ca/geomet")  # prévision au point (HRDPS), core/meteo_point.py
 # Coût mensuel d'un numéro Twilio (tableau de la plateforme, PRD Q) : 1,15 $ US le 8 novembre 2026
 from decimal import Decimal as _D  # noqa: E402
 

@@ -380,6 +380,12 @@ class Meteo(models.Model):
     avertissements = models.JSONField(default=list, blank=True)
     publiee_le = models.DateTimeField(null=True, blank=True)
     lue_le = models.DateTimeField(null=True, blank=True)
+    # Prévision au point exact de la ville desservie (modèle HRDPS d'Environnement Canada, 2,5 km; option 1 de JF,
+    # 12 novembre 2026) : la page de prévision ci-dessus est celle d'une ville voisine (pas de page pour Sainte-Adèle).
+    point = models.JSONField(default=list, blank=True, help_text="[{debut, fin, neige_cm, pluie_mm, verglas_mm, temp_min, temp_max}]")
+    point_lieu = models.CharField("lieu de la prévision au point", max_length=100, blank=True)
+    point_lu_le = models.DateTimeField(null=True, blank=True)
+    point_modele_le = models.DateTimeField("exécution du modèle", null=True, blank=True)
     erreur = models.CharField(max_length=300, blank=True)
 
     class Meta:
@@ -388,6 +394,23 @@ class Meteo(models.Model):
 
     def __str__(self):
         return f"Météo de {self.entreprise} ({self.ville_nom})"
+
+    def tranches_point(self):
+        """Prévision au point, pour l'affichage : heures locales, neige des 24 prochaines heures."""
+        from django.utils.dateparse import parse_datetime
+
+        sortie = []
+        for x in self.point or []:
+            sortie.append({**x, "debut": timezone.localtime(parse_datetime(x["debut"])), "fin": timezone.localtime(parse_datetime(x["fin"]))})
+        return sortie
+
+    @property
+    def neige_24h(self):
+        return round(sum(x.get("neige_cm") or 0 for x in (self.point or [])[:4]), 1)
+
+    @property
+    def verglas_24h(self):
+        return round(sum(x.get("verglas_mm") or 0 for x in (self.point or [])[:4]), 1)
 
 
 class DemandeSite(models.Model):
