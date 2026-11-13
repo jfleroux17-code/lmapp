@@ -99,6 +99,12 @@ class Entreprise(Horodate):
     minutes_par_arret = models.PositiveIntegerField("minutes par arrêt", default=6, validators=[MinValueValidator(1), MaxValueValidator(60)],
                                                     help_text="Pour estimer « d'ici environ X minutes ».")
     avis_passage_fait = models.BooleanField("avis « c'est fait »", default=False, help_text="Texto au client quand son passage est fait.")
+    # Jobs à la pièce (déneigement manuel, paysagement) : taux de Louis, à remplir (question à Louis, 12 novembre 2026)
+    taux_horaire = models.DecimalField("taux horaire", max_digits=8, decimal_places=2, null=True, blank=True,
+                                       help_text="Main-d'œuvre d'une job à la pièce, avant taxes, par heure.")
+    taux_km = models.DecimalField("taux par kilomètre", max_digits=6, decimal_places=2, null=True, blank=True,
+                                  help_text="Déplacement d'une job, aller-retour, par kilomètre.")
+    minimum_job = models.DecimalField("minimum facturé par job", max_digits=8, decimal_places=2, null=True, blank=True)
     position_auto = models.BooleanField(
         "activer la position automatiquement", default=True,
         help_text="Au début de chaque opération, la position du cellulaire s'allume toute seule (statistiques et, avec les avis, "

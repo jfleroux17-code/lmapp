@@ -37,6 +37,7 @@
 </div>
 {% with a=adresses.0 %}{% if a %}<p class="mb-3 text-gray-300">{{ a.objet.ligne1 }}{% if a.rang and a.objet.secteur %} · <span class="text-gray-400">{% if a.rang == 1 %}1<sup>er</sup>{% else %}{{ a.rang }}<sup>e</sup>{% endif %} arrêt, secteur {{ a.objet.secteur.nom }}</span>{% elif a.rang %} · <span class="text-gray-400">{% if a.rang == 1 %}1<sup>er</sup>{% else %}{{ a.rang }}<sup>e</sup>{% endif %} arrêt</span>{% endif %}</p>{% endif %}{% endwith %}
 
+{% if client.saisons != "hiver" %}<p class="mb-2 text-sm font-semibold text-ok">Client {% if client.saisons == "ete" %}d'été seulement (paysagement) : pas dans la tournée{% else %}d'été et d'hiver{% endif %}.</p>{% endif %}
 {% if prix_saisons %}<p class="mb-2 text-sm text-gray-400">Prix : {% for c in prix_saisons %}<span class="mr-2 inline-block">{{ c.saison.nom }} <span class="text-gray-200">{{ c.prix|argent }}</span>{% if c.type == "au_passage" %} par passage{% endif %}{% if not forloop.last %} ·{% endif %}</span>{% endfor %} <span class="text-gray-500">(avant taxes)</span></p>{% endif %}
 {% if client.proprietaire_non_occupant %}<p class="mb-2 text-sm font-semibold text-accent">Propriétaire non occupant : avis des opérations aux locataires{% if not client.contacts.exists %} (aucun locataire inscrit){% endif %}, factures au propriétaire.</p>
 {% elif not client.avis_operations %}<p class="mb-2 text-sm font-semibold text-gray-400">Ne veut pas d'avis pendant les opérations.</p>{% endif %}
@@ -55,6 +56,25 @@
   {% with a=adresses.0 %}{% if a %}<a href="{{ a.navigation.0.1 }}" x-data="{ liens: { {% for nom, lien in a.navigation %}'{{ nom|escapejs }}': '{{ lien|escapejs }}'{% if not forloop.last %}, {% endif %}{% endfor %} } }" x-init="const p = localStorage.getItem('lmapp-nav'); if (liens[p]) $el.href = liens[p]" class="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold border-2 border-bordure" rel="noopener">{% include "terrain/_icone.html" with nom="itineraire" %}Itinéraire</a>
   {% else %}<span class="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-2xl text-sm font-semibold border-2 border-bordure text-gray-500">{% include "terrain/_icone.html" with nom="itineraire" %}Itinéraire</span>{% endif %}{% endwith %}
 </div>
+
+{# Jobs à la pièce (demandes de Louis) : déneigement manuel au temps et au déplacement, paysagement l'été #}
+{% if ecriture %}
+  {% if job_en_cours %}
+    <a href="{% url 'terrain:job' job_en_cours.pk %}" class="gros-bouton mb-4 bg-accent text-nuit">{{ job_en_cours.get_genre_display }} en cours depuis {{ job_en_cours.depart_le|date_qc:"H \h i" }} ›</a>
+  {% else %}
+    <details class="carte mb-4 px-4">
+      <summary class="flex min-h-14 cursor-pointer items-center justify-between font-semibold"><span>Partir une job à la pièce</span><span class="text-sm font-normal text-gray-400">temps et déplacement ›</span></summary>
+      <form method="post" action="{% url 'terrain:partir_job' client.pk %}" class="grid grid-cols-3 gap-2 pb-4">{% csrf_token %}
+        {% for valeur, nom in genres_job %}<button name="genre" value="{{ valeur }}" class="flex min-h-16 items-center justify-center rounded-xl border-2 {% if valeur == genre_job_propose %}border-accent text-accent{% else %}border-bordure{% endif %} px-2 text-center text-sm font-semibold leading-tight">{{ nom }}</button>{% endfor %}
+      </form>
+    </details>
+  {% endif %}
+{% endif %}
+{% if jobs_client %}
+  <div class="carte mb-4 divide-y divide-bordure">{% for j in jobs_client %}
+    <a href="{% url 'terrain:job' j.pk %}" class="flex justify-between gap-3 p-3 text-sm active:bg-bordure"><span>{{ j.get_genre_display }}, {{ j.depart_le|date_qc:"j M" }}</span><span class="text-gray-400">{% if j.sur_place_min is not None %}{{ j.sur_place_min }} min{% endif %}{% if j.distance_km %} · {{ j.distance_km }} km{% endif %}{% if j.facture_id %} · facturée{% endif %} ›</span></a>
+  {% endfor %}</div>
+{% endif %}
 
 {% comment %}Vue bureau (1024 px et plus, audit UX) : infos à gauche, argent à droite. Sur le cellulaire, une seule colonne
 dans l'ordre habituel (les colonnes sont en « display: contents », l'ordre vient des classes order-N).{% endcomment %}

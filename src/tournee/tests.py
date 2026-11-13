@@ -482,3 +482,60 @@ class TempsParEntreeTests(TourneeBase):
         with mock.patch("django.utils.timezone.localdate", return_value=date(2026, 12, 1)):
             r = self.client.get("/tournee/statistiques/")
         self.assertEqual([(l["client"].nom, l["moyenne"], l["par_heure"]) for l in r.context["lignes"]], [("Tremblay", 15, D("1800"))])
+
+
+@override_settings(ALLOWED_HOSTS=["*"])
+class JobsTests(TourneeBase):
+    """Jobs à la pièce (déneigement manuel, paysagement) et clients d'été (demandes de Louis)."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        self.u = get_user_model().objects.create_user("louis", password="x" * 12)
+        Membre.objects.create(utilisateur=self.u, entreprise=self.ent, role="operateur")
+        self.client.defaults["HTTP_HOST"] = HOTE
+        self.client.force_login(self.u)
+
+    def test_job_complete_puis_facture(self):
+        import json
+        from datetime import timedelta
+
+        from django.contrib.gis.geos import Point
+        from django.utils import timezone
+
+        from tournee.models import Job
+
+        Entreprise.objects.filter(pk=self.ent.pk).update(taux_horaire=D("60"), taux_km=D("0.75"), minimum_job=D("75"))
+        Adresse.objects.filter(pk=self.a1.pk).update(position=Point(-74.1400, 45.9000, srid=4326))
+        r = self.client.post(f"/clients/{self.a1.client_id}/jobs/partir/", {"genre": "deneigement"})
+        j = Job.objects.get()
+        self.assertRedirects(r, f"/jobs/{j.pk}/", fetch_redirect_response=False)
+        self.assertContains(self.client.get(f"/clients/{self.a1.client_id}/"), "en cours depuis")
+        r = self.client.post(f"/jobs/{j.pk}/position/", json.dumps({"quoi": "depart", "lat": 45.95, "lon": -74.14, "precision": 10}),
+                             content_type="application/json")
+        self.assertEqual(r.status_code, 200)
+        j.refresh_from_db()
+        self.assertEqual(j.distance_km, D("7.2"))  # 5,56 km à vol d'oiseau × 1,3
+        Job.objects.filter(pk=j.pk).update(depart_le=timezone.now() - timedelta(minutes=50))
+        self.client.post(f"/jobs/{j.pk}/etape/", {"quoi": "arrivee"})
+        Job.objects.filter(pk=j.pk).update(arrivee_le=timezone.now() - timedelta(minutes=40))
+        self.client.post(f"/jobs/{j.pk}/etape/", {"quoi": "terminer"})
+        j.refresh_from_db()
+        self.assertEqual((j.trajet_min, j.sur_place_min), (10, 40))
+        r = self.client.post(f"/jobs/{j.pk}/etape/", {"quoi": "facturer"})
+        f = j.facture or Job.objects.get(pk=j.pk).facture
+        self.assertRedirects(r, f"/factures/{f.pk}/", fetch_redirect_response=False)
+        lignes = list(f.lignes.order_by("ordre").values_list("quantite", "prix_unitaire"))
+        self.assertEqual(lignes, [(D("0.75"), D("60.00")), (D("14.40"), D("0.75")), (D("1.00"), D("19.20"))])  # 45 min au quart d heure; aller-retour; minimum
+        self.assertEqual(f.sous_total, D("75.00"))  # 45,00 + 10,80 < 75 : ajusté au minimum
+        self.assertEqual(f.statut, "brouillon")
+
+    def test_client_d_ete_pas_dans_la_tournee_ni_les_avis(self):
+        from communications import avis
+        Client.objects.filter(pk=self.a1.client_id).update(saisons="ete")
+        self.assertNotIn(self.a1, list(arrets(self.ent)))
+        Client.objects.filter(pk=self.a2.client_id).update(saisons="les_deux")
+        self.assertIn(self.a2, list(arrets(self.ent)))
+        self.assertNotIn(self.a1.client, list(avis.clients_a_aviser_au_debut(self.ent)))
+        page = self.client.get(f"/clients/{self.a1.client_id}/")
+        self.assertContains(page, "été seulement")
+        self.assertContains(page, 'value="paysagement"')

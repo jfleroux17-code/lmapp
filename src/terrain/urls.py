@@ -1,6 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
+from terrain import jobs
 from terrain import argent, balises, cheques, clients, depenses, demandes, export, gabarits, contrats, rapports, reglages, saisons, tournee, views
 
 app_name = "terrain"
@@ -93,6 +94,10 @@ urlpatterns = [
     path("tournee/carte/arrets/", tournee.carte_arrets, name="carte_arrets"),
     path("tournee/operations/<int:pk>/", tournee.rapport_operation, name="rapport_operation"),
     path("tournee/statistiques/", tournee.statistiques, name="statistiques_temps"),
+    path("clients/<int:client_pk>/jobs/partir/", jobs.partir, name="partir_job"),
+    path("jobs/<int:pk>/", jobs.job, name="job"),
+    path("jobs/<int:pk>/position/", jobs.position, name="job_position"),
+    path("jobs/<int:pk>/etape/", jobs.etape, name="job_etape"),
     path("tournee/factures-passages/", tournee.factures_passages, name="factures_passages"),
     path("tournee/collecter/", tournee.a_collecter, name="a_collecter"),
     path("balises/", balises.liste, name="balises"),

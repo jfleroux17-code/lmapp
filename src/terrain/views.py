@@ -103,6 +103,8 @@ def _passages_avec_photos(client):
 
 @membre_requis
 def fiche(request, pk):
+    from tournee.models import Job
+
     client = get_object_or_404(Client, pk=pk, entreprise=request.entreprise)
     adresses = [
         {"objet": a, "navigation": _liens_navigation(a), "photos": list(a.photos.only("pk", "cree_le", "adresse_id")),
@@ -131,6 +133,10 @@ def fiche(request, pk):
         "demandes_client": client.demandes.order_by("statut", "-cree_le")[:10],
         # Prix des saisons, d'un coup d'œil (lot E) : pour décider du prix de la prochaine
         "prix_saisons": client.contrats.select_related("saison").order_by("saison__debut", "pk")[:6],
+        "jobs_client": client.jobs.order_by("-depart_le")[:5],
+        "job_en_cours": client.jobs.filter(fin_le=None).first(),
+        "genres_job": Job.Genre.choices,
+        "genre_job_propose": "paysagement" if client.saisons == "ete" else "deneigement",
         **resume_client(client),
     }
     return render(request, "terrain/fiche.html", contexte)

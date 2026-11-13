@@ -91,6 +91,14 @@ class Client(Horodate):
 
     # Statut (A7)
     statut = models.CharField(max_length=15, choices=Statut.choices, default=Statut.ACTIF)
+    class Saisons(models.TextChoices):
+        HIVER = "hiver", "Hiver (déneigement)"
+        ETE = "ete", "Été (paysagement)"
+        LES_DEUX = "les_deux", "Été et hiver"
+
+    saisons = models.CharField(
+        "client de", max_length=10, choices=Saisons.choices, default=Saisons.HIVER,
+        help_text="Été seulement : pas dans la tournée ni les avis de déneigement; facturé à la pièce (demande de Louis, 12 novembre 2026).")
 
     # LCAP (K6, E11). Les avis de service et les factures ne demandent pas de
     # consentement; les messages commerciaux, oui.

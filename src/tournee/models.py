@@ -71,6 +71,7 @@ def arrets(entreprise):
     (actifs et en recouvrement), secteur par secteur, puis le rang; sans rang à la fin."""
     return (Adresse.objects.filter(entreprise=entreprise, active=True,
                                    client__statut__in=[Client.Statut.ACTIF, Client.Statut.RECOUVREMENT])
+            .exclude(client__saisons=Client.Saisons.ETE)  # clients d'été seulement : pas dans la tournée de déneigement
             .select_related("client", "secteur")
             .order_by(models.F("secteur__ordre").asc(nulls_last=True), "secteur__nom", models.F("ordre_tournee").asc(nulls_last=True), "ligne1"))
 
@@ -171,3 +172,52 @@ class PhotoPassage(models.Model):
         if passage is None or passage.statut != Passage.Statut.FAIT:
             return "pendant l'opération"
         return "avant" if self.prise_le < passage.heure else "après"
+
+
+
+class Job(models.Model):
+    """Job à la pièce (demandes de Louis, 12 novembre 2026) : déneigement manuel facturé au temps et au déplacement
+    (ex. à Saint-Sauveur), paysagement l'été. Partie de la fiche du client : départ (position du cellulaire), arrivée,
+    fin; distance estimée à vol d'oiseau × 1,3 (l'app n'a pas Internet pour un vrai itinéraire); facture en brouillon
+    avec la main-d'œuvre et le déplacement aux taux de l'entreprise, le matériel ajouté sur la facture."""
+
+    class Genre(models.TextChoices):
+        DENEIGEMENT = "deneigement", "Déneigement manuel"
+        PAYSAGEMENT = "paysagement", "Paysagement"
+        AUTRE = "autre", "Autre travail"
+
+    entreprise = models.ForeignKey("core.Entreprise", on_delete=models.PROTECT, related_name="jobs")
+    client = models.ForeignKey("clients.Client", on_delete=models.PROTECT, related_name="jobs")
+    adresse = models.ForeignKey("clients.Adresse", on_delete=models.PROTECT, related_name="jobs", null=True, blank=True)
+    genre = models.CharField(max_length=12, choices=Genre.choices, default=Genre.DENEIGEMENT)
+    depart_le = models.DateTimeField("départ", default=timezone.now)
+    depart_position = gis.PointField(srid=4326, geography=True, null=True, blank=True)
+    arrivee_le = models.DateTimeField("arrivée", null=True, blank=True)
+    arrivee_position = gis.PointField(srid=4326, geography=True, null=True, blank=True)
+    fin_le = models.DateTimeField("fin", null=True, blank=True)
+    distance_km = models.DecimalField("distance estimée (km, aller)", max_digits=7, decimal_places=1, null=True, blank=True)
+    note = models.CharField(max_length=300, blank=True)
+    facture = models.ForeignKey("facturation.Facture", on_delete=models.SET_NULL, null=True, blank=True, related_name="jobs")
+    par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        verbose_name = "job à la pièce"
+        verbose_name_plural = "jobs à la pièce"
+        ordering = ["-depart_le"]
+
+    def __str__(self):
+        return f"{self.get_genre_display()} : {self.client} ({self.depart_le:%Y-%m-%d})"
+
+    def clean(self):
+        if self.client_id and self.client.entreprise_id != self.entreprise_id:
+            raise ValidationError("Ce client n'est pas de cette entreprise.")
+        if self.adresse_id and self.client_id and self.adresse.client_id != self.client_id:
+            raise ValidationError("Cette adresse n'est pas celle de ce client.")
+
+    @property
+    def trajet_min(self):
+        return round((self.arrivee_le - self.depart_le).total_seconds() / 60) if self.arrivee_le else None
+
+    @property
+    def sur_place_min(self):
+        return round((self.fin_le - (self.arrivee_le or self.depart_le)).total_seconds() / 60) if self.fin_le else None

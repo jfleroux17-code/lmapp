@@ -231,6 +231,8 @@ class Command(BaseCommand):
          [("70, chemin du Test", "J8B 1C2", -74.1660, 45.9380, 5)]),
         ("ne_pas_relancer", "Claudette", "Girard", "", "450 555-0118", "", "actif", "comptant", "texto", "Chantecler",
          [("3, rue de la Démo", "J8B 1C1", -74.1618, 45.9402, 6)]),
+        ("ete", "Sophie", "Lalonde", "", "450 555-0120", "sophie.lalonde@example.com", "actif", "interac", "courriel", "Village",
+         [("88, chemin des Jardins-Fictifs", "J8B 1A6", -74.1350, 45.9480, None)]),
         ("mal_placee", "Hélène", "Fournier", "", "450 555-0119", "helene.fournier@example.com", "actif", "interac", "texto", "Chantecler",
          [("999, rang Introuvable", "", None, None, 7)]),
     ]
@@ -336,6 +338,16 @@ class Command(BaseCommand):
         Facture.objects.filter(pk=f.pk).update(date_facture=auj - timedelta(days=50))
         f.versements.filter(rang=1).update(date_prevue=auj - timedelta(days=35))
 
+        # Client d'été (paysagement) : pas dans la tournée; une job à la pièce terminée, à facturer
+        from tournee.models import Job
+        ete = c["ete"]
+        ete.saisons = "ete"
+        ete.save()
+        Job.objects.create(entreprise=ent, client=ete, adresse=ete.adresses.first(), genre="paysagement",
+                           depart_le=maintenant - timedelta(days=2, minutes=110), arrivee_le=maintenant - timedelta(days=2, minutes=95),
+                           fin_le=maintenant - timedelta(days=2), distance_km=Decimal("6.4"), note="Taille de haie (fictif)")
+        Client.objects.filter(pk=c["paye"].pk).update(saisons="les_deux")
+
         # Adresse introuvable : à placer sur la carte
         Adresse.objects.filter(client=c["mal_placee"]).update(position_precision="introuvable")
 
@@ -411,5 +423,5 @@ class Command(BaseCommand):
                                    total=Decimal(total), tps=tps, tvq=tvq, note="Dépense fictive")
 
         return (f"Scénarios : {len(c)} clients de plus (deux adresses, propriétaire non occupant avec locataire, crédit, chèques postdatés, "
-                f"payé, en retard, sans coordonnées, ne pas relancer, adresse introuvable), virement Interac à confirmer, 7 messages, "
+                f"payé, en retard, sans coordonnées, ne pas relancer, client d'été avec une job à facturer, adresse introuvable), virement Interac à confirmer, 7 messages, "
                 f"6 demandes, 1 opération terminée, balises, 4 dépenses.")

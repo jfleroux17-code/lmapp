@@ -1,0 +1,54 @@
+{% extends "terrain/base.html" %}
+{% load argent %}
+{% block titre %}{{ j.get_genre_display }}{% endblock %}
+{% block contenu %}
+<h1 class="mb-1 text-2xl font-bold">{{ j.get_genre_display }}</h1>
+<p class="mb-4 text-gray-400"><a href="{% url 'terrain:fiche' j.client_id %}" class="text-accent">{{ j.client.nom_affiche }}</a>{% if j.adresse %} · {{ j.adresse.ligne1 }}{% endif %}</p>
+<div class="carte mb-4 divide-y divide-bordure" x-data="jobGps({{ j.pk }}, {{ j.depart_position|yesno:'true,false' }})">
+  <div class="flex justify-between p-4"><span>Départ</span><span class="text-gray-300">{{ j.depart_le|date_qc:"H \h i" }}<span x-show="etat" x-text="' · ' + etat" class="text-sm text-gray-500"></span></span></div>
+  <div class="flex justify-between p-4"><span>Arrivée</span><span class="text-gray-300">{% if j.arrivee_le %}{{ j.arrivee_le|date_qc:"H \h i" }} · {{ j.trajet_min }} min de trajet{% else %}–{% endif %}</span></div>
+  <div class="flex justify-between p-4"><span>Distance (aller, estimée)</span><span class="text-gray-300">{% if j.distance_km %}{{ j.distance_km }} km{% else %}–{% endif %}</span></div>
+  <div class="flex justify-between p-4"><span>Fin</span><span class="text-gray-300">{% if j.fin_le %}{{ j.fin_le|date_qc:"H \h i" }} · {{ j.sur_place_min }} min sur place{% else %}–{% endif %}</span></div>
+</div>
+{% if not j.arrivee_le %}
+  <form method="post" action="{% url 'terrain:job_etape' j.pk %}" x-data="{ envoi: false }" @submit.prevent="if (envoi) return; envoi = true; const f = $el;
+        navigator.geolocation ? navigator.geolocation.getCurrentPosition((p) => { f.lat.value = p.coords.latitude; f.lon.value = p.coords.longitude; f.precision.value = Math.round(p.coords.accuracy); f.submit() }, () => f.submit(), { enableHighAccuracy: true, timeout: 8000 }) : f.submit()">{% csrf_token %}
+    <input type="hidden" name="quoi" value="arrivee"><input type="hidden" name="lat"><input type="hidden" name="lon"><input type="hidden" name="precision">
+    <button class="gros-bouton mb-3 min-h-[72px] bg-accent text-xl font-bold text-nuit" :class="{ 'opacity-60': envoi }">Je suis arrivé</button>
+  </form>
+{% endif %}
+{% if not j.fin_le %}
+  <form method="post" action="{% url 'terrain:job_etape' j.pk %}" x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+    <input type="hidden" name="quoi" value="terminer">
+    <button class="gros-bouton mb-3 min-h-[72px] {% if j.arrivee_le %}bg-ok text-nuit{% else %}border-2 border-ok text-ok{% endif %} text-xl font-bold" :class="{ 'opacity-60': envoi }">Travail terminé</button>
+  </form>
+  <p class="mb-4 text-sm text-gray-500">Le départ est noté à l'ouverture de cet écran, avec la position du cellulaire. Garder l'écran ouvert n'est pas nécessaire : revenir ici par la fiche du client.</p>
+{% elif not j.facture_id %}
+  <p class="mb-3 text-gray-300">Main-d'œuvre : {{ heures }} h{% if taux %} à {{ taux|argent }}{% endif %}{% if j.distance_km %}, déplacement aller-retour {{ j.distance_km }} km × 2{% endif %}.</p>
+  <form method="post" action="{% url 'terrain:job_etape' j.pk %}">{% csrf_token %}<input type="hidden" name="quoi" value="facturer">
+    <button class="gros-bouton mb-3 bg-accent text-nuit">Préparer la facture</button></form>
+{% else %}
+  <a href="{% url 'terrain:facture' j.facture_id %}" class="gros-bouton mb-3 border-2 border-accent text-accent">Voir la facture</a>
+{% endif %}
+{% if not j.facture_id %}
+  <form method="post" action="{% url 'terrain:job_etape' j.pk %}" onsubmit="return confirm('Annuler cette job? Rien n\'est gardé.')">{% csrf_token %}<input type="hidden" name="quoi" value="annuler">
+    <button class="min-h-12 text-sm text-danger underline">Annuler cette job</button></form>
+{% endif %}
+<script>
+  document.addEventListener("alpine:init", () => {
+    Alpine.data("jobGps", (id, dejaNote) => ({
+      etat: "",
+      init() {
+        if (dejaNote || !navigator.geolocation) return;
+        this.etat = "position…";
+        navigator.geolocation.getCurrentPosition(async (p) => {
+          const r = await fetch("/jobs/" + id + "/position/", { method: "POST", credentials: "same-origin",
+            headers: { "Content-Type": "application/json", "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value },
+            body: JSON.stringify({ quoi: "depart", lat: p.coords.latitude, lon: p.coords.longitude, precision: Math.round(p.coords.accuracy) }) });
+          this.etat = r.ok ? "position notée" : "";
+        }, () => { this.etat = "position refusée"; }, { enableHighAccuracy: true, timeout: 10000 });
+      },
+    }));
+  });
+</script>
+{% endblock %}

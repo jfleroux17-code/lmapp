@@ -55,7 +55,7 @@ class GroupesMixin:
 
 class ClientForm(GroupesMixin, forms.ModelForm):
     GROUPES = [
-        (None, ["prenom", "nom", "cellulaire"]),
+        (None, ["prenom", "nom", "cellulaire", "saisons"]),
         ("Plus de détails : courriel, autre numéro, paiement, statut, notes",
          ["organisation", "courriel", "telephone_autre", "canal_prefere", "mode_paiement", "statut", "notes", "ne_pas_relancer",
           "avis_operations", "proprietaire_non_occupant"]),
@@ -65,7 +65,7 @@ class ClientForm(GroupesMixin, forms.ModelForm):
 
     class Meta:
         model = Client
-        fields = ["prenom", "nom", "organisation", "cellulaire", "telephone_autre", "courriel", "canal_prefere",
+        fields = ["prenom", "nom", "organisation", "cellulaire", "saisons", "telephone_autre", "courriel", "canal_prefere",
                   "mode_paiement", "statut", "facturation_ligne1", "facturation_ligne2", "facturation_ville",
                   "facturation_code_postal", "notes", "ne_pas_relancer", "avis_operations", "proprietaire_non_occupant"]
         widgets = {
@@ -78,6 +78,7 @@ class ClientForm(GroupesMixin, forms.ModelForm):
             "canal_prefere": forms.Select(attrs=_attrs()),
             "mode_paiement": forms.Select(attrs=_attrs()),
             "statut": forms.Select(attrs=_attrs()),
+            "saisons": forms.Select(attrs=_attrs()),
             "facturation_ligne1": forms.TextInput(attrs=_attrs()),
             "facturation_ligne2": forms.TextInput(attrs=_attrs()),
             "facturation_ville": forms.TextInput(attrs=_attrs()),
@@ -96,6 +97,10 @@ class ClientForm(GroupesMixin, forms.ModelForm):
         for champ in ("cellulaire", "telephone_autre"):  # 450 555-0100 plutôt que +14505550100
             if self.instance.pk and not self.is_bound:
                 self.initial[champ] = afficher(getattr(self.instance, champ))
+        self.fields["saisons"].required = False  # absent : on garde la valeur actuelle (hiver pour un nouveau)
+
+    def clean_saisons(self):
+        return self.cleaned_data.get("saisons") or self.instance.saisons or Client.Saisons.HIVER
 
 
 class AdresseForm(GroupesMixin, forms.ModelForm):

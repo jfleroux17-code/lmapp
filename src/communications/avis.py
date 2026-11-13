@@ -92,7 +92,7 @@ def clients_a_aviser_au_debut(entreprise):
     from django.db.models import Q
 
     qs = (Client.objects.filter(entreprise=entreprise, statut__in=[Client.Statut.ACTIF, Client.Statut.RECOUVREMENT],
-                                adresses__active=True, avis_operations=True).distinct())
+                                adresses__active=True, avis_operations=True).exclude(saisons=Client.Saisons.ETE).distinct())
     occupants = qs.filter(proprietaire_non_occupant=False).exclude(Q(cellulaire="") & Q(courriel=""))
     avec_locataire = qs.filter(proprietaire_non_occupant=True, contacts__role="locataire").exclude(contacts__cellulaire="")
     return Client.objects.filter(pk__in=occupants.values("pk")) | Client.objects.filter(pk__in=avec_locataire.values("pk"))
@@ -105,7 +105,7 @@ def aviser_debut(operation, delai=0):
         return 0
     deja, n = _deja(operation, Genre.DEBUT), 0
     for c in Client.objects.filter(entreprise=operation.entreprise, statut__in=[Client.Statut.ACTIF, Client.Statut.RECOUVREMENT],
-                                   adresses__active=True).distinct():
+                                   adresses__active=True).exclude(saisons=Client.Saisons.ETE).distinct():
         if c.pk not in deja and _creer(operation, c, Genre.DEBUT, delai=delai):
             n += 1
     return n
