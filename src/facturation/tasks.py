@@ -5,49 +5,55 @@ from django.db import transaction
 from django.utils import timezone
 from procrastinate.contrib.django import app
 
-from facturation.models import Versement
 
 log = logging.getLogger(__name__)
 
 
-def facturer_versements_dus(aujourdhui=None):
-    """C5 : un brouillon de facture pour chaque versement arrivé à sa date et pas encore facturé.
-
-    Seulement des brouillons : rien n'est émis ni envoyé sans Louis. Relançable
-    sans danger (un versement déjà facturé est sauté).
-    """
+def aviser_rappels_de_versement(aujourdhui=None):
+    """Une seule facture par saison (décision de JF, 12 novembre 2026) : à l'approche de la date d'un versement,
+    un avis au cellulaire « rappels à envoyer » (écran Versements à envoyer). Rien ne part sans Louis.
+    Avisé une seule fois par versement (le même jour, le suivant n'en refait pas un)."""
     from datetime import timedelta
 
+    from communications.rappels import a_rappeler
     from core.models import Entreprise
     from core.tasks import notifier_plus_tard
+
+    from facturation.models import Contrat
 
     aujourdhui = aujourdhui or timezone.localdate()
     n = 0
     for ent in Entreprise.objects.filter(active=True):
-        # Préparées d'avance (ex. 5 jours : le 10 janvier pour le 15), payables à la date prévue
+        # Contrats saisonniers sans facture (import, saison suivante) dont le 1er versement arrive : brouillon prêt
         limite = aujourdhui + timedelta(days=ent.jours_avance_versement)
-        dus = (Versement.objects.filter(facture=None, date_prevue__lte=limite, contrat__actif=True, contrat__entreprise=ent)
-               .select_related("contrat__entreprise", "contrat__client", "contrat__saison").order_by("date_prevue", "pk"))
-        n_ent = 0
-        with transaction.atomic():
-            for v in dus:
-                v.facturer()
-                n_ent += 1
-            if n_ent:
-                notifier_plus_tard(ent.pk, "Factures de versement prêtes",
-                                   f"{n_ent} facture{'s' if n_ent > 1 else ''} de versement à vérifier et envoyer. Rien ne part sans vous.",
-                                   url="/factures/versements/")
-        n += n_ent
+        sans_facture = (Contrat.objects.filter(entreprise=ent, actif=True, type=Contrat.Type.SAISONNIER, versements__rang=1,
+                                               versements__date_prevue__lte=limite, versements__facture=None).distinct())
+        prets = 0
+        for c in sans_facture:
+            c.facturer_saison()
+            prets += 1
+        if prets:
+            notifier_plus_tard(ent.pk, "Factures de la saison prêtes",
+                               f"{prets} facture{'s' if prets > 1 else ''} de saison à vérifier et envoyer. Rien ne part sans vous.",
+                               url="/factures/versements/")
+        n += prets
+        # Avisé le jour où le rappel devient possible (pas tous les jours ensuite)
+        nouveaux = [v for v, _ in a_rappeler(ent, aujourdhui) if v.date_prevue - timedelta(days=ent.jours_avance_versement) == aujourdhui]
+        if nouveaux:
+            notifier_plus_tard(ent.pk, "Rappels de versement à envoyer",
+                               f"{len(nouveaux)} rappel{'s' if len(nouveaux) > 1 else ''} de versement à envoyer. Rien ne part sans vous.",
+                               url="/factures/versements/")
+        n += len(nouveaux)
     if n:
-        log.info("versements dus : %s brouillon(s) de facture créé(s)", n)
+        log.info("rappels de versement : %s à envoyer", n)
     return n
 
 
 # Procrastinate compte en UTC : 6 h UTC = 1 h à Sainte-Adèle (2 h en été), avant la journée de Louis
 @app.periodic(cron="0 6 * * *")
-@app.task(queue="facturation", queueing_lock="facturer_versements_dus")
-def facturer_versements_dus_chaque_nuit(timestamp):
-    return facturer_versements_dus()
+@app.task(queue="facturation", queueing_lock="aviser_rappels_de_versement")
+def aviser_rappels_de_versement_chaque_nuit(timestamp):
+    return aviser_rappels_de_versement()
 
 
 def aviser_cheques_a_deposer(aujourdhui=None):

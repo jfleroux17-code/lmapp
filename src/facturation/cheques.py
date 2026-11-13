@@ -32,9 +32,7 @@ def en_main_pour(facture):
     """Chèques en main qui paieront cette facture (visée directement, ou par son versement)."""
     from django.db.models import Q
 
-    q = Q(facture=facture)
-    if hasattr(facture, "versement"):
-        q |= Q(versement=facture.versement)
+    q = Q(facture=facture) | Q(versement__facture=facture)
     return list(ChequePostdate.objects.filter(q, statut=S.EN_MAIN).order_by("date_cheque"))
 
 
@@ -113,11 +111,16 @@ def cibles(client):
     listees = set()
     for contrat in client.contrats.filter(actif=True).select_related("saison").prefetch_related("versements__facture"):
         vs = list(contrat.versements.all())
+        # Facture de la saison émise : montant de chaque versement taxes comprises, et ce qui est déjà payé
+        etat = {}
         for v in vs:
-            if v.pk in deja or (v.facture_id and v.facture.statut != Facture.Statut.BROUILLON and v.facture.solde <= 0):
+            if v.facture_id and v.facture.statut == Facture.Statut.EMISE and not etat:
+                etat = {vv.pk: (m, paye) for vv, m, paye in v.facture.echeancier()}
+        for v in vs:
+            if v.pk in deja or (v.pk in etat and etat[v.pk][1]):
                 continue
-            if v.facture_id and v.facture.statut == Facture.Statut.EMISE:
-                total = v.facture.solde  # déjà facturé : ce qui reste à payer
+            if v.pk in etat:
+                total = etat[v.pk][0]
             else:
                 total = v.montant + (sum(taxes(v.montant, ent.taux_tps, ent.taux_tvq)) if ent.inscrit_taxes else ZERO)
             listees.add(v.facture_id)

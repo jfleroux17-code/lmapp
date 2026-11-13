@@ -9,7 +9,7 @@
     {# Pastille : mot et couleur, jamais la couleur seule #}
     {% if f.statut == "brouillon" %}<span class="pastille bg-accent/15 text-accent">Brouillon</span>
     {% elif f.statut == "annulee" %}<span class="pastille bg-bordure text-gray-300">Annulée</span>
-    {% elif f.solde_du > 0 %}{% if f.date_echeance and f.date_echeance < aujourdhui %}<span class="pastille bg-danger/15 text-danger">En retard</span>{% elif f.solde_du != f.total %}<span class="pastille bg-danger/15 text-danger">Reste dû</span>{% else %}<span class="pastille bg-danger/15 text-danger">Due</span>{% endif %}
+    {% elif f.solde_du > 0 %}{% if f.date_exigible < aujourdhui %}<span class="pastille bg-danger/15 text-danger">En retard</span>{% elif f.solde_du != f.total %}<span class="pastille bg-danger/15 text-danger">Reste dû</span>{% else %}<span class="pastille bg-danger/15 text-danger">Due</span>{% endif %}
     {% else %}<span class="pastille bg-ok/15 text-ok">Payée</span>{% endif %}
   </div>
 </a>

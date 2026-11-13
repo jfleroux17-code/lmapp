@@ -7,7 +7,7 @@
   <div>
     <h1 class="text-2xl font-bold leading-tight">{% if f.genre == "solde_ouverture" %}Solde antérieur{% elif f.numero %}Facture n° {{ f.numero }}{% else %}Brouillon{% endif %}</h1>
     <a href="{% url 'terrain:fiche' client.pk %}" class="inline-flex min-h-10 items-center text-lg font-semibold text-accent">{{ client.nom_affiche }}</a>
-    <p class="text-gray-400">{{ f.date_facture|date_qc:"j F Y" }}{% if f.date_echeance and f.statut == "emise" and not f.payee %} · payable le {{ f.date_echeance|date_qc:"j F" }}{% endif %}{% if f.saison_origine %} · saison {{ f.saison_origine }}{% endif %}</p>
+    <p class="text-gray-400">{{ f.date_facture|date_qc:"j F Y" }}{% if f.statut == "emise" and not f.payee %}{% if f.versements.exists %} · versement dû le {{ f.date_exigible|date_qc:"j F" }}{% elif f.date_echeance %} · payable le {{ f.date_echeance|date_qc:"j F" }}{% endif %}{% endif %}{% if f.saison_origine %} · saison {{ f.saison_origine }}{% endif %}</p>
   </div>
   {% if f.statut == "brouillon" %}<span class="pastille bg-accent/20 text-accent">Brouillon</span>
   {% elif f.statut == "annulee" %}<span class="pastille bg-danger/20 text-danger">Annulée</span>
@@ -50,6 +50,12 @@
     {% if f.statut == "emise" and paiements %}
       <div class="flex justify-between pt-1 text-xl font-bold {% if f.payee %}text-ok{% else %}text-accent{% endif %}"><span>Reste à payer</span><span>{{ f.solde|argent }}</span></div>
     {% endif %}
+    {% with ech=f.echeancier %}{% if ech %}
+      <div class="mt-3 border-t border-bordure pt-3">
+        <div class="mb-1 text-sm text-gray-400">Versements (taxes comprises)</div>
+        {% for v, m, paye in ech %}<div class="flex justify-between text-sm {% if paye %}text-ok{% elif v.date_prevue <= aujourdhui and f.statut == 'emise' %}text-danger{% else %}text-gray-300{% endif %}"><span>{{ v.rang }}{% if v.rang == 1 %}er{% else %}e{% endif %} versement, {{ v.date_prevue|date_qc:"j F Y" }}{% if paye %} : payé{% elif v.rappel_envoye_le %} : rappel envoyé{% endif %}</span><span>{{ m|argent }}</span></div>{% endfor %}
+      </div>
+    {% endif %}{% endwith %}
   </div>
 </section>
 

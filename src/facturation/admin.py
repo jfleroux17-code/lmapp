@@ -40,7 +40,7 @@ class ContratAdmin(admin.ModelAdmin):
     autocomplete_fields = ["client", "adresse"]
     filter_horizontal = ["services"]
     inlines = [VersementEnLigne]
-    actions = ["facturer_versements_dus", "echeancier_2", "echeancier_3"]
+    actions = ["facturer_saison", "echeancier_2", "echeancier_3"]
 
     def _echeancier(self, request, queryset, nombre):
         from django.core.exceptions import ValidationError
@@ -65,15 +65,20 @@ class ContratAdmin(admin.ModelAdmin):
     def echeancier_3(self, request, queryset):
         self._echeancier(request, queryset, 3)
 
-    @admin.action(description="Créer les factures (brouillons) des versements dus aujourd'hui ou avant")
-    def facturer_versements_dus(self, request, queryset):
-        from django.utils import timezone
+    @admin.action(description="Créer la facture de la saison (brouillon, une par contrat saisonnier)")
+    def facturer_saison(self, request, queryset):
+        from django.core.exceptions import ValidationError
 
-        n = 0
-        for v in Versement.objects.filter(contrat__in=queryset, facture=None, date_prevue__lte=timezone.localdate()):
-            v.facturer()
-            n += 1
-        self.message_user(request, f"{n} facture(s) créée(s) en brouillon, à vérifier puis émettre.")
+        n, refus = 0, []
+        for c in queryset.filter(type=Contrat.Type.SAISONNIER):
+            try:
+                c.facturer_saison()
+                n += 1
+            except ValidationError as e:
+                refus.append(f"{c.client} : {' '.join(e.messages)}")
+        self.message_user(request, f"{n} facture(s) de saison en brouillon, à vérifier puis émettre.")
+        for r in refus:
+            self.message_user(request, r, messages.ERROR)
 
 
 class LigneEnLigne(admin.TabularInline):

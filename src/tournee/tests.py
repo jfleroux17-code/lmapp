@@ -68,17 +68,19 @@ class ModeleTests(TourneeBase):
             p = services.marquer(op, self.a1, "fait", quand=quand)
             services.marquer(op, self.a2, "fait", quand=quand)  # pas de contrat au passage : rien
             op.terminer()
-        f = Facture.objects.get(contrat=c)
-        self.assertEqual(f.statut, "brouillon")
-        self.assertEqual([l.description for l in f.lignes.all()], ["Passage du 5 décembre (neige)", "Passage du 12 décembre (neige)"])
-        self.assertEqual(f.total, D("103.48"))  # 90 $ + taxes
-        self.assertEqual(Facture.objects.count(), 1)
-        # Corrigé en « sauté » : la ligne est retirée de la facture
+        # Une facture par passage, payable sur réception (décision de JF, 12 novembre 2026)
+        factures = list(Facture.objects.filter(contrat=c).order_by("date_facture"))
+        self.assertEqual(len(factures), 2)
+        self.assertEqual(Facture.objects.count(), 2)
+        f = factures[1]
+        self.assertEqual((f.statut, f.total, f.date_echeance), ("brouillon", D("51.74"), f.date_facture))  # payable sur réception
+        self.assertTrue(f.lignes.get().description.startswith("Déneigement du 12 décembre (neige)"))
+        self.assertEqual(list(services.factures_des_passages(self.ent)), factures)
+        # Corrigé en « sauté » : la facture du passage (brouillon) disparaît
         services.marquer(p.operation, self.a1, "saute", raison="auto")
-        f.refresh_from_db()
-        self.assertEqual((f.lignes.count(), f.sous_total), (1, D("45.00")))
-        # Facture émise : le passage suivant ouvre une nouvelle facture
-        f.emettre()
+        self.assertEqual(Facture.objects.filter(contrat=c).count(), 1)
+        # Facture émise : un nouveau passage fait sa propre facture
+        factures[0].emettre()
         op = Operation.objects.create(entreprise=self.ent)
         services.marquer(op, self.a1, "fait", quand=timezone.make_aware(datetime(2026, 12, 20, 5, 0)))
         self.assertEqual(Facture.objects.filter(contrat=c).count(), 2)

@@ -1,7 +1,7 @@
 {% extends "terrain/base.html" %}
 {% block titre %}Factures{% endblock %}
 {% block contenu %}
-{% if versements_prets %}<a href="{% url 'terrain:versements_a_envoyer' %}" class="mb-4 block rounded-2xl bg-accent/15 p-4 font-semibold text-accent">{{ versements_prets }} facture{{ versements_prets|pluralize }} de versement prête{{ versements_prets|pluralize }} à envoyer ›</a>{% endif %}
+{% if versements_prets %}<a href="{% url 'terrain:versements_a_envoyer' %}" class="mb-4 block rounded-2xl bg-accent/15 p-4 font-semibold text-accent">Versements : {{ versements_prets }} facture{{ versements_prets|pluralize }} de saison ou rappel{{ versements_prets|pluralize }} à envoyer ›</a>{% endif %}
 {% if brouillons %}
   <h2 class="mb-2 text-lg font-bold">Brouillons à émettre</h2>
   <div class="carte mb-6 divide-y divide-bordure">

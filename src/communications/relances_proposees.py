@@ -27,7 +27,7 @@ REPORT_JOURS = 7
 
 
 def _echeance(f):
-    return f.date_echeance or f.date_facture
+    return f.date_exigible()  # facture de la saison : le plus vieux versement pas payé
 
 
 def proposition(client, dues, aujourdhui):

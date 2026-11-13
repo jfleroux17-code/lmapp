@@ -15,7 +15,11 @@
     <div class="carte mb-4 p-4">
       <div class="text-gray-400">À payer</div>
       <div class="text-3xl font-bold">{{ solde|argent }}</div>
-      {% if f.date_echeance %}<div class="mt-1 text-gray-300">au plus tard le {{ f.date_echeance|date_qc:"j F Y" }}</div>{% endif %}
+      {% with ech=f.echeancier %}{% if ech %}
+        <div class="mt-3 divide-y divide-bordure text-gray-300">{% for v, m, paye in ech %}
+          <div class="flex justify-between gap-3 py-2 {% if paye %}text-ok{% endif %}"><span>{{ v.rang }}{% if v.rang == 1 %}er{% else %}e{% endif %} versement, le {{ v.date_prevue|date_qc:"j F Y" }}{% if paye %} : payé{% endif %}</span><span class="whitespace-nowrap">{{ m|argent }}</span></div>
+        {% endfor %}</div>
+      {% elif f.date_echeance %}<div class="mt-1 text-gray-300">au plus tard le {{ f.date_echeance|date_qc:"j F Y" }}</div>{% endif %}{% endwith %}
     </div>
   {% endif %}
 

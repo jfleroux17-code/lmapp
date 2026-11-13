@@ -8,7 +8,7 @@ from django.utils import formats, timezone
 
 from communications import envoi, relances, segments
 from communications.models import Gabarit, Genre, Message
-from facturation.models import ZERO
+from facturation.models import ZERO, Facture
 from facturation.templatetags.argent import argent
 
 
@@ -26,7 +26,7 @@ def envoyer_recu(paiements):
     mode = paiements[0].get_mode_display()
     mode = mode[:1].lower() + mode[1:]  # « virement Interac », pas « virement interac »
     factures = list(dict.fromkeys(p.facture for p in paiements))
-    du = sum((f.solde_du for f in relances.factures_dues(client)), ZERO)
+    du = sum((f.solde_du for f in Facture.objects.filter(client=client).a_recevoir()), ZERO)  # tout ce qui reste, versements à venir compris
     variables = {
         "client": client.nom_affiche, "montant": argent(total), "mode": mode,
         "date": date_texte(paiements[0].date),

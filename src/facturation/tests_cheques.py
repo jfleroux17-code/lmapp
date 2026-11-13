@@ -61,7 +61,9 @@ class ChequesTests(TestCase):
         p, credit = cheques.deposer(c, jour=c.date_cheque)
         f.refresh_from_db()
         self.assertEqual((p.facture, p.mode, p.date, p.reference, credit), (f, "cheque", c.date_cheque, "Chèque n° 123", None))
-        self.assertTrue(f.payee)
+        # Une facture pour la saison : le chèque d'un versement en paie la moitié (versements couverts du plus vieux au plus récent)
+        self.assertEqual(f.solde, f.total - D("396.00"))
+        self.assertEqual([paye for _, _, paye in f.echeancier()], [True, False])
         self.assertEqual((c.statut, c.depose_le), (S.DEPOSE, c.date_cheque))
         with self.assertRaisesMessage(ValidationError, "déjà déposé"):
             cheques.deposer(c, jour=c.date_cheque)
@@ -75,15 +77,15 @@ class ChequesTests(TestCase):
         f = self.v2.facturer()
         f.emettre()  # le crédit paie la facture à son émission
         f.refresh_from_db()
-        self.assertTrue(f.payee)
+        self.assertEqual(f.solde, f.total - D("396.00"))
 
     def test_retourne_retire_le_paiement_et_le_credit(self):
         f1 = self.v1.facturer()
         f1.emettre()
-        c = self.cheque(None, jours=0, montant="500.00")  # au compte : paie le versement 1, le reste en crédit
+        c = self.cheque(None, jours=0, montant="500.00")  # au compte : appliqué à la facture de la saison
         cheques.deposer(c)
         f1.refresh_from_db()
-        self.assertTrue(f1.payee)
+        self.assertEqual(f1.solde, f1.total - D("500.00"))
         cheques.retourner(c, "sans provision")
         f1.refresh_from_db()
         self.assertEqual(f1.solde, f1.total)

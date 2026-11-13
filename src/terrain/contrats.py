@@ -77,7 +77,7 @@ class ContratForm(forms.ModelForm):
         self.exact = True
         if d.get("taxes_incluses"):
             self.total_entendu = d["prix"]
-            d["prix"], self.exact = calculs.prix_avant_taxes(d["prix"], ent.taux_tps, ent.taux_tvq, nb)
+            d["prix"], self.exact = calculs.prix_avant_taxes(d["prix"], ent.taux_tps, ent.taux_tvq, 1)  # une facture, taxes une fois
             if not d.get("prix_texte"):
                 d["prix_texte"] = f"{str(self.total_entendu).replace('.', ',')} $ taxes incluses" + (f", en {nb} versements" if nb > 1 else "")
         if saisonnier:
@@ -91,7 +91,8 @@ class ContratForm(forms.ModelForm):
 
 
 def _modifiable(contrat):
-    return not contrat.factures.exists()
+    """Modifiable tant que sa facture (de saison) n'est pas émise : le brouillon est refait avec le contrat."""
+    return not contrat.factures.exclude(statut=Facture.Statut.BROUILLON).exists()
 
 
 def _enregistrer(request, form, contrat_existant, form_adresse=None):
@@ -104,12 +105,30 @@ def _enregistrer(request, form, contrat_existant, form_adresse=None):
         c.prix_texte = d.get("prix_texte", "")[:300]
         c.save()
         form.save_m2m()
+        facture = None
         if c.type == Contrat.Type.SAISONNIER:
             c.creer_echeancier_par_defaut(d["versements"])
+            # Une seule facture pour la saison, prête en brouillon (décision de JF, 12 novembre 2026)
+            facture = c.facturer_saison()
+            if facture.modifiable:  # prix ou services changés : le brouillon suit le contrat
+                facture.lignes.all().delete()
+                n = c.versements.count()
+                facture.lignes.create(description=f"Déneigement, saison {c.saison}" + (f" (en {n} versements)" if n > 1 else ""),
+                                      quantite=1, prix_unitaire=c.prix)
+                facture.adresse = c.adresse
+                facture.save(update_fields=["adresse"])
+                facture.recalculer()
         else:
+            for f in c.factures.filter(statut=Facture.Statut.BROUILLON, versements__isnull=False).distinct():
+                f.lignes.all().delete()
+                f.delete()
             c.versements.all().delete()
     if not getattr(form, "exact", True):
         messages.warning(request, f"Taxes incluses : impossible au cent près (arrondi des taxes), prix avant taxes {c.prix} $.")
+    if facture is not None:
+        messages.success(request, f"Contrat {c.saison} {'modifié' if contrat_existant else 'ajouté'}. Sa facture de la saison est prête "
+                                  "(brouillon) : la vérifier, puis l'émettre et l'envoyer.")
+        return redirect("terrain:facture", pk=facture.pk)
     messages.success(request, f"Contrat {c.saison} {'modifié' if contrat_existant else 'ajouté'}.")
     return redirect(f"/clients/{c.client_id}/?argent=1#argent")
 
@@ -160,7 +179,7 @@ def modifier(request, pk):
     contrat = get_object_or_404(Contrat, pk=pk, entreprise=request.entreprise)
     client = contrat.client
     if not _modifiable(contrat):
-        messages.error(request, "Ce contrat a déjà des factures : il ne se modifie plus. Ajuster par une facture ou un crédit.")
+        messages.error(request, "La facture de ce contrat est émise : il ne se modifie plus. Ajuster par une facture ou un crédit, ou annuler la facture.")
         return redirect(f"/clients/{client.pk}/?argent=1#argent")
     form, fa = _formulaires(request, contrat, client)
     if request.method == "POST" and form.is_valid() and (fa is None or fa.is_valid()):
@@ -174,10 +193,14 @@ def supprimer(request, pk):
     contrat = get_object_or_404(Contrat, pk=pk, entreprise=request.entreprise)
     client_pk = contrat.client_id
     if not _modifiable(contrat):
-        messages.error(request, "Ce contrat a déjà des factures : il ne se supprime pas.")
+        messages.error(request, "La facture de ce contrat est émise : il ne se supprime pas (annuler la facture d'abord).")
     else:
         nom = str(contrat.saison)
-        contrat.delete()  # ses versements avec lui (aucun n'est facturé)
+        with transaction.atomic():
+            for f in contrat.factures.filter(statut=Facture.Statut.BROUILLON):
+                f.lignes.all().delete()
+                f.delete()
+            contrat.delete()  # ses versements avec lui (facture encore en brouillon : effacée)
         messages.success(request, f"Contrat {nom} supprimé.")
     return redirect(f"/clients/{client_pk}/?argent=1#argent")
 

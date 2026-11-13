@@ -25,6 +25,7 @@ class Genre(models.TextChoices):
     GROUPE_SERVICE = "groupe_service", "Avis à plusieurs clients"
     GROUPE_COMMERCIAL = "groupe_comm", "Message commercial"
     CONTRAT = "contrat", "Contrat"
+    RAPPEL_VERSEMENT = "rappel_vers", "Rappel de versement"
     APPEL = "appel", "Appel noté"
 
 

@@ -46,8 +46,10 @@ class ContratsFicheTests(TestCase):
         url = f"/clients/{self.client_.pk}/contrats/nouveau/"
         self.assertContains(self.client.get(url), "Nouveau contrat")
         r = self.client.post(url, self.donnees())
-        self.assertRedirects(r, f"/clients/{self.client_.pk}/?argent=1#argent", fetch_redirect_response=False)
         c = Contrat.objects.get(client=self.client_)
+        f = c.factures.get()  # la facture de la saison, prête en brouillon : on y va pour l'émettre et l'envoyer
+        self.assertRedirects(r, f"/factures/{f.pk}/", fetch_redirect_response=False)
+        self.assertEqual((f.statut, f.sous_total, f.versements.count()), ("brouillon", Decimal("450.00"), 2))
         self.assertEqual(c.prix, Decimal("450.00"))
         self.assertEqual(list(c.services.all()), [self.entree])
         self.assertEqual([(v.date_prevue, v.montant) for v in c.versements.all()],
@@ -92,6 +94,10 @@ class ContratsFicheTests(TestCase):
         c.refresh_from_db()
         self.assertEqual((c.prix, c.versements.count()), (Decimal("500.00"), 1))
         c.versements.first().facturer()
+        # Facture encore en brouillon : le contrat se modifie, la facture suit
+        self.client.post(f"/contrats/{c.pk}/modifier/", self.donnees(prix="500", versements="1"))
+        self.assertEqual(c.factures.get().sous_total, Decimal("500.00"))
+        c.factures.get().emettre()
         r = self.client.post(f"/contrats/{c.pk}/modifier/", self.donnees(prix="1"))
         c.refresh_from_db()
         self.assertEqual(c.prix, Decimal("500.00"))

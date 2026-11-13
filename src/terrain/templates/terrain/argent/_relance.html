@@ -12,7 +12,7 @@
             </label>
           {% endfor %}
         </div>
-        <button class="gros-bouton border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">Relancer : {{ du|argent }}</button>
+        <button class="gros-bouton border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">Relancer : {{ relance.montant|argent }}</button>
         <p class="mt-2 text-center text-sm text-gray-400">Par {{ relance.canaux }}</p>
       </form>
     {% else %}

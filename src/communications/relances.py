@@ -20,8 +20,18 @@ from facturation.templatetags.argent import argent
 COMPTEES = [Message.Statut.ENVOYE, Message.Statut.EN_FILE]  # une relance préparée ou bloquée n'est pas partie
 
 
-def factures_dues(client):
-    return list(Facture.objects.filter(client=client).a_recevoir().order_by("date_facture", "pk"))
+def factures_dues(client, jour=None):
+    """Ce qui est dû à ce jour. Facture de la saison : seulement les versements arrivés à leur date et pas payés
+    (le versement de janvier n'est pas relancé en décembre); `solde_du` devient ce montant échu."""
+    dues = []
+    for f in Facture.objects.filter(client=client).a_recevoir().order_by("date_facture", "pk"):
+        if f.versements.exists():
+            echu = f.montant_echu(jour)
+            if echu <= 0:
+                continue
+            f.solde_du = echu
+        dues.append(f)
+    return dues
 
 
 def relances_du_client(client):

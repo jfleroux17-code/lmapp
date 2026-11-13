@@ -455,7 +455,8 @@ def _verifier_argent(l, entreprise, saison, services_existants, services_nouveau
         if incluses and entreprise.inscrit_taxes:
             nb = (a.get("versements") or entreprise.versements_par_defaut) if saisonnier else 1
             nb = nb if 1 <= nb <= 4 else 1
-            prix, exact = calculs.prix_avant_taxes(brut, entreprise.taux_tps, entreprise.taux_tvq, nb)
+            # Une seule facture pour la saison : taxes calculées une fois, sur le total (décision de JF, 12 novembre 2026)
+            prix, exact = calculs.prix_avant_taxes(brut, entreprise.taux_tps, entreprise.taux_tvq, 1)
             if not exact:
                 l.avertissements.append(f"taxes incluses : {brut} $ impossible au cent près (arrondi des taxes), "
                                         f"prix avant taxes {prix} $")
@@ -720,6 +721,7 @@ def appliquer(analyse, entreprise, sauter_erreurs=False):
                 c.services.set([services[_cle(n)] for n in l.calcul.get("services", []) if _cle(n) in services])
                 if type_c == Contrat.Type.SAISONNIER:
                     c.creer_echeancier_par_defaut(a.get("versements"))  # B3 : 1er versement à l'approbation (l'import)
+                    c.facturer_saison()  # la facture de la saison, en brouillon : Louis l'émet et l'envoie (Versements à envoyer)
                 r.contrats += 1
             if a.get("solde_du"):
                 Facture.solde_ouverture(client, a["solde_du"], saison_origine=a.get("solde_saison", "")[:20],

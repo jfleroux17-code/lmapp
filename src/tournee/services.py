@@ -16,25 +16,43 @@ def contrat_au_passage(adresse, quand):
 
 
 def _facturer(passage):
-    """Ajoute le passage à la facture brouillon du contrat (une facture qui s'allonge pendant le mois)."""
+    """Une facture par passage (décision de JF, 12 novembre 2026), en brouillon, payable sur réception (délai réglable :
+    Entreprise.jours_paiement_passage). À la fin de l'opération, l'écran « Factures des passages » les émet et les
+    envoie d'une tape."""
+    from datetime import timedelta
+
     contrat = contrat_au_passage(passage.adresse, passage.heure)
     if contrat is None:
         return
-    f = (Facture.objects.filter(entreprise_id=contrat.entreprise_id, contrat=contrat, statut=Facture.Statut.BROUILLON).first()
-         or Facture.objects.create(entreprise_id=contrat.entreprise_id, client_id=contrat.client_id, adresse=passage.adresse, contrat=contrat))
+    ent = contrat.entreprise
+    jour = timezone.localdate(passage.heure)
+    aujourdhui = timezone.localdate()
+    f = Facture.objects.create(entreprise_id=contrat.entreprise_id, client_id=contrat.client_id, adresse=passage.adresse, contrat=contrat,
+                               date_facture=min(jour, aujourdhui), date_echeance=min(jour, aujourdhui) + timedelta(days=ent.jours_paiement_passage))
     heure = timezone.localtime(passage.heure)
-    desc = f"Passage du {date_format(heure, 'j F')} ({passage.operation.get_type_display().lower()})"
-    passage.ligne_facture = f.lignes.create(description=desc, quantite=1, prix_unitaire=contrat.prix, ordre=f.lignes.count())
+    desc = f"Déneigement du {date_format(heure, 'j F')} ({passage.operation.get_type_display().lower()}), {passage.adresse.ligne1}"
+    passage.ligne_facture = f.lignes.create(description=desc, quantite=1, prix_unitaire=contrat.prix)
     f.recalculer()
 
 
 def _retirer_de_la_facture(passage):
+    """Fait corrigé en Sauté : la facture du passage (encore en brouillon) disparaît."""
     ligne = passage.ligne_facture
     if ligne is not None and ligne.facture.modifiable:
         f = ligne.facture
         passage.ligne_facture = None
+        passage.save(update_fields=["ligne_facture"])
         ligne.delete()
-        f.recalculer()
+        if not f.lignes.exists():
+            f.delete()
+        else:
+            f.recalculer()
+
+
+def factures_des_passages(entreprise):
+    """Brouillons créés par les passages (contrats au passage), à émettre et envoyer."""
+    return (Facture.objects.filter(entreprise=entreprise, statut=Facture.Statut.BROUILLON, lignes__passage__isnull=False)
+            .distinct().select_related("client", "adresse").order_by("date_facture", "client__nom", "pk"))
 
 
 def marquer(operation, adresse, statut, raison="", note="", position=None, quand=None):

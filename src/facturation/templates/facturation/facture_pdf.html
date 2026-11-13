@@ -78,6 +78,12 @@
   {% endif %}
 </table>
 {% if not brouillon and not annulee and f.payee %}<p class="nombre payee">Payée. Merci!</p>{% endif %}
+{% with ech=f.echeancier %}{% if ech and not annulee %}
+<table class="lignes">
+  <thead><tr><th>Versements (taxes comprises)</th><th>Payable le</th><th class="nombre col">Montant</th></tr></thead>
+  <tbody>{% for v, m, paye in ech %}<tr><td>{{ v.rang }}{% if v.rang == 1 %}er{% else %}e{% endif %} versement{% if paye %} : payé{% endif %}</td><td>{{ v.date_prevue|date_qc:"j F Y" }}</td><td class="nombre">{{ m|argent }}</td></tr>{% endfor %}</tbody>
+</table>
+{% endif %}{% endwith %}
 
 {% if annulee %}
 <div class="bloc"><p><strong>Facture annulée</strong> le {{ f.annulee_le|date_qc:"j F Y" }}{% if f.raison_annulation %} : {{ f.raison_annulation }}{% endif %}.</p><p>Rien à payer.</p></div>

@@ -3,6 +3,7 @@
 {% block contenu %}
 <h1 class="mb-1 text-2xl font-bold">Tournée</h1>
 <p class="mb-4 text-gray-400">Aucune opération en cours.</p>
+{% if factures_passages and ecriture %}<a href="{% url 'terrain:factures_passages' %}" class="mb-4 block rounded-2xl bg-accent/15 p-4 font-semibold text-accent">{{ factures_passages }} facture{{ factures_passages|pluralize }} de passage à envoyer ›</a>{% endif %}
 {% include "terrain/_meteo.html" %}
 {% if ecriture %}
   {# Démarrer en haut de l'écran. Avec l'avis aux clients coché, une feuille de confirmation à maintenir 1 seconde #}

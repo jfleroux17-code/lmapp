@@ -4,33 +4,54 @@
 {% block barre_onglets %}{% endblock %}
 {% block contenu %}
 <h1 class="mb-2 text-2xl font-bold">Versements à envoyer</h1>
-<p class="mb-4 text-gray-400">Factures des versements de contrat, préparées d'avance. Une tape les émet et les envoie à chaque client, par son moyen préféré. Rien ne part sans votre tape.</p>
-{% if lignes %}
+<p class="mb-4 text-gray-400">Une seule facture par client pour la saison, avec ses versements. Ici : les factures de saison à émettre, puis les rappels des versements qui arrivent. Tout est coché; une tape envoie, par le moyen préféré de chaque client. Rien ne part sans votre tape.</p>
+{% if lignes or rappels %}
   {% if ecriture %}
-  <form method="post" action="{% url 'terrain:envoyer_versements' %}" x-data="{ envoi: false, n: {{ lignes|length }} }"
-        @submit="if (envoi || n === 0 || !confirm('Émettre et envoyer ' + n + ' facture' + (n > 1 ? 's' : '') + '?')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+  <form method="post" action="{% url 'terrain:envoyer_versements' %}" x-data="{ envoi: false, n: {{ lignes|length }}, r: {{ rappels|length }} }"
+        @submit="if (envoi || n + r === 0 || !confirm('Envoyer ' + (n ? n + ' facture' + (n > 1 ? 's' : '') : '') + (n && r ? ' et ' : '') + (r ? r + ' rappel' + (r > 1 ? 's' : '') : '') + '?')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
   {% endif %}
-    <div class="carte mb-4 divide-y divide-bordure">
+    {% if lignes %}
+    <h2 class="mb-2 text-lg font-bold">Factures de la saison à émettre</h2>
+    <div class="carte mb-5 divide-y divide-bordure">
       {% for l in lignes %}
         <div class="flex items-start gap-3 p-4">
           {% if ecriture %}<input type="checkbox" name="facture" value="{{ l.f.pk }}" checked class="mt-1 h-6 w-6 shrink-0 accent-[#f5c400]"
-                 @change="n += $event.target.checked ? 1 : -1" aria-label="Envoyer la facture de {{ l.f.client.nom_affiche }}">{% endif %}
+                 @change="n += $event.target.checked ? 1 : -1" aria-label="Émettre et envoyer la facture de {{ l.f.client.nom_affiche }}">{% endif %}
           <div class="min-w-0 flex-1">
             <a href="{% url 'terrain:facture' l.f.pk %}" class="block truncate font-semibold underline-offset-4 active:underline">{{ l.f.client.nom_affiche }}</a>
-            <div class="text-sm text-accent">Versement {{ l.f.versement.rang }} de {{ l.f.versement.contrat.versements.count }} · {{ l.f.versement.montant|argent }} avant taxes</div>
-            {% for c in l.cheques %}<div class="text-sm font-semibold text-ok">Chèque en main{% if c.numero %} n° {{ c.numero }}{% endif %} ({{ c.montant|argent }}, daté du {{ c.date_cheque|date_qc:"j F" }}) : à déposer à sa date</div>{% endfor %}
-            <div class="text-sm text-gray-400">Payable le {{ l.f.date_echeance|date_qc:"j F" }} · {% if l.canaux %}par {{ l.canaux }}{% else %}<span class="text-danger">pas de courriel ni de cellulaire : à remettre en main propre</span>{% endif %}</div>
+            <div class="text-sm text-accent">Saison {{ l.f.contrat.saison }} · {{ l.f.total|argent }} taxes comprises{% if l.echeancier|length > 1 %}, en {{ l.echeancier|length }} versements{% endif %}</div>
+            {% for v, m, paye in l.echeancier %}<div class="text-sm text-gray-400">{{ v.rang }}{% if v.rang == 1 %}er{% else %}e{% endif %} : {{ m|argent }} le {{ v.date_prevue|date_qc:"j F" }}</div>{% endfor %}
+            {% for c in l.cheques %}<div class="text-sm font-semibold text-ok">Chèque en main{% if c.numero %} n° {{ c.numero }}{% endif %} ({{ c.montant|argent }}, daté du {{ c.date_cheque|date_qc:"j F" }})</div>{% endfor %}
+            <div class="text-sm text-gray-400">{% if l.canaux %}Par {{ l.canaux }}{% else %}<span class="text-danger">Pas de courriel ni de cellulaire : à remettre en main propre</span>{% endif %}</div>
           </div>
         </div>
       {% endfor %}
     </div>
+    {% endif %}
+    {% if rappels %}
+    <h2 class="mb-2 text-lg font-bold">Rappels de versement</h2>
+    <div class="carte mb-4 divide-y divide-bordure">
+      {% for r in rappels %}
+        <div class="flex items-start gap-3 p-4">
+          {% if ecriture %}<input type="checkbox" name="rappel" value="{{ r.v.pk }}" checked class="mt-1 h-6 w-6 shrink-0 accent-[#f5c400]"
+                 @change="r += $event.target.checked ? 1 : -1" aria-label="Envoyer le rappel à {{ r.v.facture.client.nom_affiche }}">{% endif %}
+          <div class="min-w-0 flex-1">
+            <a href="{% url 'terrain:facture' r.v.facture_id %}" class="block truncate font-semibold underline-offset-4 active:underline">{{ r.v.facture.client.nom_affiche }}</a>
+            <div class="text-sm text-accent">{{ r.v.rang }}{% if r.v.rang == 1 %}er{% else %}e{% endif %} versement : {{ r.montant|argent }}, payable le {{ r.v.date_prevue|date_qc:"j F" }} · facture n° {{ r.v.facture.numero }}</div>
+            {% for c in r.cheques %}<div class="text-sm font-semibold text-ok">Chèque en main{% if c.numero %} n° {{ c.numero }}{% endif %} ({{ c.montant|argent }}, daté du {{ c.date_cheque|date_qc:"j F" }}) : pas besoin de rappel?</div>{% endfor %}
+            <div class="text-sm text-gray-400">{% if r.canaux %}Par {{ r.canaux }}{% else %}<span class="text-danger">Pas de courriel ni de cellulaire</span>{% endif %}</div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
   {% if ecriture %}
     <div class="sticky bottom-0 -mx-4 border-t border-bordure bg-nuit/95 px-4 py-3 backdrop-blur" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
-      <button class="gros-bouton bg-accent text-nuit" :class="{ 'opacity-60': envoi || n === 0 }"><span x-text="'Émettre et envoyer ' + n + ' facture' + (n > 1 ? 's' : '')">Émettre et envoyer {{ lignes|length }} facture{{ lignes|length|pluralize }}</span></button>
+      <button class="gros-bouton bg-accent text-nuit" :class="{ 'opacity-60': envoi || n + r === 0 }"><span x-text="'Envoyer ' + (n ? n + ' facture' + (n > 1 ? 's' : '') : '') + (n && r ? ' et ' : '') + (r ? r + ' rappel' + (r > 1 ? 's' : '') : '') + (n + r === 0 ? 'rien' : '')">Envoyer</span></button>
     </div>
   </form>
   {% endif %}
 {% else %}
-  <p class="carte p-4 text-gray-300">Aucune facture de versement à envoyer.</p>
+  <p class="carte p-4 text-gray-300">Aucune facture de saison ni rappel à envoyer.</p>
 {% endif %}
 {% endblock %}

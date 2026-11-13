@@ -151,6 +151,30 @@ class Contrat(Horodate):
             dates.append(max(d, approbation))
         return dates
 
+    def facturer_saison(self):
+        """Une seule facture par client et par saison, pour le total (décision de JF, 12 novembre 2026), en brouillon :
+        une ligne au prix du contrat, l'échéancier (montants et dates des versements) imprimé dessus, payable au
+        dernier versement. Les paiements s'appliquent à cette facture; à la date d'un versement, un rappel (pas une
+        nouvelle facture). Relançable : la facture existante (pas annulée) est rendue."""
+        if self.type != self.Type.SAISONNIER:
+            raise ValidationError("Seul un contrat saisonnier a une facture de saison.")
+        existante = self.factures.exclude(statut=Facture.Statut.ANNULEE).filter(versements__isnull=False).first()
+        if existante:
+            return existante
+        versements = list(self.versements.order_by("rang"))
+        if not versements:
+            raise ValidationError("Le contrat n'a pas d'échéancier.")
+        with transaction.atomic():
+            aujourdhui = timezone.localdate()
+            f = Facture.objects.create(entreprise=self.entreprise, client=self.client, adresse=self.adresse, contrat=self,
+                                       date_facture=aujourdhui, date_echeance=max(versements[-1].date_prevue, aujourdhui))
+            n = len(versements)
+            desc = f"Déneigement, saison {self.saison}" + (f" (en {n} versements)" if n > 1 else "")
+            f.lignes.create(description=desc, quantite=1, prix_unitaire=self.prix)
+            f.recalculer()
+            self.versements.update(facture=f)
+        return f
+
     def creer_echeancier_par_defaut(self, nombre=None, approbation=None):
         return self.creer_echeancier(self.dates_par_defaut(nombre, approbation))
 
@@ -158,13 +182,24 @@ class Contrat(Horodate):
         """Versements égaux du prix aux dates données (B3 : 1 à 4 versements). Remplace les versements pas encore facturés."""
         if self.type != self.Type.SAISONNIER:
             raise ValidationError("Seul un contrat saisonnier a un échéancier.")
-        if self.versements.exclude(facture=None).exists():
-            raise ValidationError("Des versements sont déjà facturés : modifier l'échéancier à la main.")
+        if self.versements.exclude(facture=None).exclude(facture__statut=Facture.Statut.BROUILLON).exists():
+            raise ValidationError("La facture de la saison est émise : l'échéancier ne change plus (annuler la facture d'abord).")
         dates = sorted(dates)
         with transaction.atomic():
+            # La facture de saison encore en brouillon est refaite avec le nouvel échéancier
+            brouillons = Facture.objects.filter(versements__contrat=self, statut=Facture.Statut.BROUILLON).distinct()
+            refaire = brouillons.exists()
+            for f in brouillons:
+                f.lignes.all().delete()
+                f.delete()
             self.versements.all().delete()
-            return [Versement.objects.create(contrat=self, rang=i, date_prevue=d, montant=m)
-                    for i, (d, m) in enumerate(zip(dates, repartir(self.prix, len(dates))), start=1)]
+            versements = [Versement.objects.create(contrat=self, rang=i, date_prevue=d, montant=m)
+                          for i, (d, m) in enumerate(zip(dates, repartir(self.prix, len(dates))), start=1)]
+            if refaire:
+                self.facturer_saison()
+                for v in versements:
+                    v.refresh_from_db()
+            return versements
 
 
 class Versement(models.Model):
@@ -174,7 +209,9 @@ class Versement(models.Model):
     rang = models.PositiveSmallIntegerField()
     date_prevue = models.DateField("date prévue")
     montant = _argent("montant", help_text="Avant taxes.", validators=[MinValueValidator(0)])
-    facture = models.OneToOneField("Facture", on_delete=models.SET_NULL, null=True, blank=True, related_name="versement")
+    facture = models.ForeignKey("Facture", on_delete=models.SET_NULL, null=True, blank=True, related_name="versements",
+                                help_text="La facture de la saison (une seule pour tous les versements du contrat).")
+    rappel_envoye_le = models.DateTimeField("rappel envoyé le", null=True, blank=True)
 
     class Meta:
         verbose_name = "versement"
@@ -186,22 +223,8 @@ class Versement(models.Model):
         return f"Versement {self.rang} de {self.contrat.versements.count()}, {self.date_prevue:%Y-%m-%d}"
 
     def facturer(self):
-        """Crée la facture du versement (brouillon) et la lie au versement."""
-        if self.facture_id:
-            return self.facture
-        c = self.contrat
-        n = c.versements.count()
-        with transaction.atomic():
-            # Datée du jour où on la crée (jamais dans le futur), payable à la date prévue
-            aujourdhui = timezone.localdate()
-            f = Facture.objects.create(entreprise=c.entreprise, client=c.client, adresse=c.adresse, contrat=c,
-                                       date_facture=aujourdhui, date_echeance=max(self.date_prevue, aujourdhui))
-            desc = f"Déneigement, saison {c.saison}" + (f" : versement {self.rang} de {n}" if n > 1 else "")
-            f.lignes.create(description=desc, quantite=1, prix_unitaire=self.montant)
-            f.recalculer()
-            self.facture = f
-            self.save(update_fields=["facture"])
-        return f
+        """La facture de la saison du contrat (une seule pour tous les versements)."""
+        return self.facture or self.contrat.facturer_saison()
 
 
 class FactureQuerySet(models.QuerySet):
@@ -359,6 +382,39 @@ class Facture(Horodate):
     @property
     def payee(self):
         return self.statut == self.Statut.EMISE and self.solde <= 0
+
+    def echeancier(self):
+        """Facture de saison : [(versement, montant taxes comprises, déjà payé)], dans l'ordre. Les paiements couvrent
+        les versements du plus vieux au plus récent. Vide pour une facture sans versements."""
+        versements = list(self.versements.order_by("rang"))
+        if not versements:
+            return []
+        montants = repartir(self.total, len(versements))
+        reste_paye = self.paye if self.statut == self.Statut.EMISE else ZERO
+        lignes = []
+        for v, m in zip(versements, montants):
+            couvert = min(m, max(reste_paye, ZERO))
+            reste_paye -= couvert
+            lignes.append((v, m, couvert >= m))
+        return lignes
+
+    def montant_echu(self, jour=None):
+        """Ce qui est dû à ce jour : pour une facture de saison, les versements arrivés à leur date moins les paiements;
+        sinon tout le solde (dès l'émission)."""
+        jour = jour or timezone.localdate()
+        ech = self.echeancier()
+        if not ech:
+            return self.solde
+        exigible = sum((m for v, m, _ in ech if v.date_prevue <= jour), ZERO)
+        return max(exigible - self.paye, ZERO) if self.statut == self.Statut.EMISE else ZERO
+
+    def date_exigible(self):
+        """Date à partir de laquelle le solde est en retard : le plus vieux versement pas encore payé (facture de
+        saison), sinon l'échéance de la facture, sinon sa date."""
+        for v, m, paye in self.echeancier():
+            if not paye:
+                return v.date_prevue
+        return self.date_echeance or self.date_facture
 
     @classmethod
     def solde_ouverture(cls, client, montant, saison_origine="", note="", date_facture=None):

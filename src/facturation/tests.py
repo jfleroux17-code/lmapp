@@ -130,14 +130,16 @@ class FacturationTests(TestCase):
         c.services.add(entree)
         v1, v2 = c.creer_echeancier([date(2027, 1, 15), date(2026, 12, 1)])
         self.assertEqual((v1.rang, v1.date_prevue, v1.montant), (1, date(2026, 12, 1), D("225.00")))
-        f = v1.facturer()
-        self.assertEqual(f.lignes.get().description, "Déneigement, saison 2026-2027 : versement 1 de 2")
+        f = v1.facturer()  # une seule facture pour la saison (décision de JF, 12 novembre 2026)
+        self.assertEqual(f.lignes.get().description, "Déneigement, saison 2026-2027 (en 2 versements)")
         self.assertLessEqual(f.date_facture, date.today())  # jamais datée dans le futur
-        self.assertEqual(f.date_echeance, max(date(2026, 12, 1), f.date_facture))
-        self.assertEqual(f.total, D("258.69"))  # 225 + 11,25 + 22,44 (22,44375 arrondi)
-        self.assertIs(v1.facturer(), f)  # pas de deuxième facture
+        self.assertEqual(f.date_echeance, max(date(2027, 1, 15), f.date_facture))  # payable au dernier versement
+        self.assertEqual(f.total, D("517.39"))  # 450 + 22,50 + 44,89 : taxes une seule fois
+        self.assertEqual(v2.facturer(), f)
+        self.assertEqual(Facture.objects.filter(contrat=c).count(), 1)
+        f.emettre()
         with self.assertRaises(ValidationError):
-            c.creer_echeancier([date(2026, 12, 1)])  # déjà facturé en partie
+            c.creer_echeancier([date(2026, 12, 1)])  # facture de la saison émise : l'échéancier ne change plus
 
     def test_objets_d_une_autre_entreprise_refuses(self):
         etranger = Client.objects.create(entreprise=self.autre, nom="Étranger")
@@ -252,8 +254,10 @@ class PdfTests(TestCase):
 
 
 class VersementsDusTests(TestCase):
-    def test_brouillons_pour_les_versements_dus_seulement(self):
-        from facturation.tasks import facturer_versements_dus
+    def test_facture_de_saison_preparee_pour_les_contrats_actifs_seulement(self):
+        from unittest import mock
+
+        from facturation.tasks import aviser_rappels_de_versement
 
         ent = Entreprise.objects.create(nom="Essai", slug="essai", domaine="essai.exemple.test", inscrit_taxes=True)
         c = Client.objects.create(entreprise=ent, nom="Tremblay")
@@ -262,11 +266,13 @@ class VersementsDusTests(TestCase):
         v1, v2 = contrat.creer_echeancier([date(2026, 11, 15), date(2027, 1, 15)])
         inactif = Contrat.objects.create(entreprise=ent, client=c, saison=s, prix=D("100"), actif=False)
         inactif.creer_echeancier([date(2026, 11, 1)])
-        self.assertEqual(facturer_versements_dus(date(2026, 12, 1)), 1)
+        with mock.patch("core.tasks.notifier_plus_tard"):
+            self.assertEqual(aviser_rappels_de_versement(date(2026, 11, 14)), 0)
+            self.assertEqual(aviser_rappels_de_versement(date(2026, 12, 1)), 1)
+            self.assertEqual(aviser_rappels_de_versement(date(2026, 12, 2)), 0)  # relançable
         v1.refresh_from_db()
-        self.assertEqual((v1.facture.statut, v1.facture.total), ("brouillon", D("229.95")))
-        self.assertEqual(facturer_versements_dus(date(2026, 12, 2)), 0)  # relançable
-        self.assertEqual(facturer_versements_dus(date(2027, 1, 15)), 1)
+        self.assertEqual((v1.facture.statut, v1.facture.total), ("brouillon", D("459.90")))
+        self.assertEqual(Facture.objects.count(), 1)
 
 
 AVIS_FR = """Bonjour LOUIS METHOT,

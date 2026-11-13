@@ -264,13 +264,14 @@ class Command(BaseCommand):
                 a.save()
             c[cle] = client
 
-        def contrat(client, prix, adresse=None, dates=None):
+        def contrat(client, prix, adresse=None, dates=None, emettre=True):
             k = Contrat.objects.create(entreprise=ent, client=client, adresse=adresse or client.adresses.first(), saison=saison,
                                        prix=Decimal(prix), prix_texte=f"{prix} $ plus taxes, en 2 versements")
             k.services.add(entree)
             v1, v2 = k.creer_echeancier(dates or [auj, date(2027, 1, 15)])
-            f = v1.facturer()
-            f.emettre()
+            f = v1.facturer()  # une seule facture pour la saison
+            if emettre:
+                f.emettre()
             return k, f, v2
 
         def message(client, genre, canal, sens, statut, contenu, il_y_a, **kw):
@@ -283,8 +284,11 @@ class Command(BaseCommand):
         # Deux adresses, deux contrats de la même saison
         g = c["deux_adresses"]
         a1, a2 = list(g.adresses.order_by("ordre_tournee"))
-        contrat(g, "520", a1)
-        contrat(g, "380", a2)
+        # 1er versement payé il y a 45 jours, le 2e arrive aujourd'hui : rappel proposé dans « Versements à envoyer »
+        _, f, _ = contrat(g, "520", a1, dates=[auj - timedelta(days=45), auj])
+        Facture.objects.filter(pk=f.pk).update(date_facture=auj - timedelta(days=45))
+        credits.encaisser(f, f.echeancier()[0][1], "interac", reference="CA1RAPPEL", date=auj - timedelta(days=44))
+        contrat(g, "380", a2, emettre=False)  # facture de la saison en brouillon : à émettre et envoyer
 
         # Propriétaire non occupant (Ontario), locataire à aviser
         w = c["non_occupant"]
@@ -316,7 +320,8 @@ class Command(BaseCommand):
         # En retard de 40 jours : relance proposée (deuxième avis), une relance déjà partie
         jp = c["en_retard"]
         _, f, _ = contrat(jp, "480")
-        Facture.objects.filter(pk=f.pk).update(date_facture=auj - timedelta(days=55), date_echeance=auj - timedelta(days=40))
+        Facture.objects.filter(pk=f.pk).update(date_facture=auj - timedelta(days=55))
+        f.versements.filter(rang=1).update(date_prevue=auj - timedelta(days=40))  # 1er versement en retard de 40 jours
         r = message(jp, "relance_1", "texto", "sortant", "envoye", "Rappel : un solde est dû sur votre compte. Merci de le régler!", timedelta(days=20))
         r.factures_jointes.add(f)
 
@@ -326,7 +331,8 @@ class Command(BaseCommand):
         cg.ne_pas_relancer = True
         cg.save()
         _, f, _ = contrat(cg, "410")
-        Facture.objects.filter(pk=f.pk).update(date_facture=auj - timedelta(days=50), date_echeance=auj - timedelta(days=35))
+        Facture.objects.filter(pk=f.pk).update(date_facture=auj - timedelta(days=50))
+        f.versements.filter(rang=1).update(date_prevue=auj - timedelta(days=35))
 
         # Adresse introuvable : à placer sur la carte
         Adresse.objects.filter(client=c["mal_placee"]).update(position_precision="introuvable")
@@ -376,6 +382,10 @@ class Command(BaseCommand):
             Passage.objects.create(entreprise=ent, operation=op, adresse=a, statut="saute" if saute else "fait",
                                    raison="auto" if saute else "", heure=op.debut + timedelta(minutes=12 * (i + 1)),
                                    note="Auto dans l'entrée" if saute else "")
+        from tournee import services as tournee_services
+        for passage in op.passages.filter(statut="fait"):  # client au passage : sa facture du passage, à envoyer
+            tournee_services._facturer(passage)
+            passage.save(update_fields=["ligne_facture"])
 
         # Balises posées (une adresse sur deux)
         for a in Adresse.objects.filter(entreprise=ent, client__statut="actif")[::2]:

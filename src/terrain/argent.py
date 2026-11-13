@@ -11,7 +11,7 @@ from django import forms
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -263,7 +263,7 @@ def factures(request):
     qs = Facture.objects.filter(entreprise=request.entreprise).select_related("client").avec_solde()
     return render(request, "terrain/argent/factures.html", {
         "brouillons": qs.filter(statut=Facture.Statut.BROUILLON).order_by("date_facture", "pk"),
-        "versements_prets": _versements_prets(request.entreprise).count(),
+        "versements_prets": _versements_prets(request.entreprise).count() + _nb_rappels(request.entreprise),
         "recentes": qs.exclude(statut=Facture.Statut.BROUILLON).order_by("-date_facture", "-pk")[:50],
     })
 
@@ -298,7 +298,7 @@ def comptes(request):
         "brouillons": Facture.objects.filter(entreprise=request.entreprise, statut=Facture.Statut.BROUILLON).count(),
         "modifier_clients": peut_modifier_clients(request),
         "relances_pretes": _relances_pretes(request.entreprise),
-        "versements_prets": _versements_prets(request.entreprise).count(),
+        "versements_prets": _versements_prets(request.entreprise).count() + _nb_rappels(request.entreprise),
         "cheques": _cheques(request.entreprise),
     })
 
@@ -323,22 +323,25 @@ def resume_client(client):
     from communications.models import Message
 
     qs = client.factures.avec_solde().order_by("-date_facture", "-pk")
-    dues = relances.factures_dues(client)
+    dues = relances.factures_dues(client)  # échues (relance)
+    toutes = list(client.factures.a_recevoir().order_by("date_facture", "pk"))  # tout ce qui reste (solde, Encaisser)
     from facturation.credits import credit_restant
 
     from facturation.models import ChequePostdate
 
-    resume = {"du": sum((f.solde_du for f in dues), ZERO), "factures_client": qs[:10], "credit": credit_restant(client),
+    resume = {"du": sum((f.solde_du for f in toutes), ZERO), "factures_client": qs[:10], "credit": credit_restant(client),
               "cheques_client": client.cheques.filter(statut=ChequePostdate.Statut.EN_MAIN)
               .select_related("facture", "versement__contrat__saison").order_by("date_cheque"),
               "contrats": client.contrats.filter(actif=True).select_related("saison", "adresse").prefetch_related("versements")
-              .annotate(nb_factures=Count("factures")).order_by("-saison__debut")[:2]}
+              .annotate(nb_factures=Count("factures", filter=~Q(factures__statut=Facture.Statut.BROUILLON))).order_by("-saison__debut")[:2]}
+    if toutes:
+        resume.update({"nb_dues": len(toutes), "plus_vieille": toutes[0],
+                       "jours_plus_vieille": (timezone.localdate() - toutes[0].date_facture).days})
     if dues:
-        resume.update({"nb_dues": len(dues), "plus_vieille": dues[0],
-                       "jours_plus_vieille": (timezone.localdate() - dues[0].date_facture).days})
         niveau = relances.niveau_suivant(client, dues)
         resume["relance"] = {
             "niveau": niveau, "niveaux": [(n, g.label) for n, g in enumerate(relances.RELANCES, start=1)],
+            "montant": sum((f.solde_du for f in dues), ZERO),  # échu seulement (versements à venir exclus)
             "canaux": " et ".join(dict(Message.Canal.choices)[c].lower() for c in relances.canaux(client)),
             "historique": Message.objects.filter(client=client, genre__in=relances.RELANCES).order_by("-cree_le")[:5],
         }
@@ -529,33 +532,61 @@ def envoyer_contrat(request, pk):
     return redirect("terrain:fiche", pk=c.client_id)
 
 
+def _nb_rappels(entreprise):
+    from communications.rappels import a_rappeler
+
+    return len(a_rappeler(entreprise))
+
+
 def _versements_prets(entreprise):
-    return (Facture.objects.filter(entreprise=entreprise, statut=Facture.Statut.BROUILLON, versement__isnull=False)
-            .select_related("client", "versement__contrat__saison").order_by("date_echeance", "client__nom", "pk"))
+    """Factures de la saison en brouillon (une par contrat saisonnier), à émettre et envoyer."""
+    return (Facture.objects.filter(entreprise=entreprise, statut=Facture.Statut.BROUILLON, versements__isnull=False).distinct()
+            .select_related("client", "contrat__saison").order_by("date_facture", "client__nom", "pk"))
 
 
 @membre_requis
 def versements_a_envoyer(request):
-    """C5 : factures de versement préparées d'avance (brouillons), toutes cochées; une tape les émet et les envoie
-    au client par son canal préféré (courriel : PDF joint; texto : lien)."""
+    """Une seule facture par saison (décision de JF, 12 novembre 2026) : les factures de saison à émettre et envoyer,
+    puis les rappels des versements qui arrivent. Tout coché; une tape envoie, par le canal préféré du client."""
+    from communications.rappels import a_rappeler
     from communications.relances import canaux
 
-    lignes = []
-    for f in _versements_prets(request.entreprise):
-        c = canaux(f.client)
-        lignes.append({"f": f, "canaux": " et ".join(x.label.lower() for x in c) if c else "", "cheques": _cheques_en_main_pour(f)})
-    return render(request, "terrain/argent/versements.html", {"lignes": lignes, "ecriture": peut_ecrire(request)})
+    def mots(client):
+        c = canaux(client)
+        return " et ".join(x.label.lower() for x in c) if c else ""
+
+    lignes = [{"f": f, "canaux": mots(f.client), "cheques": _cheques_en_main_pour(f), "echeancier": f.echeancier()}
+              for f in _versements_prets(request.entreprise)]
+    rappels = [{"v": v, "montant": m, "canaux": mots(v.facture.client), "cheques": _cheques_en_main_pour(v.facture)}
+               for v, m in a_rappeler(request.entreprise)]
+    return render(request, "terrain/argent/versements.html", {"lignes": lignes, "rappels": rappels, "ecriture": peut_ecrire(request)})
 
 
 @require_POST
 @ecriture_requise
 def envoyer_versements(request):
-    """Émet et envoie les factures de versement cochées. Sans coordonnées : émise quand même, à remettre en main propre."""
+    """Émet et envoie les factures de saison cochées, et envoie les rappels cochés.
+    Sans coordonnées : facture émise quand même, à remettre en main propre."""
     from communications.factures import envoyer_facture as envoyer
+    from communications.rappels import a_rappeler, envoyer_rappel
     from communications.relances import canaux
 
-    cochees = set(request.POST.getlist("facture"))
-    emises, parties, problemes = 0, 0, []
+    def expedier(client, fabriquer):
+        partie = False
+        for canal in canaux(client):
+            try:
+                m = fabriquer(canal)
+            except ValidationError as e:
+                problemes.append(f"{client.nom_affiche} : {' '.join(e.messages)}")
+                continue
+            if m.statut == m.Statut.EN_FILE:
+                partie = True
+            else:
+                problemes.append(f"{client.nom_affiche}, {m.get_canal_display().lower()} pas envoyé : {m.erreur or m.get_statut_display().lower()}")
+        return partie
+
+    cochees, rappels_coches = set(request.POST.getlist("facture")), set(request.POST.getlist("rappel"))
+    emises, parties, rappels, problemes = 0, 0, 0, []
     for f in _versements_prets(request.entreprise):
         if str(f.pk) not in cochees:
             continue
@@ -565,28 +596,29 @@ def envoyer_versements(request):
             problemes.append(f"{f.client.nom_affiche} : {' '.join(e.messages)}")
             continue
         emises += 1
-        choix = canaux(f.client)
-        if not choix:
+        if not canaux(f.client):
             problemes.append(f"{f.client.nom_affiche} : facture n° {f.numero} émise, mais pas de courriel ni de cellulaire (à remettre en main propre).")
-        envoyee = False
-        for canal in choix:
-            try:
-                m = envoyer(f, canal)
-            except ValidationError as e:
-                problemes.append(f"{f.client.nom_affiche} : {' '.join(e.messages)}")
-                continue
-            if m.statut == m.Statut.EN_FILE:
-                envoyee = True
-            else:
-                problemes.append(f"{f.client.nom_affiche}, {m.get_canal_display().lower()} pas envoyé : {m.erreur or m.get_statut_display().lower()}")
-        parties += envoyee
+        parties += expedier(f.client, lambda canal, f=f: envoyer(f, canal))
+    for v, montant in a_rappeler(request.entreprise):
+        if str(v.pk) not in rappels_coches:
+            continue
+        client = v.facture.client
+        if not canaux(client):
+            problemes.append(f"{client.nom_affiche} : pas de courriel ni de cellulaire pour le rappel.")
+            continue
+        if expedier(client, lambda canal, v=v, montant=montant: envoyer_rappel(v, montant, canal)):
+            v.rappel_envoye_le = timezone.now()
+            v.save(update_fields=["rappel_envoye_le"])
+            rappels += 1
     if emises:
         s = "s" if emises > 1 else ""
         envoi = (f"{parties} en route vers {'les clients' if parties > 1 else 'le client'}" if parties
                  else "aucune envoyée (voir ci-dessous)")
         messages.success(request, f"{emises} facture{s} émise{s}, {envoi}.")
+    if rappels:
+        messages.success(request, f"{rappels} rappel{'s' if rappels > 1 else ''} de versement en route.")
     for p in problemes:
         messages.error(request, p)
-    if not emises and not problemes:
-        messages.info(request, "Aucune facture choisie.")
+    if not emises and not rappels and not problemes:
+        messages.info(request, "Rien de choisi.")
     return redirect("terrain:versements_a_envoyer")

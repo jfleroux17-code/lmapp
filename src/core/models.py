@@ -120,9 +120,12 @@ class Entreprise(Horodate):
         help_text="Jour/mois, séparés par des espaces, ex. « 15/01 15/02 ». Le 1er versement est à l'approbation du contrat; "
                   "avec 2 versements, le 2e est à la 1re date; avec 3, aux deux premières.")
     jours_avance_versement = models.PositiveSmallIntegerField(
-        "jours d'avance des factures de versement", default=0, validators=[MaxValueValidator(30)],
-        help_text="La facture d'un versement est préparée (en brouillon) ce nombre de jours avant sa date, "
-                  "ex. 5 : le 10 janvier pour le 15. Le cellulaire est avisé; rien ne part sans une tape.")
+        "jours d'avance des rappels de versement", default=0, validators=[MaxValueValidator(30)],
+        help_text="Le rappel d'un versement est proposé ce nombre de jours avant sa date, ex. 5 : le 10 janvier pour le 15. "
+                  "Le cellulaire est avisé; rien ne part sans une tape.")
+    jours_paiement_passage = models.PositiveSmallIntegerField(
+        "délai de paiement des factures au passage (jours)", default=0, validators=[MaxValueValidator(60)],
+        help_text="0 : payable sur réception (décision de JF, 12 novembre 2026).")
 
     # Paiement Interac (PRD D4)
     interac_courriel = models.EmailField("courriel Interac", blank=True)

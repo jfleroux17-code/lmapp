@@ -133,7 +133,10 @@ class ImportationTests(TestCase):
         roy = Contrat.objects.filter(client__nom="Roy").order_by("prix")
         self.assertEqual([(c.type, c.prix, c.adresse.ligne1) for c in roy], [("au_passage", Decimal("30.00"), "2 rue A"), ("saisonnier", Decimal("450.00"), "1 rue A")])
         self.assertEqual(roy.last().prix_texte, "450 $ en 2 fois")
-        s = Facture.objects.get(client__nom="Roy")
+        s = Facture.objects.get(client__nom="Roy", genre="solde_ouverture")
+        saison = Facture.objects.get(client__nom="Roy", genre="facture")  # facture de la saison, en brouillon
+        self.assertEqual((saison.statut, saison.sous_total), ("brouillon", Decimal("450.00")))
+        self.assertEqual(saison.versements.count(), roy.last().versements.count())
         self.assertEqual((s.genre, s.total, s.saison_origine, s.note_interne, s.statut), ("solde_ouverture", Decimal("100.00"), "2025-2026", "Mars pas payé", "emise"))
         self.assertEqual(Facture.objects.get(client__nom="Gagnon").total, Decimal("80.50"))
         self.assertFalse(Facture.objects.filter(client__nom="Côté").exists())  # solde à 0 : rien
@@ -174,7 +177,7 @@ class ImportationTests(TestCase):
         importation.appliquer(a, self.ent)
         for nom, total in (("Roy", "792.00"), ("Côté", "1200.00")):
             c = Contrat.objects.get(client__nom=nom)
-            self.assertEqual(sum(v.facturer().total for v in c.versements.all()), Decimal(total), nom)
+            self.assertEqual(c.facturer_saison().total, Decimal(total), nom)  # une facture pour la saison, taxes une fois
             self.assertIn("taxes incluses", c.prix_texte)
         self.assertEqual(Contrat.objects.get(client__nom="Gagnon").prix, Decimal("500.00"))  # plus taxes : inchangé
 
@@ -215,7 +218,7 @@ class ImportationTests(TestCase):
         f.emettre()
         f.refresh_from_db()
         self.assertEqual(f.paiements.get().mode, Paiement.Mode.CREDIT)
-        self.assertEqual(f.solde, Decimal("396.00") - Decimal("280.00"))
+        self.assertEqual(f.solde, Decimal("792.00") - Decimal("280.00"))  # facture de la saison au complet
 
     def test_commande_essai_a_blanc_puis_appliquer(self):
         """La commande elle-même (pas seulement le module) : essai à blanc, puis --appliquer."""

@@ -49,7 +49,7 @@ class ReglagesTests(TestCase):
         numero = self.ent.prochain_numero_facture
         # Les réglages de la plateforme ne passent jamais par ici, même ajoutés à la main au formulaire
         self.client.post("/plus/reglages/fiche/factures/", {"inscrit_taxes": "", "numero_tps": "", "numero_tvq": "",
-                                                            "interac_courriel": "", "interac_instructions": "",
+                                                            "interac_courriel": "", "interac_instructions": "", "jours_paiement_passage": 0,
                                                             "envois_actifs": "on", "prochain_numero_facture": numero + 50})
         self.ent.refresh_from_db()
         self.assertFalse(self.ent.inscrit_taxes)

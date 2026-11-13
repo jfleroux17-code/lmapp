@@ -16,7 +16,13 @@ def _texte(f):
         corps = f"Voici votre facture n° {f.numero} du {formats.date_format(f.date_facture, 'j F Y')}, au montant de {argent(f.total)}."
         if f.solde != f.total:
             corps += f" Solde à payer : {argent(f.solde)}."
-    if f.date_echeance and f.solde > 0:
+    ech = f.echeancier()
+    if ech and f.solde > 0:
+        # Facture de la saison : l'échéancier (décision de JF, 12 novembre 2026)
+        corps += "\nVersements :" + "".join(
+            f"\n- {v.rang}{'er' if v.rang == 1 else 'e'} versement : {argent(m)} le {formats.date_format(v.date_prevue, 'j F Y')}"
+            + (" (payé)" if paye else "") for v, m, paye in ech)
+    elif f.date_echeance and f.solde > 0:
         corps += f"\nÀ payer au plus tard le {formats.date_format(f.date_echeance, 'j F Y')}."
     lignes = [f"Bonjour {f.client.nom_affiche},", corps]
     if f.solde > 0 and ent.interac_courriel:
@@ -37,7 +43,12 @@ def _texto(f):
         quoi = f"votre facture n° {f.numero} : {argent(f.total)}"
         if f.solde != f.total:
             quoi += f", solde à payer {argent(f.solde)}"
-    echeance = f", à payer d'ici le {formats.date_format(f.date_echeance, 'j F')}" if f.date_echeance and f.solde > 0 else ""
+    prochain = next(((v, m) for v, m, paye in f.echeancier() if not paye), None)
+    if prochain and f.solde > 0:  # facture de la saison : le prochain versement à payer
+        v, m = prochain
+        echeance = f", {v.rang}{'er' if v.rang == 1 else 'e'} versement {argent(m)} d'ici le {formats.date_format(v.date_prevue, 'j F')}"
+    else:
+        echeance = f", à payer d'ici le {formats.date_format(f.date_echeance, 'j F')}" if f.date_echeance and f.solde > 0 else ""
     lien, signature = f.lien_public(), ent.signature_messages or ent.nom
     Quoi = quoi[:1].upper() + quoi[1:]
     return segments.premier_qui_entre(

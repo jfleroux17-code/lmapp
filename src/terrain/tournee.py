@@ -93,6 +93,7 @@ def tournee(request):
             "nb_a_aviser": avis.clients_a_aviser_au_debut(request.entreprise).count(), "apercu_avis": apercu,
             "envois_actifs": request.entreprise.envois_actifs,
             "dernieres": Operation.objects.filter(entreprise=request.entreprise).order_by("-debut")[:5],
+            "factures_passages": _nb_factures_passages(request.entreprise),
         })
     passages = {p.adresse_id: p for p in op.passages.all()}
     dus = soldes_dus(request.entreprise)
@@ -218,7 +219,57 @@ def terminer(request):
         reste = arrets(request.entreprise).count() - faits - sautes
         messages.success(request, f"Opération terminée : {faits} fait{'s' if faits > 1 else ''}, {sautes} sauté{'s' if sautes > 1 else ''}"
                                   + (f", {reste} pas visité{'s' if reste > 1 else ''}." if reste > 0 else "."))
+        from tournee.services import factures_des_passages
+
+        if factures_des_passages(request.entreprise).exists():
+            return redirect("terrain:factures_passages")
     return redirect("terrain:tournee")
+
+
+def _nb_factures_passages(entreprise):
+    from tournee.services import factures_des_passages
+
+    return factures_des_passages(entreprise).count()
+
+
+@ecriture_requise
+def factures_passages(request):
+    """Contrats au passage : une facture par passage, payable sur réception (décision de JF, 12 novembre 2026).
+    Après l'opération : toutes cochées, émises et envoyées d'une tape (canal préféré du client)."""
+    from communications.factures import envoyer_facture
+    from communications.relances import canaux
+    from tournee.services import factures_des_passages
+
+    liste = list(factures_des_passages(request.entreprise))
+    if request.method == "POST":
+        cochees = set(request.POST.getlist("facture"))
+        emises, parties, problemes = 0, 0, []
+        for f in liste:
+            if str(f.pk) not in cochees:
+                continue
+            try:
+                f.emettre()
+            except ValidationError as e:
+                problemes.append(f"{f.client.nom_affiche} : {' '.join(e.messages)}")
+                continue
+            emises += 1
+            choix = canaux(f.client)
+            if not choix:
+                problemes.append(f"{f.client.nom_affiche} : facture n° {f.numero} émise, pas de courriel ni de cellulaire (à remettre en main propre).")
+            for canal in choix:
+                try:
+                    m = envoyer_facture(f, canal)
+                except ValidationError as e:
+                    problemes.append(f"{f.client.nom_affiche} : {' '.join(e.messages)}")
+                    continue
+                parties += m.statut == m.Statut.EN_FILE
+        if emises:
+            messages.success(request, f"{emises} facture{'s' if emises > 1 else ''} de passage émise{'s' if emises > 1 else ''}, {parties} envoi{'s' if parties > 1 else ''} en route.")
+        for p in problemes:
+            messages.error(request, p)
+        return redirect("terrain:factures_passages" if factures_des_passages(request.entreprise).exists() else "terrain:tournee")
+    lignes = [{"f": f, "canaux": " et ".join(c.label.lower() for c in canaux(f.client))} for f in liste]
+    return render(request, "terrain/tournee/factures_passages.html", {"lignes": lignes})
 
 
 PRECISION_MAX_M = 150  # au-delà (GPS pas encore accroché, intérieur), on garde la position sans aviser

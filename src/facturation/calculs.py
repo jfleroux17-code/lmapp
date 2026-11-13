@@ -30,8 +30,8 @@ def repartir(total, n):
 def prix_avant_taxes(total, taux_tps, taux_tvq, versements=1):
     """Prix « taxes incluses » ramené avant taxes : (prix, exact).
 
-    Cherche le prix avant taxes dont les factures (un versement par facture, taxes arrondies sur chacune, comme
-    Contrat.creer_echeancier puis Versement.facturer) redonnent exactement `total`. Sinon (l'arrondi l'empêche) :
+    Cherche le prix avant taxes dont la ou les factures (taxes arrondies sur chacune) redonnent exactement `total`.
+    Depuis le 12 novembre 2026, une seule facture par saison : `versements` vaut 1. Sinon (l'arrondi l'empêche) :
     le plus proche, et exact = False."""
     total = arrondir(total)
     taux = (Decimal(taux_tps) + Decimal(taux_tvq)) / 100
