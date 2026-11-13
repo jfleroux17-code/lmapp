@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.gis.geos import Point
 
-from core.models import (AbonnementNotification, DemandeSite, EchecConnexion, Entreprise, FacturePlateforme, IncidentConfidentialite,
+from core.models import (DoubleAuthentification, AbonnementNotification, DemandeSite, EchecConnexion, Entreprise, FacturePlateforme, IncidentConfidentialite,
                          JournalAction, LigneFacturePlateforme, Membre, VilleDesservie)
 
 _titre = "Le Déneigeur : administration"
@@ -416,3 +416,27 @@ class FacturePlateformeAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return request.user.is_superuser and (obj is None or obj.modifiable)  # un brouillon s'efface, une facture émise non
+
+
+@admin.register(DoubleAuthentification)
+class DoubleAuthentificationAdmin(admin.ModelAdmin):
+    """JF seulement : voir qui l'a activée; supprimer = réinitialiser (téléphone perdu), refaite à la prochaine connexion."""
+    list_display = ["utilisateur", "active_le", "derniere_utilisation", "codes_restants"]
+    readonly_fields = ["utilisateur", "active_le", "derniere_utilisation", "codes_restants"]
+    exclude = ["secret", "codes_secours", "dernier_pas"]
+
+    @admin.display(description="codes de secours restants")
+    def codes_restants(self, obj):
+        return len(obj.codes_secours)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser and obj is None
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser

@@ -10,3 +10,5 @@ openpyxl==3.1.5
 cryptography==50.0.2
 http-ece==1.2.1
 py-vapid==1.9.6
+# Double authentification (Google Authenticator) : code QR de l'activation, en SVG (pur Python, sans dépendance)
+segno==1.6.6

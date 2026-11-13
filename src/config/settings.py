@@ -5,6 +5,7 @@ vient des variables d'environnement, fournies par /srv/lmapp/.env via Docker
 Compose. Rien de propre à Louis ici : ça va dans la table Entreprise.
 """
 import os
+import sys
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -112,6 +113,7 @@ MIDDLEWARE = [
     "core.middleware.EntrepriseMiddleware",
     "core.journal.JournalMiddleware",
     "core.middleware.AdminAdresseNeutreMiddleware",
+    "core.middleware.DoubleAuthMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -192,6 +194,10 @@ SESSION_COOKIE_AGE = 60 * 60 * 24 * 90
 
 # Connexion des écrans de terrain
 LOGIN_URL = "terrain:connexion"
+# Double authentification obligatoire pour les superutilisateurs et les administrateurs (core/double_auth.py).
+# Éteinte pendant les tests automatiques (sinon chaque test d'administrateur passerait par l'activation);
+# les tests de la double authentification l'allument eux-mêmes.
+LMAPP_DOUBLE_AUTH_OBLIGATOIRE = env("LMAPP_DOUBLE_AUTH_OBLIGATOIRE", "1") == "1" and sys.argv[1:2] != ["test"]
 LOGIN_REDIRECT_URL = "terrain:accueil"
 LOGOUT_REDIRECT_URL = "terrain:connexion"
 

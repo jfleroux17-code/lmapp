@@ -1,0 +1,83 @@
+{% load static %}<!DOCTYPE html>
+<html lang="fr-CA" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="{% static 'icones/icone.svg' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <script>if (localStorage.getItem("lmapp-theme") === "soleil") document.documentElement.classList.add("soleil");</script>
+  <title>Double authentification</title>
+</head>
+<body class="min-h-full zone-sure">
+<main class="mx-auto max-w-[520px] px-4 py-8">
+  <h1 class="mb-1 text-2xl font-bold">Double authentification</h1>
+  <p class="mb-5 text-gray-400">{{ user.username }}{% if admin %} · administration{% elif request.entreprise %} · {{ request.entreprise.nom }}{% endif %}</p>
+  {% for m in messages %}
+    <p class="mb-4 rounded-2xl border p-4 {% if m.level_tag == 'error' %}border-danger/50 bg-danger/10 text-danger{% else %}border-ok/50 bg-ok/10 text-ok{% endif %}" role="status">{{ m }}</p>
+  {% endfor %}
+
+  {% if etape == "code" %}
+    <form method="post" class="space-y-4">{% csrf_token %}
+      <input type="hidden" name="suivant" value="{{ suivant }}">
+      <label class="block"><span class="mb-2 block text-gray-300">Code à 6 chiffres de Google Authenticator</span>
+        <input name="code" class="champ text-center text-3xl tracking-[0.3em]" inputmode="numeric" autocomplete="one-time-code" autofocus required maxlength="12">
+      </label>
+      <button class="gros-bouton bg-accent text-nuit">Entrer</button>
+      <p class="text-sm text-gray-500">Téléphone perdu? Tape un de tes codes de secours (ex. abcde-23456) à la place.</p>
+    </form>
+
+  {% elif etape == "activer" %}
+    {% if obligatoire and not refaire %}<p class="mb-4 rounded-2xl border border-accent/50 bg-accent/10 p-4 text-accent">Obligatoire pour les administrateurs : une étape, une seule fois par appareil connecté.</p>{% endif %}
+    <ol class="mb-5 list-decimal space-y-2 pl-5 text-gray-200">
+      <li>Installe <strong>Google Authenticator</strong> (App Store ou Google Play), si ce n'est pas déjà fait.</li>
+      <li>Sur ce cellulaire : touche « Ajouter à Google Authenticator ». Depuis un ordinateur : dans l'application, touche « + », puis « Scanner un code QR ».</li>
+      <li>Tape le code à 6 chiffres affiché pour « Le Déneigeur ».</li>
+    </ol>
+    <a href="{{ lien }}" class="gros-bouton mb-4 border-2 border-accent text-accent">Ajouter à Google Authenticator</a>
+    <style>.qr svg { width: 100%; height: auto; display: block; }</style>
+    <div class="qr mx-auto mb-3 w-64 rounded-xl bg-white p-2" aria-label="Code QR à scanner avec Google Authenticator">{{ qr|safe }}</div>
+    <details class="mb-5"><summary class="flex min-h-12 cursor-pointer items-center text-gray-400">Pas de caméra? Taper la clé à la main</summary>
+      <p class="mt-2 break-all font-mono text-lg tracking-wide">{{ secret }}</p>
+      <p class="text-sm text-gray-500">Type : basé sur l'heure. Nom du compte : Le Déneigeur.</p>
+    </details>
+    <form method="post" class="space-y-4">{% csrf_token %}
+      <input type="hidden" name="action" value="confirmer">
+      <input type="hidden" name="suivant" value="{{ suivant }}">
+      <label class="block"><span class="mb-2 block text-gray-300">Code à 6 chiffres affiché</span>
+        <input name="code" class="champ text-center text-3xl tracking-[0.3em]" inputmode="numeric" autocomplete="one-time-code" required maxlength="8">
+      </label>
+      <button class="gros-bouton bg-accent text-nuit">Activer</button>
+    </form>
+
+  {% elif etape == "codes" %}
+    <p class="mb-3 rounded-2xl border border-ok/50 bg-ok/10 p-4 text-ok">{% if nouvelle %}Double authentification activée.{% else %}Nouveaux codes de secours : les anciens ne marchent plus.{% endif %}</p>
+    <p class="mb-3 text-gray-200"><strong>Codes de secours</strong> : si tu perds ton téléphone, chacun remplace le code une fois. Note-les sur papier et garde-les ailleurs que dans le téléphone. Ils ne seront plus jamais affichés.</p>
+    <ul class="mb-5 grid grid-cols-2 gap-2 font-mono text-lg">{% for c in codes %}<li class="rounded-lg border border-bordure px-3 py-2 text-center">{{ c }}</li>{% endfor %}</ul>
+    <a href="{{ suite }}" class="gros-bouton bg-accent text-nuit">J'ai noté mes codes, continuer</a>
+
+  {% elif etape == "etat" %}
+    <p class="mb-4 text-gray-200">Activée le {{ da_obj.active_le|date:"j F Y" }}.{% if da_obj.derniere_utilisation %} Dernier code : {{ da_obj.derniere_utilisation|date:"j F Y, H \h i" }}.{% endif %} Codes de secours restants : {{ restants }}.</p>
+    <a href="?action=refaire" class="gros-bouton mb-3 border-2 border-bordure">Nouveau téléphone : refaire l'activation</a>
+    <form method="post" class="mb-3 space-y-3 rounded-2xl border-2 border-bordure p-4">{% csrf_token %}
+      <input type="hidden" name="action" value="codes">
+      <label class="block"><span class="mb-2 block text-gray-300">Nouveaux codes de secours : code actuel de l'application</span>
+        <input name="code" class="champ text-center text-2xl tracking-[0.3em]" inputmode="numeric" autocomplete="one-time-code" required maxlength="12">
+      </label>
+      <button class="gros-bouton border-2 border-accent text-accent">Nouveaux codes de secours</button>
+    </form>
+    {% if not obligatoire %}
+      <form method="post" onsubmit="return confirm('Désactiver la double authentification?')">{% csrf_token %}
+        <input type="hidden" name="action" value="desactiver">
+        <button class="gros-bouton border-2 border-danger/60 text-danger">Désactiver</button>
+      </form>
+    {% else %}<p class="text-sm text-gray-500">Obligatoire pour les administrateurs : ne se désactive pas.</p>{% endif %}
+    <a href="{{ suite }}" class="mt-4 block text-accent">Retour à l'app</a>
+  {% endif %}
+
+  <form method="post" action="{% if admin %}/admin/logout/{% else %}{% url 'terrain:deconnexion' %}{% endif %}" class="mt-8">{% csrf_token %}
+    <button class="min-h-12 text-gray-400 underline">Déconnexion</button>
+  </form>
+</main>
+</body>
+</html>

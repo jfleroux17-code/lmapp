@@ -419,6 +419,18 @@ def utilisateur(request, pk):
             cell = ""
         _envoyer_invitation(request, membre, cell)
         messages.success(request, "Nouveau lien d'invitation" + (f" envoyé au {afficher(cell)}." if cell else " (à donner toi-même)."))
+    elif action == "double_auth" and not user.is_superuser:
+        from django.contrib.sessions.models import Session
+
+        from core.models import DoubleAuthentification
+
+        DoubleAuthentification.objects.filter(utilisateur=user).delete()
+        # Ses sessions ouvertes (peut-être sur le téléphone perdu) sont fermées
+        for s in Session.objects.filter(expire_date__gt=timezone.now()).iterator():
+            if s.get_decoded().get("_auth_user_id") == str(user.pk):
+                s.delete()
+        messages.success(request, f"Double authentification réinitialisée pour {user.get_full_name() or user.username} : "
+                                  "ses sessions sont fermées, il refera l'activation à sa prochaine connexion.")
     elif action == "retirer":
         with transaction.atomic():
             membre.delete()

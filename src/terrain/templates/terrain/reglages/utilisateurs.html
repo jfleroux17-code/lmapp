@@ -36,6 +36,11 @@
         <form method="post" action="{% url 'terrain:reglages_utilisateur' m.pk %}" onsubmit="return confirm('Retirer l\'accès de {{ m.utilisateur.get_full_name|default:m.utilisateur.username|escapejs }}? Il ne pourra plus entrer dans l\'app.')">{% csrf_token %}<input type="hidden" name="action" value="retirer">
           <button class="min-h-12 text-sm text-danger underline">Retirer l'accès</button>
         </form>
+        {% if m.utilisateur.double_auth %}
+        <form method="post" action="{% url 'terrain:reglages_utilisateur' m.pk %}" onsubmit="return confirm('Téléphone perdu? Réinitialiser la double authentification de {{ m.utilisateur.get_full_name|default:m.utilisateur.username|escapejs }}? Ses sessions ouvertes sont fermées; il refera l\'activation à sa prochaine connexion.')">{% csrf_token %}<input type="hidden" name="action" value="double_auth">
+          <button class="min-h-12 text-sm text-accent underline">Réinitialiser la double authentification (téléphone perdu)</button>
+        </form>
+        {% endif %}
         {% endif %}
       </div>
       {% endif %}

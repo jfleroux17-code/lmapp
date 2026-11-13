@@ -63,3 +63,39 @@ class AdminAdresseNeutreMiddleware:
         if hote and request.path.startswith("/admin") and request.get_host().split(":")[0] != hote:
             raise Http404
         return self.get_response(request)
+
+
+class DoubleAuthMiddleware:
+    """Double authentification (core/double_auth.py) : une session « en attente » ne voit que l'écran du code;
+    un compte pour qui elle est obligatoire et pas encore activée ne voit que l'écran d'activation.
+    Vérifié une fois par session (drapeau `double_auth_ok`), pour ne pas interroger la base à chaque page."""
+
+    LIBRES = ("/static/", "/deconnexion/", "/admin/logout/", "/sw.js", "/manifest.webmanifest", "/favicon", "/sante/", "/webhooks/")
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from urllib.parse import quote
+
+        from django.shortcuts import redirect
+
+        from core import double_auth as da
+        from core import vues_double_auth as vues
+
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated or request.path.startswith(self.LIBRES):
+            return self.get_response(request)
+        session = request.session
+        if session.get(da.SESSION_ATTENTE):
+            cible = vues.url_code(request)
+            if request.path != cible:
+                return redirect(f"{cible}?suivant={quote(request.get_full_path()) if request.method == 'GET' else ''}")
+        elif not session.get("double_auth_ok"):
+            if da.obligatoire(user) and not da.active(user):
+                cible = vues.url_activer(request)
+                if request.path != cible:
+                    return redirect(f"{cible}?suivant={quote(request.get_full_path()) if request.method == 'GET' else ''}")
+            else:
+                session["double_auth_ok"] = True
+        return self.get_response(request)

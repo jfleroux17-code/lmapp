@@ -10,6 +10,7 @@ from django.conf import settings
 from django.contrib.gis.db import models as gis
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils import timezone
 
 from core import telephone
 from core.texte import cle_ville
@@ -498,3 +499,23 @@ class LigneFacturePlateforme(models.Model):
         from facturation.calculs import arrondir
 
         return arrondir(self.quantite * self.prix_unitaire)
+
+
+class DoubleAuthentification(models.Model):
+    """Double authentification par application (Google Authenticator, TOTP de la RFC 6238), demande de JF du
+    12 novembre 2026. Obligatoire pour JF (superutilisateur) et les administrateurs des déneigeurs, au choix pour
+    les autres. Le code est demandé à chaque nouvelle connexion (pas à chaque ouverture de l'app). Règles :
+    `core/double_auth.py`."""
+    utilisateur = models.OneToOneField("auth.User", on_delete=models.CASCADE, related_name="double_auth")
+    secret = models.CharField(max_length=64, help_text="Clé partagée avec l'application (base32). Jamais affichée après l'activation.")
+    active_le = models.DateTimeField("activée le", default=timezone.now)
+    dernier_pas = models.BigIntegerField(default=0, help_text="Dernier pas de 30 secondes accepté : un code ne sert qu'une fois.")
+    codes_secours = models.JSONField(default=list, blank=True, help_text="Empreintes SHA-256 des codes de secours pas encore utilisés.")
+    derniere_utilisation = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "double authentification"
+        verbose_name_plural = "doubles authentifications"
+
+    def __str__(self):
+        return f"Double authentification de {self.utilisateur}"
