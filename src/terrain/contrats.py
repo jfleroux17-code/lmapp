@@ -27,7 +27,10 @@ class ContratForm(forms.ModelForm):
     taxes_incluses = forms.BooleanField(label="Ce prix comprend déjà les taxes", required=False,
                                         help_text="Coché : l'app calcule le prix avant taxes qui redonne exactement ce total.")
     versements = forms.TypedChoiceField(label="Nombre de versements", coerce=int, choices=[(n, str(n)) for n in range(1, 5)],
-                                        help_text="Saisonnier seulement : le 1er aujourd'hui, les suivants aux dates de tes réglages.")
+                                        help_text="Saisonnier seulement : le 1er à l'envoi de la facture, les suivants aux dates de tes réglages.")
+    envoyer_le = forms.DateField(label="Envoyer la facture le", required=False, widget=forms.DateInput(attrs={"type": "date"}),
+                                 help_text="Aujourd'hui : on arrive sur la facture pour l'envoyer. Plus tard (ex. client inscrit en plein "
+                                           "été) : elle attend en brouillon et sera proposée ce jour-là dans « Versements à envoyer ».")
 
     class Meta:
         model = Contrat
@@ -57,7 +60,16 @@ class ContratForm(forms.ModelForm):
                 actives = list(self.fields["adresse"].queryset[:2])
                 if len(actives) == 1:
                     self.initial["adresse"] = actives[0].pk
-        self.order_fields(["saison", "adresse", "type", "prix", "taxes_incluses", "versements", "services", "prix_texte", "notes"])
+        from django.utils import timezone
+
+        if not self.is_bound:
+            prevue = None
+            if self.instance.pk:
+                f = self.instance.factures.filter(statut=Facture.Statut.BROUILLON, versements__isnull=False).first()
+                prevue = f.envoyer_le if f else None
+            self.initial["envoyer_le"] = prevue or timezone.localdate()
+        self.fields["envoyer_le"].widget.attrs["min"] = timezone.localdate().isoformat()
+        self.order_fields(["saison", "adresse", "type", "prix", "taxes_incluses", "versements", "envoyer_le", "services", "prix_texte", "notes"])
         _habiller(self)
         self.fields["services"].widget.attrs = {"class": "h-6 w-6 accent-[#f5c400]"}
         # Une autre adresse du même client, créée sur place (demande de Louis, 12 novembre 2026)
@@ -81,6 +93,14 @@ class ContratForm(forms.ModelForm):
             if not d.get("prix_texte"):
                 d["prix_texte"] = f"{str(self.total_entendu).replace('.', ',')} $ taxes incluses" + (f", en {nb} versements" if nb > 1 else "")
         if saisonnier:
+            from django.utils import timezone
+
+            envoi = d.get("envoyer_le") or timezone.localdate()
+            if envoi < timezone.localdate():
+                raise ValidationError({"envoyer_le": "Aujourd'hui ou plus tard."})
+            if envoi > d["saison"].fin:
+                raise ValidationError({"envoyer_le": f"Au plus tard la fin de la saison ({d['saison'].fin:%d/%m/%Y})."})
+            d["envoyer_le"] = envoi
             # Vérifie l'échéancier avant d'enregistrer (il faut assez de dates dans les réglages)
             essai = Contrat(entreprise=ent, client=self.client, saison=d["saison"])
             try:
@@ -107,7 +127,8 @@ def _enregistrer(request, form, contrat_existant, form_adresse=None):
         form.save_m2m()
         facture = None
         if c.type == Contrat.Type.SAISONNIER:
-            c.creer_echeancier_par_defaut(d["versements"])
+            envoi = d["envoyer_le"]
+            c.creer_echeancier_par_defaut(d["versements"], approbation=envoi)  # 1er versement à l'envoi de la facture
             # Une seule facture pour la saison, prête en brouillon (décision de JF, 12 novembre 2026)
             facture = c.facturer_saison()
             if facture.modifiable:  # prix ou services changés : le brouillon suit le contrat
@@ -116,7 +137,10 @@ def _enregistrer(request, form, contrat_existant, form_adresse=None):
                 facture.lignes.create(description=f"Déneigement, saison {c.saison}" + (f" (en {n} versements)" if n > 1 else ""),
                                       quantite=1, prix_unitaire=c.prix)
                 facture.adresse = c.adresse
-                facture.save(update_fields=["adresse"])
+                from django.utils import timezone
+
+                facture.envoyer_le = envoi if envoi > timezone.localdate() else None  # envoi prévu plus tard (client d'avance)
+                facture.save(update_fields=["adresse", "envoyer_le"])
                 facture.recalculer()
         else:
             for f in c.factures.filter(statut=Facture.Statut.BROUILLON, versements__isnull=False).distinct():
@@ -125,6 +149,10 @@ def _enregistrer(request, form, contrat_existant, form_adresse=None):
             c.versements.all().delete()
     if not getattr(form, "exact", True):
         messages.warning(request, f"Taxes incluses : impossible au cent près (arrondi des taxes), prix avant taxes {c.prix} $.")
+    if facture is not None and facture.modifiable and facture.envoyer_le:
+        messages.success(request, f"Contrat {c.saison} {'modifié' if contrat_existant else 'ajouté'}. Sa facture de la saison attend en "
+                                  f"brouillon; elle sera proposée le {facture.envoyer_le:%d/%m/%Y} dans « Versements à envoyer ».")
+        return redirect(f"/clients/{c.client_id}/?argent=1#argent")
     if facture is not None:
         messages.success(request, f"Contrat {c.saison} {'modifié' if contrat_existant else 'ajouté'}. Sa facture de la saison est prête "
                                   "(brouillon) : la vérifier, puis l'émettre et l'envoyer.")

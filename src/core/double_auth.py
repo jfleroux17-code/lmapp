@@ -77,7 +77,9 @@ def qr_svg(texte):
     import segno
 
     tampon = io.BytesIO()
-    segno.make(texte, error="m").save(tampon, kind="svg", scale=6, border=2, dark="#000", light="#fff", xmldecl=False, svgns=True)
+    # omitsize : viewBox sans largeur fixe, pour que l'image se réduise au cadre sans être coupée (sinon illisible)
+    segno.make(texte, error="m").save(tampon, kind="svg", scale=6, border=4, dark="#000", light="#fff", xmldecl=False, svgns=True,
+                                      omitsize=True)
     return tampon.getvalue().decode()
 
 

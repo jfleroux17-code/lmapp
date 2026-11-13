@@ -15,7 +15,7 @@
     {% elif champ.widget_type == "checkbox" %}
       <label class="flex min-h-14 cursor-pointer items-start gap-3 py-2">{{ champ }}<span><span class="block">{{ champ.label|capfirst }}</span>{% if champ.help_text %}<span class="block text-sm text-gray-500">{{ champ.help_text }}</span>{% endif %}</span></label>
     {% else %}
-      <label class="block" {% if champ.name == "versements" %}x-show="type === 'saisonnier'"{% endif %}>
+      <label class="block" {% if champ.name == "versements" or champ.name == "envoyer_le" %}x-show="type === 'saisonnier'"{% endif %}>
         <span class="mb-2 block text-gray-300">{{ champ.label|capfirst }}</span>
         {{ champ }}
         {% if champ.errors %}<span class="mt-1 block text-danger">{{ champ.errors|join:" " }}</span>{% elif champ.help_text %}<span class="mt-1 block text-sm text-gray-500">{{ champ.help_text }}</span>{% endif %}

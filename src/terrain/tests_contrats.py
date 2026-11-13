@@ -59,6 +59,22 @@ class ContratsFicheTests(TestCase):
         # Le même contrat deux fois : refusé
         self.assertContains(self.client.post(url, self.donnees()), "déjà un contrat")
 
+    @mock.patch("django.utils.timezone.localdate", return_value=date(2026, 11, 10))
+    def test_contrat_avec_facture_envoyee_plus_tard(self, _):
+        url = f"/clients/{self.client_.pk}/contrats/nouveau/"
+        self.assertContains(self.client.get(url), 'name="envoyer_le"')
+        self.assertContains(self.client.post(url, self.donnees(envoyer_le="2026-11-01")), "plus tard")  # pas dans le passé
+        r = self.client.post(url, self.donnees(envoyer_le="2026-12-01"))
+        self.assertRedirects(r, f"/clients/{self.client_.pk}/?argent=1#argent", fetch_redirect_response=False)
+        c = Contrat.objects.get(client=self.client_)
+        f = c.factures.get()
+        self.assertEqual((f.statut, f.envoyer_le), ("brouillon", date(2026, 12, 1)))
+        self.assertEqual(c.versements.get(rang=1).date_prevue, date(2026, 12, 1))
+        # Modifier le contrat : la date prévue est reprise; remise à aujourd'hui, la facture redevient à envoyer tout de suite
+        self.assertContains(self.client.get(f"/contrats/{c.pk}/modifier/"), 'value="2026-12-01"')
+        self.client.post(f"/contrats/{c.pk}/modifier/", self.donnees(envoyer_le="2026-11-10"))
+        self.assertIsNone(c.factures.get().envoyer_le)
+
     def test_deuxieme_adresse_creee_dans_le_contrat(self):
         url = f"/clients/{self.client_.pk}/contrats/nouveau/"
         self.client.post(url, self.donnees())
