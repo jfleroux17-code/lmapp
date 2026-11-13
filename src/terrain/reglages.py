@@ -11,7 +11,7 @@ Tout passe par le journal des actions (signaux de core.journal).
 from django import forms
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
-from django.contrib.auth.forms import SetPasswordForm
+from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
 from django.contrib.auth.tokens import default_token_generator
 from django.db import transaction
 from django.db.models import Count, Max, Q
@@ -450,6 +450,22 @@ def invitation(request, uidb64, jeton):
         messages.success(request, f"Bienvenue, {user.first_name or user.username}.")
         return redirect("terrain:accueil")
     return render(request, "terrain/reglages/invitation.html", {"form": form, "utilisateur": user})
+
+
+@membre_requis
+def mot_de_passe(request):
+    """Chaque personne change son propre mot de passe (demande de JF, 12 novembre 2026), lecture seule comprise.
+    Le cellulaire reste connecté; les autres appareils connectés avec l'ancien mot de passe sont déconnectés."""
+    from django.contrib.auth import update_session_auth_hash
+
+    form = PasswordChangeForm(request.user, request.POST or None)
+    _habiller(form)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        update_session_auth_hash(request, form.user)
+        messages.success(request, "Mot de passe changé. Tes autres appareils devront se reconnecter.")
+        return redirect("terrain:plus")
+    return render(request, "terrain/reglages/mot_de_passe.html", {"form": form})
 
 
 # Mon abonnement (PRD Q2) : ce que la plateforme compte et facture, pour les administrateurs de l'entreprise

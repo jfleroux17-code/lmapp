@@ -1,0 +1,15 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Mon mot de passe{% endblock %}
+{% block barre_onglets %}{% endblock %}
+{% block contenu %}
+<h1 class="mb-1 text-2xl font-bold">Mon mot de passe</h1>
+<p class="mb-5 text-gray-400">Utilisateur : <strong class="text-white">{{ user.username }}</strong>. Au moins 12 caractères; une phrase facile à retenir fait l'affaire.</p>
+<form method="post" class="space-y-5" novalidate x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+  <input type="text" name="username" value="{{ user.username }}" autocomplete="username" class="hidden" readonly>
+  {% include "terrain/reglages/_champs.html" %}
+  <div class="grid grid-cols-2 gap-3">
+    <a href="{% url 'terrain:plus' %}" class="gros-bouton border-2 border-bordure text-gray-300">Annuler</a>
+    <button class="gros-bouton bg-accent text-nuit" :class="{ 'opacity-60': envoi }">Enregistrer</button>
+  </div>
+</form>
+{% endblock %}

@@ -39,6 +39,7 @@
   </div>
   <button type="button" x-show="nav" @click="nav = ''; localStorage.removeItem('lmapp-nav')" class="mt-2 min-h-12 text-sm text-gray-400 underline">Montrer les trois boutons</button>
 </section>
+<a href="{% url 'terrain:mot_de_passe' %}" class="carte rangee-lien mb-4"><span>Mon mot de passe <span class="text-gray-400">· {{ user.username }}</span></span><span aria-hidden="true">›</span></a>
 <form method="post" action="{% url 'terrain:deconnexion' %}" onsubmit="return confirm('Se déconnecter? Il faudra retaper le mot de passe.')">{% csrf_token %}
   <button class="gros-bouton border-2 border-bordure text-gray-300">Déconnexion</button>
 </form>

@@ -98,10 +98,13 @@ class DonneesEssaiTests(TestCase):
             call_command("donnees_essai", stdout=open("/dev/null", "w"))
             call_command("donnees_essai", stdout=open("/dev/null", "w"))
         self.assertEqual(Entreprise.objects.count(), 1)
-        self.assertEqual(Client.objects.count(), 10)
-        self.assertEqual(Adresse.objects.count(), 11)
+        self.assertEqual(Client.objects.count(), 19)
+        self.assertEqual(Adresse.objects.count(), 21)
         # Tous les cellulaires dans la plage fictive 555-01XX
-        self.assertTrue(all(c.cellulaire.startswith("+1450555") and c.cellulaire[-4:-2] == "01" for c in Client.objects.all()))
+        from clients.models import Contact
+        numeros = [c.cellulaire for c in Client.objects.exclude(cellulaire="")] + [k.cellulaire for k in Contact.objects.all()]
+        self.assertTrue(numeros and all(n.startswith("+1450555") and n[-4:-2] == "01" for n in numeros))
+        self.assertTrue(all(c.courriel.endswith("@example.com") for c in Client.objects.exclude(courriel="")))
 
 
 class ReinitialiserTests(TestCase):
@@ -113,7 +116,7 @@ class ReinitialiserTests(TestCase):
         with override_settings(LMAPP_ENV="test"):
             call_command("donnees_essai", stdout=open("/dev/null", "w"))
             call_command("donnees_essai", "--reinitialiser", stdout=open("/dev/null", "w"))
-        self.assertEqual(Client.objects.filter(entreprise__slug="essai").count(), 10)
+        self.assertEqual(Client.objects.filter(entreprise__slug="essai").count(), 19)
         self.assertTrue(Client.objects.filter(nom="Garder").exists())
         self.assertFalse(Adresse.objects.filter(entreprise__slug="essai").exclude(ville="Sainte-Adèle").exists())
 

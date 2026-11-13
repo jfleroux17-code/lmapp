@@ -180,3 +180,27 @@ class ReglagesTests(TestCase):
         self.client.post(url, {"action": "role", "role": "lecture"})
         self.m_employe.refresh_from_db()
         self.assertEqual(self.m_employe.role, "lecture")
+
+
+@override_settings(ALLOWED_HOSTS=["*"])
+class MotDePasseTests(TestCase):
+    """Chaque personne change son propre mot de passe (demande de JF, 12 novembre 2026)."""
+
+    def test_changer_son_mot_de_passe(self):
+        from core.models import Entreprise, Membre
+        ent = Entreprise.objects.create(nom="Essai", slug="essai", domaine="louis.exemple.test")
+        u = get_user_model().objects.create_user("lecteur", password="ancien-mot-de-passe-123")
+        Membre.objects.create(utilisateur=u, entreprise=ent, role="lecture")
+        self.client.defaults["HTTP_HOST"] = "louis.exemple.test"
+        self.client.force_login(u)
+        self.assertContains(self.client.get("/plus/"), "Mon mot de passe")
+        r = self.client.post("/plus/mot-de-passe/", {"old_password": "mauvais", "new_password1": "x", "new_password2": "x"})
+        self.assertEqual(r.status_code, 200)
+        u.refresh_from_db()
+        self.assertTrue(u.check_password("ancien-mot-de-passe-123"))
+        r = self.client.post("/plus/mot-de-passe/", {"old_password": "ancien-mot-de-passe-123",
+                                                     "new_password1": "neige au matin sur la 117", "new_password2": "neige au matin sur la 117"})
+        self.assertRedirects(r, "/plus/", fetch_redirect_response=False)
+        u.refresh_from_db()
+        self.assertTrue(u.check_password("neige au matin sur la 117"))
+        self.assertEqual(self.client.get("/plus/").status_code, 200)  # toujours connecté sur ce cellulaire

@@ -18,7 +18,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from clients.models import Adresse, Client, Secteur
-from core.models import Entreprise, VilleDesservie
+from core.models import Entreprise, Membre, VilleDesservie
 from facturation.models import Contrat, Facture, Paiement, Saison, Service
 
 ENTREPRISE = {
@@ -87,9 +87,11 @@ class Command(BaseCommand):
             raise CommandError("Refusé : LMAPP_ENV=prod. Les données d'essai ne vont jamais en prod.")
 
         with transaction.atomic():
+            membres = []
             if options["reinitialiser"]:
                 ancienne = Entreprise.objects.filter(slug=ENTREPRISE["slug"]).first()
                 if ancienne is not None:
+                    membres = list(Membre.objects.filter(entreprise=ancienne).values_list("utilisateur_id", "role"))
                     self._effacer(ancienne)
                     self.stdout.write(f"Entreprise d'essai « {ancienne} » effacée.")
             ent, creee = Entreprise.objects.get_or_create(slug=ENTREPRISE["slug"], defaults=ENTREPRISE)
@@ -141,10 +143,13 @@ class Command(BaseCommand):
             )
 
             factures = self._argent(ent)
+            scenarios = self._scenarios(ent, secteurs)
+            for utilisateur_id, role in membres:  # les comptes d'essai (JF, aperçu) gardent leur accès
+                Membre.objects.get_or_create(utilisateur_id=utilisateur_id, entreprise=ent, defaults={"role": role})
 
         self.stdout.write(self.style.SUCCESS(
             f"« {ent} » créée : ville desservie {nom_ville}, {len(secteurs)} secteurs, {Client.objects.filter(entreprise=ent).count()} clients, "
-            f"{Adresse.objects.filter(entreprise=ent).count()} adresses, {factures}."
+            f"{Adresse.objects.filter(entreprise=ent).count()} adresses, {factures}.\n{scenarios}"
         ))
 
     def _effacer(self, ent):
@@ -205,3 +210,184 @@ class Command(BaseCommand):
         if recouvrement:
             Facture.solde_ouverture(recouvrement, Decimal("380"), saison_origine="2025-2026", note="Solde fictif (essai)")
         return f"saison {saison}, {Facture.objects.filter(entreprise=ent).count()} factures (dont un brouillon et un solde d'ouverture)"
+
+    # Scénarios pour essayer tout l'app sans rien saisir (demande de JF, 12 novembre 2026).
+    # Dates relatives à aujourd'hui : les cas restent parlants (en retard, à déposer, etc.) quel que soit le jour.
+    SCENARIOS = [
+        # (clé, prénom, nom, organisation, cellulaire, courriel, statut, paiement, canal, secteur, adresses [(ligne1, cp, lon, lat, rang)])
+        ("deux_adresses", "Martin", "Gauthier", "", "450 555-0111", "martin.gauthier@example.com", "actif", "interac", "les_deux", "Village",
+         [("150, rue des Essais", "J8B 1A1", -74.1320, 45.9512, 5), ("12, chemin du Chalet-Fictif", "J8B 1A4", -74.1250, 45.9570, 6)]),
+        ("non_occupant", "Robert", "Wilson", "", "", "robert.wilson@example.com", "actif", "interac", "courriel", "Village",
+         [("77, rue des Locataires", "J8B 1A5", -74.1290, 45.9540, 7)]),
+        ("credit", "Diane", "Ouellet", "", "450 555-0113", "diane.ouellet@example.com", "actif", "comptant", "texto", "Mont-Rolland",
+         [("230, rue du Modèle", "J8B 1B1", -74.1070, 45.9670, 4)]),
+        ("cheques", "André", "Bergeron", "", "450 555-0114", "", "actif", "cheque", "texto", "Mont-Rolland",
+         [("19, rue du Modèle", "J8B 1B1", -74.1080, 45.9665, 5)]),
+        ("paye", "Lise", "Caron", "", "450 555-0115", "lise.caron@example.com", "actif", "interac", "courriel", "Mont-Rolland",
+         [("5, impasse de la Pratique", "J8B 1B3", -74.1040, 45.9690, 6)]),
+        ("en_retard", "Jacques", "Poirier", "", "450 555-0116", "jacques.poirier@example.com", "actif", "comptant", "texto", "Chantecler",
+         [("61, chemin du Test", "J8B 1C2", -74.1670, 45.9375, 4)]),
+        ("sans_coordonnees", "Yvon", "Lemieux", "", "", "", "actif", "comptant", "texto", "Chantecler",
+         [("70, chemin du Test", "J8B 1C2", -74.1660, 45.9380, 5)]),
+        ("ne_pas_relancer", "Claudette", "Girard", "", "450 555-0118", "", "actif", "comptant", "texto", "Chantecler",
+         [("3, rue de la Démo", "J8B 1C1", -74.1618, 45.9402, 6)]),
+        ("mal_placee", "Hélène", "Fournier", "", "450 555-0119", "helene.fournier@example.com", "actif", "interac", "texto", "Chantecler",
+         [("999, rang Introuvable", "", None, None, 7)]),
+    ]
+
+    def _scenarios(self, ent, secteurs):
+        from datetime import timedelta
+
+        from clients.models import Balisage, Contact
+        from communications.models import Message
+        from demandes.models import Demande
+        from facturation import credits
+        from facturation.depenses import taxes_du_total
+        from facturation.models import ChequePostdate, Depense, VirementInterac
+        from tournee.models import Operation, Passage
+
+        auj = timezone.localdate()
+        maintenant = timezone.now()
+        saison = Saison.objects.get(entreprise=ent, nom="2026-2027")
+        entree = Service.objects.get(entreprise=ent, nom="Entrée")
+        c = {}
+        for (cle, prenom, nom, org, cell, courriel, statut, paiement, canal, secteur, adresses) in self.SCENARIOS:
+            client = Client(entreprise=ent, prenom=prenom, nom=nom, organisation=org, cellulaire=cell, courriel=courriel,
+                            statut=statut, mode_paiement=paiement, canal_prefere=canal, notes="Client fictif (scénario d'essai).")
+            client.full_clean()
+            client.save()
+            for ligne1, cp, lon, lat, rang in adresses:
+                a = Adresse(entreprise=ent, client=client, secteur=secteurs[secteur], ligne1=ligne1, ville="Sainte-Adèle", code_postal=cp,
+                            position=Point(lon, lat, srid=4326) if lon is not None else None,
+                            position_source="manuelle" if lon is not None else "", ordre_tournee=rang)
+                a.full_clean()
+                a.save()
+            c[cle] = client
+
+        def contrat(client, prix, adresse=None, dates=None):
+            k = Contrat.objects.create(entreprise=ent, client=client, adresse=adresse or client.adresses.first(), saison=saison,
+                                       prix=Decimal(prix), prix_texte=f"{prix} $ plus taxes, en 2 versements")
+            k.services.add(entree)
+            v1, v2 = k.creer_echeancier(dates or [auj, date(2027, 1, 15)])
+            f = v1.facturer()
+            f.emettre()
+            return k, f, v2
+
+        def message(client, genre, canal, sens, statut, contenu, il_y_a, **kw):
+            m = Message.objects.create(entreprise=ent, client=client, genre=genre, canal=canal, sens=sens, statut=statut, contenu=contenu,
+                                       destinataire=kw.pop("destinataire", "" if sens == "entrant" else (client.cellulaire if canal == "texto" else client.courriel) if client else ""),
+                                       **kw)
+            Message.objects.filter(pk=m.pk).update(cree_le=maintenant - il_y_a)
+            return m
+
+        # Deux adresses, deux contrats de la même saison
+        g = c["deux_adresses"]
+        a1, a2 = list(g.adresses.order_by("ordre_tournee"))
+        contrat(g, "520", a1)
+        contrat(g, "380", a2)
+
+        # Propriétaire non occupant (Ontario), locataire à aviser
+        w = c["non_occupant"]
+        w.facturation_ligne1, w.facturation_ville, w.facturation_province, w.facturation_code_postal = "88 Maple Street", "Ottawa", "ON", "K1A 0B1"
+        w.notes = "Propriétaire non occupant, demeure en Ontario. Le locataire reçoit les avis de déneigement."
+        w.save()
+        Contact.objects.create(entreprise=ent, client=w, nom="Karine Lefebvre", role="locataire", cellulaire="+14505550112",
+                               note="Locataire du rez-de-chaussée")
+        contrat(w, "600")
+
+        # Payé plus que la facture : surplus en crédit au compte
+        d = c["credit"]
+        _, f, _ = contrat(d, "450")
+        credits.encaisser(f, f.total + Decimal("50"), "comptant", surplus_permis=True)
+
+        # Chèques postdatés : un à déposer (date arrivée), un à venir
+        b = c["cheques"]
+        _, f, v2 = contrat(b, "500")
+        ChequePostdate.objects.create(entreprise=ent, client=b, facture=f, montant=f.total, numero="101", date_cheque=auj - timedelta(days=1))
+        ChequePostdate.objects.create(entreprise=ent, client=b, versement=v2, montant=f.total, numero="102", date_cheque=date(2027, 1, 15))
+
+        # Payé au complet par Interac, reçu envoyé
+        lc = c["paye"]
+        _, f, _ = contrat(lc, "420")
+        p, _ = credits.encaisser(f, f.total, "interac", reference="CA9F2B7Q")
+        message(lc, "recu_paiement", "courriel", "sortant", "envoye", f"Paiement de {f.total} $ reçu. Compte payé au complet. Merci!",
+                timedelta(hours=3), sujet="Reçu de paiement")
+
+        # En retard de 40 jours : relance proposée (deuxième avis), une relance déjà partie
+        jp = c["en_retard"]
+        _, f, _ = contrat(jp, "480")
+        Facture.objects.filter(pk=f.pk).update(date_facture=auj - timedelta(days=55), date_echeance=auj - timedelta(days=40))
+        r = message(jp, "relance_1", "texto", "sortant", "envoye", "Rappel : un solde est dû sur votre compte. Merci de le régler!", timedelta(days=20))
+        r.factures_jointes.add(f)
+
+        # Sans coordonnées, et « ne pas relancer », chacun avec une facture due
+        contrat(c["sans_coordonnees"], "400")
+        cg = c["ne_pas_relancer"]
+        cg.ne_pas_relancer = True
+        cg.save()
+        _, f, _ = contrat(cg, "410")
+        Facture.objects.filter(pk=f.pk).update(date_facture=auj - timedelta(days=50), date_echeance=auj - timedelta(days=35))
+
+        # Adresse introuvable : à placer sur la carte
+        Adresse.objects.filter(client=c["mal_placee"]).update(position_precision="introuvable")
+
+        # Virement Interac à confirmer, pour une facture due
+        sylvie = Client.objects.get(entreprise=ent, nom="Roy")
+        f_sylvie = sylvie.factures.filter(statut="emise").first()
+        VirementInterac.objects.create(entreprise=ent, recu_le=maintenant - timedelta(hours=2), montant=f_sylvie.solde,
+                                       envoyeur="SYLVIE ROY", message_envoyeur=f"Facture {f_sylvie.numero}", reference="CA7Q4X2M",
+                                       client=sylvie, facture=f_sylvie, raison="numéro cité dans le message")
+
+        # Messages reçus (lus et non lus), envoyés, en échec, d'inconnus, appel noté
+        ginette = Client.objects.get(entreprise=ent, nom="Tremblay")
+        lavoie = Client.objects.get(entreprise=ent, nom="Lavoie")
+        oubli = message(ginette, "recu", "texto", "entrant", "recu", "Bonjour, mon entrée n'a pas été faite ce matin. Merci de repasser.",
+                        timedelta(hours=1), expediteur=ginette.cellulaire, lu=False)
+        message(lavoie, "recu", "courriel", "entrant", "recu", "Bonjour, pouvez-vous m'envoyer ma facture par courriel? Merci.",
+                timedelta(hours=5), expediteur=lavoie.courriel, sujet="Ma facture", lu=False, message_id_externe="<essai-lavoie@example.com>")
+        message(None, "recu", "texto", "entrant", "recu", "Bonjour, c'est Marc Dubé. Combien pour une entrée double rue des Essais?",
+                timedelta(hours=7), expediteur="+14505550198", lu=False)
+        message(None, "recu", "courriel", "entrant", "recu", "Bonjour, c'est Nathalie, voici ma nouvelle adresse courriel.",
+                timedelta(days=1), expediteur="nathalie.nouvelle@example.com", sujet="Nouvelle adresse")
+        message(sylvie, "facture", "courriel", "sortant", "envoye", "Voici votre facture.", timedelta(days=2), sujet="Votre facture", facture=f_sylvie)
+        message(lavoie, "manuel", "texto", "sortant", "echec", "On passe demain matin.", timedelta(days=1), erreur="Numéro invalide (code 21211, essai)")
+        message(ginette, "appel", "appel", "entrant", "recu", "Appel : demande si on peut pelleter le balcon cette semaine.",
+                timedelta(days=3), expediteur=ginette.cellulaire)
+
+        # Demandes : chaque statut et chaque cas
+        Demande.objects.create(entreprise=ent, client=ginette, adresse=ginette.adresses.first(), genre="oubli", urgent=True,
+                               description="Entrée oubliée ce matin.", source="texto", message=oubli)
+        Demande.objects.create(entreprise=ent, client=lavoie, genre="plainte", description="Banc de neige devant la boîte aux lettres.",
+                               vue_le=maintenant - timedelta(days=1))
+        Demande.objects.create(entreprise=ent, client=d, adresse=d.adresses.first(), genre="dommage", urgent=True,
+                               description="Haie abîmée par la souffleuse.", entente="Remplacer deux cèdres au printemps.",
+                               cout=Decimal("180"), paye_par="deneigeur", vue_le=maintenant - timedelta(days=2))
+        Demande.objects.create(entreprise=ent, client=lc, genre="service", statut="planifiee", prevue_le=auj + timedelta(days=2),
+                               description="Pelleter le balcon arrière.", vue_le=maintenant)
+        Demande.objects.create(entreprise=ent, client=g, genre="facture", statut="reglee", reglee_le=maintenant - timedelta(days=4),
+                               reglement="Facture renvoyée par courriel.", description="Veut une copie de sa facture.", vue_le=maintenant)
+        Demande.objects.create(entreprise=ent, genre="nouveau", contact="Marc Dubé, 450 555-0198", description="Prix pour une entrée double.")
+
+        # Une opération terminée cette nuit : passages faits et sautés
+        op = Operation.objects.create(entreprise=ent, type="neige", debut=maintenant - timedelta(hours=9), fin=maintenant - timedelta(hours=5),
+                                      note="Opération d'essai")
+        for i, a in enumerate(Adresse.objects.filter(entreprise=ent, client__statut="actif", position__isnull=False).order_by("secteur__ordre", "ordre_tournee")[:10]):
+            saute = i in (3, 7)
+            Passage.objects.create(entreprise=ent, operation=op, adresse=a, statut="saute" if saute else "fait",
+                                   raison="auto" if saute else "", heure=op.debut + timedelta(minutes=12 * (i + 1)),
+                                   note="Auto dans l'entrée" if saute else "")
+
+        # Balises posées (une adresse sur deux)
+        for a in Adresse.objects.filter(entreprise=ent, client__statut="actif")[::2]:
+            Balisage.objects.create(entreprise=ent, adresse=a, nombre=2, posees_le=date(2026, 10, 20))
+
+        # Dépenses (sans photo)
+        for jours, cat, four, total in [(1, "carburant", "Station fictive", "86.40"), (6, "abrasifs", "Quincaillerie Exemple", "142.10"),
+                                        (12, "reparation", "Garage de l'Essai", "389.55"), (20, "telephone", "Fournisseur fictif", "65.00")]:
+            tps, tvq = taxes_du_total(Decimal(total), ent)
+            Depense.objects.create(entreprise=ent, date=auj - timedelta(days=jours), categorie=cat, fournisseur=four,
+                                   total=Decimal(total), tps=tps, tvq=tvq, note="Dépense fictive")
+
+        return (f"Scénarios : {len(c)} clients de plus (deux adresses, propriétaire non occupant avec locataire, crédit, chèques postdatés, "
+                f"payé, en retard, sans coordonnées, ne pas relancer, adresse introuvable), virement Interac à confirmer, 7 messages, "
+                f"6 demandes, 1 opération terminée, balises, 4 dépenses.")
