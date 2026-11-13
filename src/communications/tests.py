@@ -61,6 +61,36 @@ class AvisTests(TestCase):
         self.assertEqual(avis.aviser_proximite(self.op, _pt(150)), 0)  # G3 : pas de doublon
         self.assertEqual(avis.aviser_proximite(Operation.objects.create(entreprise=Entreprise.objects.create(nom="A", slug="a", domaine="a.test")), _pt(0)), 0)
 
+    def test_operation_sans_avis_aux_clients(self):
+        Operation.objects.filter(pk=self.op.pk).update(avis_clients=False)
+        op = Operation.objects.get(pk=self.op.pk)
+        self.assertEqual(avis.aviser_proximite(op, _pt(0)), 0)
+        self.assertEqual(avis.aviser_debut(op), 0)
+        self.assertEqual(avis.aviser_prochains(op, 3), 0)
+        Entreprise.objects.filter(pk=self.ent.pk).update(avis_passage_fait=True)
+        services.marquer(op, self.a1, "fait")
+        self.assertFalse(Message.objects.filter(operation=op).exists())
+
+    def test_client_qui_refuse_les_avis(self):
+        Client.objects.filter(pk=self.a1.client_id).update(avis_operations=False)
+        self.assertEqual(avis.aviser_proximite(self.op, _pt(0)), 1)  # Côté seulement
+        self.assertFalse(Message.objects.filter(client=self.a1.client).exists())
+        self.assertNotIn(self.a1.client, list(avis.clients_a_aviser_au_debut(self.ent)))
+
+    def test_proprietaire_non_occupant_avis_aux_locataires(self):
+        from clients.models import Contact
+        proprio = self.a1.client
+        Client.objects.filter(pk=proprio.pk).update(proprietaire_non_occupant=True)
+        proprio.refresh_from_db()
+        self.assertNotIn(proprio, list(avis.clients_a_aviser_au_debut(self.ent)))  # pas encore de locataire
+        Contact.objects.create(entreprise=self.ent, client=proprio, nom="Locataire 1", role="locataire", cellulaire="+14505550131")
+        Contact.objects.create(entreprise=self.ent, client=proprio, nom="Locataire 2", role="locataire", cellulaire="+14505550132")
+        Contact.objects.create(entreprise=self.ent, client=proprio, nom="Conjointe", role="conjoint", cellulaire="+14505550133")
+        self.assertIn(proprio, list(avis.clients_a_aviser_au_debut(self.ent)))
+        avis.aviser_proximite(self.op, _pt(0))
+        self.assertEqual(sorted(Message.objects.filter(client=proprio).values_list("destinataire", flat=True)), ["+14505550131", "+14505550132"])
+        self.assertEqual(avis.aviser_proximite(self.op, _pt(0)), 0)  # une fois par opération
+
     def test_pas_d_avis_aux_adresses_deja_faites(self):
         services.marquer(self.op, self.a1, "fait")
         self.assertEqual(avis.aviser_proximite(self.op, _pt(0)), 1)
@@ -207,7 +237,7 @@ class EcransAvisTests(AvisTests.__bases__[0]):
                                 content_type="application/json")
 
     def test_demarrer_avec_avis_puis_position(self):
-        r = self.client.post("/tournee/demarrer/", {"type": "neige", "aviser_debut": "1"}, follow=True)
+        r = self.client.post("/tournee/demarrer/", {"type": "neige", "avis_clients": "1", "aviser_debut": "1"}, follow=True)
         self.assertContains(r, "4 avis de début préparés.")
         op = Operation.objects.get()
         self.assertEqual(self.pos(op.pk, _pt(100), precision=500).json()["avis"], 0)  # GPS trop imprécis : gardé, sans avis
@@ -229,7 +259,7 @@ class EcransAvisTests(AvisTests.__bases__[0]):
                 mock.patch("communications.envoi.destinataire_permis", return_value=True), \
                 mock.patch("communications.tasks.envoyer_message.configure") as configure:
             with self.captureOnCommitCallbacks(execute=True):
-                self.client.post("/tournee/demarrer/", {"type": "neige", "aviser_debut": "1"})
+                self.client.post("/tournee/demarrer/", {"type": "neige", "avis_clients": "1", "aviser_debut": "1"})
         configure.assert_called_with(schedule_in={"seconds": avis.DELAI_ANNULATION_DEBUT})
         self.assertEqual(Message.objects.filter(genre="debut", statut="en_file").count(), 4)
         page = self.client.get("/tournee/")
@@ -242,7 +272,7 @@ class EcransAvisTests(AvisTests.__bases__[0]):
         self.assertContains(self.client.post("/tournee/avis-debut/annuler/", follow=True), "Trop tard")
 
     def test_avis_manuels(self):
-        self.client.post("/tournee/demarrer/", {"type": "neige"})
+        self.client.post("/tournee/demarrer/", {"type": "neige", "avis_clients": "1"})
         self.assertFalse(Message.objects.exists())  # case décochée : pas d'avis de début
         r = self.client.post("/tournee/avis/", {"mode": "prochains"}, follow=True)
         self.assertContains(r, "2 avis préparés.")

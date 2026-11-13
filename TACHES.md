@@ -119,10 +119,10 @@ Ordre proposé : lot A, puis la facturation (une facture par saison, une par pas
 - [ ] **Audit de sécurité** (`docs/audit-securite.md`, 13 novembre 2026) : 19 recommandations à approuver par JF, ordre proposé à la fin du document.
 - [x] Données de test riches dans test.ledeneigeur.com (12 novembre 2026) : 19 clients, scénarios de tous les cas. Recommencer à neuf : `cd /srv/lmapp/test && docker compose run --rm app python manage.py donnees_essai --reinitialiser`.
 
-**Lot B : tournée avec ou sans avis aux clients (avant les premières neiges)**
-- [ ] (7) Au démarrage, chaque fois (jamais retenu par le cellulaire) : « Avec avis aux clients » ou « Sans avis aux clients » (choix de Louis, selon son jugement, pas de règle d'heure). Sans avis : position active pour les statistiques, **aucun avis** pendant toute l'opération (début, proximité, terminé, manuels). Bandeau visible sur l'écran de tournée. La position ne dépend plus des avis.
-- [ ] (2) Fiche du client : ne pas recevoir les avis de proximité ni les avis « terminé ».
-- [ ] (8) « Propriétaire non occupant (ne pas envoyer les avis de déneigement) » : le propriétaire garde factures, relances, reçus et contrat; les avis de déneigement vont aux locataires inscrits (« Autre personne à joindre »). ARRÊT d'un locataire : ses avis seulement.
+**Lot B : tournée avec ou sans avis aux clients (avant les premières neiges)** : fait et en prod le 13 novembre 2026.
+- [x] (7) Au démarrage, chaque fois (jamais retenu par le cellulaire) : « Avec avis aux clients » ou « Sans avis aux clients » (choix de Louis, selon son jugement, pas de règle d'heure). Sans avis : position active pour les statistiques, **aucun avis** pendant toute l'opération (début, proximité, terminé, manuels). Bandeau visible sur l'écran de tournée. La position ne dépend plus des avis.
+- [x] (2) Fiche du client : ne pas recevoir les avis de proximité ni les avis « terminé ».
+- [x] (8) « Propriétaire non occupant (ne pas envoyer les avis de déneigement) » : le propriétaire garde factures, relances, reçus et contrat; les avis de déneigement vont aux locataires inscrits (« Autre personne à joindre »). ARRÊT d'un locataire : ses avis seulement.
 
 **Lot C : temps mesuré**
 - [ ] (1) Temps passé à chaque entrée (par la position), gardé par opération; rapport de tournée, statistiques à la demande et en fin de saison, par client, pour ajuster le prix.

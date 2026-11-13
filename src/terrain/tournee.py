@@ -105,7 +105,9 @@ def tournee(request):
         "ecriture": peut_ecrire(request),
         "choisi": int(request.GET["arret"]) if request.GET.get("arret", "").isdigit() else None,
         "position": reverse("terrain:position"),
-        "avis_proximite": request.entreprise.avis_proximite_actif,
+        "avis_proximite": request.entreprise.avis_proximite_actif and op.avis_clients,
+        "avis_clients": op.avis_clients,
+        "position_auto": request.entreprise.position_auto,
         "nb_avis": op.messages.count(),
         "photo_url": reverse("terrain:photo_passage"),
         "avis_debut": _avis_debut_annulables(op),
@@ -162,11 +164,15 @@ def demarrer(request):
     if t not in Operation.Type.values:
         messages.error(request, "Choisir le type d'opération.")
         return redirect("terrain:tournee")
+    choix = request.POST.get("avis_clients")
+    if choix not in ("1", "0"):  # choisi chaque fois, jamais par défaut (décision de JF, 12 novembre 2026)
+        messages.error(request, "Choisir « Avec avis aux clients » ou « Sans avis aux clients ».")
+        return redirect("terrain:tournee")
     try:
         with transaction.atomic():  # point de sauvegarde : le refus ne gâche pas le reste de la requête
-            op = Operation.objects.create(entreprise=request.entreprise, type=t, operateur=request.user)
-        texte = f"Opération « {op.get_type_display()} » commencée."
-        if request.POST.get("aviser_debut") == "1":
+            op = Operation.objects.create(entreprise=request.entreprise, type=t, operateur=request.user, avis_clients=choix == "1")
+        texte = f"Opération « {op.get_type_display()} » commencée" + ("." if op.avis_clients else ", sans avis aux clients.")
+        if op.avis_clients and request.POST.get("aviser_debut") == "1":
             n = avis.aviser_debut(op, delai=avis.DELAI_ANNULATION_DEBUT)
             texte += f" {n} avis de début préparé{'s' if n > 1 else ''}."
         messages.success(request, texte)

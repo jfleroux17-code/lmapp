@@ -37,6 +37,8 @@
 </div>
 {% with a=adresses.0 %}{% if a %}<p class="mb-3 text-gray-300">{{ a.objet.ligne1 }}{% if a.rang and a.objet.secteur %} · <span class="text-gray-400">{% if a.rang == 1 %}1<sup>er</sup>{% else %}{{ a.rang }}<sup>e</sup>{% endif %} arrêt, secteur {{ a.objet.secteur.nom }}</span>{% elif a.rang %} · <span class="text-gray-400">{% if a.rang == 1 %}1<sup>er</sup>{% else %}{{ a.rang }}<sup>e</sup>{% endif %} arrêt</span>{% endif %}</p>{% endif %}{% endwith %}
 
+{% if client.proprietaire_non_occupant %}<p class="mb-2 text-sm font-semibold text-accent">Propriétaire non occupant : avis des opérations aux locataires{% if not client.contacts.exists %} (aucun locataire inscrit){% endif %}, factures au propriétaire.</p>
+{% elif not client.avis_operations %}<p class="mb-2 text-sm font-semibold text-gray-400">Ne veut pas d'avis pendant les opérations.</p>{% endif %}
 {% if client.statut == "liste_noire" %}
   <p class="mb-4 rounded-2xl border border-danger bg-danger/10 p-4 font-semibold text-danger">Liste noire : ne pas servir.</p>
 {% elif client.statut == "recouvrement" %}

@@ -41,7 +41,7 @@ SECTIONS = {
                  "Taxes et façon de payer, imprimées sur chaque facture."),
     "versements": ("Versements des contrats", ["versements_par_defaut", "dates_versements", "jours_avance_versement"],
                    "Échéancier imprimé sur la facture de la saison, et rappels proposés avant chaque versement."),
-    "avis": ("Avis aux clients pendant la tournée", ["avis_proximite_actif", "avis_rayon_m", "minutes_par_arret", "avis_passage_fait"],
+    "avis": ("Avis aux clients pendant la tournée", ["position_auto", "avis_proximite_actif", "avis_rayon_m", "minutes_par_arret", "avis_passage_fait"],
              "Textos envoyés pendant une opération."),
     "relances": ("Relances proposées", ["relances_proposees", "relances_soldes_anterieurs"],
                  "Liste des clients à relancer, préparée les jours de semaine. Rien ne part sans une tape."),

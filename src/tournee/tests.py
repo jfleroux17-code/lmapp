@@ -116,7 +116,7 @@ class EcransTests(TourneeBase):
 
     def test_une_operation_complete(self):
         self.assertContains(self.client.get("/tournee/"), "Démarrer : Neige")
-        r = self.client.post("/tournee/demarrer/", {"type": "neige"}, follow=True)
+        r = self.client.post("/tournee/demarrer/", {"type": "neige", "avis_clients": "1"}, follow=True)
         self.assertContains(r, "Opération « Neige » commencée.")
         d = r.context["donnees"]
         self.assertEqual([a["id"] for a in d["arrets"]], [self.a1.pk, self.a2.pk, self.a_mont.pk, self.a_sans_rang.pk])
@@ -139,7 +139,7 @@ class EcransTests(TourneeBase):
     def test_synchro_hors_ligne_garde_l_heure_de_la_tape(self):
         from django.utils import timezone
         from datetime import timedelta
-        self.client.post("/tournee/demarrer/", {"type": "neige"})
+        self.client.post("/tournee/demarrer/", {"type": "neige", "avis_clients": "1"})
         op = Operation.objects.get()
         tape = timezone.now() - timedelta(minutes=20)
         Operation.objects.filter(pk=op.pk).update(debut=timezone.now() - timedelta(hours=1))
@@ -153,7 +153,7 @@ class EcransTests(TourneeBase):
         self.assertEqual(Passage.objects.filter(adresse=self.a1).count(), 1)
 
     def test_synchro_apres_la_fin_de_l_operation(self):
-        self.client.post("/tournee/demarrer/", {"type": "neige"})
+        self.client.post("/tournee/demarrer/", {"type": "neige", "avis_clients": "1"})
         op = Operation.objects.get()
         self.client.post("/tournee/terminer/")
         # Tapé hors ligne avant la fin, arrivé après : accepté dans son opération
@@ -161,7 +161,7 @@ class EcransTests(TourneeBase):
         self.assertEqual(len(r.json()["acceptes"]), 1)
 
     def test_synchro_refuse_ce_qui_ne_va_pas(self):
-        self.client.post("/tournee/demarrer/", {"type": "neige"})
+        self.client.post("/tournee/demarrer/", {"type": "neige", "avis_clients": "1"})
         op = Operation.objects.get()
         etrangere = Adresse.objects.create(entreprise=self.autre, client=Client.objects.create(entreprise=self.autre, nom="X"),
                                            ligne1="1, rue X", ville="Ailleurs")
@@ -185,18 +185,18 @@ class EcransTests(TourneeBase):
     def test_saute_sans_raison_refuse_et_pas_d_operation(self):
         self.client.post(f"/tournee/passages/{self.a1.pk}/", {"statut": "fait"})
         self.assertFalse(Passage.objects.exists())  # aucune opération en cours
-        self.client.post("/tournee/demarrer/", {"type": "neige"})
+        self.client.post("/tournee/demarrer/", {"type": "neige", "avis_clients": "1"})
         self.client.post(f"/tournee/passages/{self.a1.pk}/", {"statut": "saute"})
         self.assertFalse(Passage.objects.exists())
 
     def test_double_demarrage(self):
-        self.client.post("/tournee/demarrer/", {"type": "neige"})
-        r = self.client.post("/tournee/demarrer/", {"type": "verglas"}, follow=True)
+        self.client.post("/tournee/demarrer/", {"type": "neige", "avis_clients": "1"})
+        r = self.client.post("/tournee/demarrer/", {"type": "verglas", "avis_clients": "1"}, follow=True)
         self.assertContains(r, "déjà en cours")
         self.assertEqual(Operation.objects.count(), 1)
 
     def test_lecture_seule_et_autre_entreprise(self):
-        self.client.post("/tournee/demarrer/", {"type": "neige"})
+        self.client.post("/tournee/demarrer/", {"type": "neige", "avis_clients": "1"})
         etrangere = Adresse.objects.create(entreprise=self.autre, client=Client.objects.create(entreprise=self.autre, nom="X"),
                                            ligne1="1, rue X", ville="Ailleurs")
         self.assertEqual(self.client.post(f"/tournee/passages/{etrangere.pk}/", {"statut": "fait"}).status_code, 404)

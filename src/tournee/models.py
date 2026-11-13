@@ -27,6 +27,11 @@ class Operation(Horodate):
     debut = models.DateTimeField("début", default=timezone.now)
     fin = models.DateTimeField(null=True, blank=True)
     operateur = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="operations")
+    avis_clients = models.BooleanField(
+        "avec avis aux clients", default=True,
+        help_text="Choisi au démarrage, chaque fois (décision de JF, 12 novembre 2026). Sans avis (ex. la nuit) : aucun texto ni "
+                  "courriel aux clients pendant toute l'opération (début, proximité, terminé, avis manuels); la position reste "
+                  "active pour les statistiques.")
     note = models.TextField(blank=True)
 
     class Meta:

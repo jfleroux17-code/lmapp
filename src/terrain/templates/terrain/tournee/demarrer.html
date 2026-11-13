@@ -9,12 +9,23 @@
   {# Démarrer en haut de l'écran. Avec l'avis aux clients coché, une feuille de confirmation à maintenir 1 seconde #}
   {# (un tap accidentel avec des gants ne texte pas toute la clientèle), puis 10 secondes pour annuler les avis. #}
   <form method="post" action="{% url 'terrain:demarrer' %}" class="mb-6" x-ref="form"
-        x-data="{ envoi: false, aviser: {% if nb_a_aviser %}true{% else %}false{% endif %}, type: '', nom: '', feuille: false, minuteur: null, charge: false,
-                  choisir(v, n) { if (this.envoi) return; this.type = v; this.nom = n; if (this.aviser) { this.feuille = true } else { this.partir() } },
+        x-data="{ envoi: false, avec: null, aviser: {% if nb_a_aviser %}true{% else %}false{% endif %}, type: '', nom: '', feuille: false, minuteur: null, charge: false, rappel: false,
+                  choisir(v, n) { if (this.envoi) return; if (this.avec === null) { this.rappel = true; return } this.type = v; this.nom = n; if (this.avec && this.aviser) { this.feuille = true } else { this.partir() } },
                   partir() { this.envoi = true; this.$nextTick(() => this.$refs.form.submit()) },
                   tenir() { this.charge = true; this.minuteur = setTimeout(() => this.partir(), 1000) },
                   lacher() { if (!this.envoi) { clearTimeout(this.minuteur); this.charge = false } } }">{% csrf_token %}
     <input type="hidden" name="type" :value="type">
+    <input type="hidden" name="avis_clients" :value="avec === null ? '' : (avec ? '1' : '0')">
+    {# Avec ou sans avis aux clients : choisi chaque fois, rien par défaut (décision de JF, 12 novembre 2026) #}
+    <div class="mb-3 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Avis aux clients pendant cette opération">
+      <button type="button" @click="avec = true; rappel = false" :aria-pressed="avec === true"
+              class="flex min-h-[72px] flex-col items-center justify-center rounded-2xl border-2 px-2 text-center font-bold leading-tight"
+              :class="avec === true ? 'border-accent bg-accent/15 text-accent' : 'border-bordure'">Avec avis aux clients<span class="text-sm font-normal text-gray-400">début, proximité</span></button>
+      <button type="button" @click="avec = false; rappel = false" :aria-pressed="avec === false"
+              class="flex min-h-[72px] flex-col items-center justify-center rounded-2xl border-2 px-2 text-center font-bold leading-tight"
+              :class="avec === false ? 'border-accent bg-accent/15 text-accent' : 'border-bordure'">Sans avis aux clients<span class="text-sm font-normal text-gray-400">ex. la nuit : aucun texto</span></button>
+    </div>
+    <p x-show="rappel" x-cloak class="mb-3 rounded-xl bg-danger/10 p-3 font-semibold text-danger" role="alert">D'abord : avec ou sans avis aux clients?</p>
     {% for valeur, nom in types %}
       {% if forloop.first %}
         <button type="button" @click="choisir('{{ valeur }}', '{{ nom|escapejs }}')" class="gros-bouton min-h-[88px] bg-accent text-2xl font-bold text-nuit" :class="{ 'opacity-60': envoi }">Démarrer : {{ nom }}</button>
@@ -24,7 +35,7 @@
       {% endif %}
     {% endfor %}
         </div>
-    <label class="carte mt-3 flex min-h-14 cursor-pointer items-center gap-3 p-4">
+    <label x-show="avec === true" x-cloak class="carte mt-3 flex min-h-14 cursor-pointer items-center gap-3 p-4">
       <input type="checkbox" name="aviser_debut" value="1" x-model="aviser" class="h-7 w-7 shrink-0 accent-[#f5c400]">
       <span>{% if nb_a_aviser %}Aviser les {{ nb_a_aviser }} client{{ nb_a_aviser|pluralize }} du début des opérations{% else %}Aviser les clients du début (aucun client joignable){% endif %}</span>
     </label>

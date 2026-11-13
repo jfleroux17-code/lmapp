@@ -99,6 +99,10 @@ class Entreprise(Horodate):
     minutes_par_arret = models.PositiveIntegerField("minutes par arrêt", default=6, validators=[MinValueValidator(1), MaxValueValidator(60)],
                                                     help_text="Pour estimer « d'ici environ X minutes ».")
     avis_passage_fait = models.BooleanField("avis « c'est fait »", default=False, help_text="Texto au client quand son passage est fait.")
+    position_auto = models.BooleanField(
+        "activer la position automatiquement", default=True,
+        help_text="Au début de chaque opération, la position du cellulaire s'allume toute seule (statistiques et, avec les avis, "
+                  "avis de proximité). Sinon : bouton « Activer la position » sur l'écran de tournée.")
 
     # Relances proposées (PRD C9) : l'app prépare, le déneigeur envoie d'une tape. Rien ne part tout seul.
     relances_proposees = models.BooleanField(

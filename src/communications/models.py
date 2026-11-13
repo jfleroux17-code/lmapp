@@ -233,7 +233,8 @@ class Message(Horodate):
         ordering = ["-cree_le"]
         constraints = [
             # G3 : un seul avis de chaque genre par client et par opération
-            models.UniqueConstraint(fields=["operation", "client", "genre"], condition=models.Q(genre__in=["debut", "proximite", "passage_fait"]),
+            # Par destinataire : un propriétaire non occupant peut avoir plusieurs locataires avisés
+            models.UniqueConstraint(fields=["operation", "client", "genre", "destinataire"], condition=models.Q(genre__in=["debut", "proximite", "passage_fait"]),
                                     name="un_avis_par_client_et_operation"),
             # E5 : un courriel reçu n'est enregistré qu'une fois
             models.UniqueConstraint(fields=["entreprise", "message_id_externe"], condition=~models.Q(message_id_externe=""),

@@ -32,7 +32,9 @@ document.addEventListener("alpine:init", () => {
       window.addEventListener("offline", () => { this.horsLigne = true; });
       setInterval(() => this.envoyer(), 30000);
       this.envoyer();
-      if (localStorage.getItem("lmapp-gps") === "1" && this.avis_proximite) this.activerGps();
+      // Position : allumée toute seule si le réglage le demande (statistiques, et avis de proximité si l'opération
+      // est avec avis). Pas de souvenir dans le cellulaire (décision de JF, 12 novembre 2026).
+      if (this.position_auto) this.activerGps();
       this.garderEcranAllume();
       setInterval(() => { this.horloge = Date.now(); }, 5000);
     },
@@ -53,7 +55,6 @@ document.addEventListener("alpine:init", () => {
     activerGps() {
       if (!("geolocation" in navigator)) { this.gpsEtat = "Ce téléphone ne donne pas sa position."; return; }
       this.gps = true; this.gpsEtat = "Recherche de la position…";
-      localStorage.setItem("lmapp-gps", "1");
       this.surveillance = navigator.geolocation.watchPosition(
         (pos) => this.nouvellePosition(pos),
         (err) => { this.gpsEtat = err.code === 1 ? "Position refusée : la permettre dans Réglages, Safari, Position." : "Position introuvable pour l'instant."; },
@@ -62,7 +63,6 @@ document.addEventListener("alpine:init", () => {
     arreterGps() {
       if (this.surveillance !== null) navigator.geolocation.clearWatch(this.surveillance);
       this.surveillance = null; this.gps = false; this.gpsEtat = "";
-      localStorage.setItem("lmapp-gps", "0");
     },
     distanceM(a, b) {
       const r = 6371000, rad = Math.PI / 180;

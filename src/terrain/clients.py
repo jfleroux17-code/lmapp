@@ -30,6 +30,14 @@ class GroupesMixin:
     GROUPES : [(titre du repli ou None, [champs])]; un repli s'ouvre s'il contient une erreur ou une valeur."""
     GROUPES = None
 
+    def _defaut(self, nom):
+        """Valeur par défaut du modèle : une case cochée par défaut (ex. avis pendant les opérations) n'ouvre pas le repli."""
+        try:
+            d = self._meta.model._meta.get_field(nom).default
+        except Exception:
+            return None
+        return d if isinstance(d, (bool, int, str)) else None
+
     def groupes(self):
         if not self.GROUPES:
             return [(None, list(self), True)]
@@ -40,7 +48,7 @@ class GroupesMixin:
             groupes[-1] = (groupes[-1][0], list(groupes[-1][1]) + restants)
         for titre, noms in groupes:
             champs = [self[n] for n in noms if n in self.fields]
-            rempli = any(c.errors or (self.instance.pk and c.value() not in (None, "", False)) for c in champs)
+            rempli = any(c.errors or (self.instance.pk and c.value() not in (None, "", False, self._defaut(c.name))) for c in champs)
             sortie.append((titre, champs, titre is None or rempli))
         return sortie
 
@@ -49,7 +57,8 @@ class ClientForm(GroupesMixin, forms.ModelForm):
     GROUPES = [
         (None, ["prenom", "nom", "cellulaire"]),
         ("Plus de détails : courriel, autre numéro, paiement, statut, notes",
-         ["organisation", "courriel", "telephone_autre", "canal_prefere", "mode_paiement", "statut", "notes", "ne_pas_relancer"]),
+         ["organisation", "courriel", "telephone_autre", "canal_prefere", "mode_paiement", "statut", "notes", "ne_pas_relancer",
+          "avis_operations", "proprietaire_non_occupant"]),
         ("Adresse de facturation différente de l'adresse de service",
          ["facturation_ligne1", "facturation_ligne2", "facturation_ville", "facturation_code_postal"]),
     ]
@@ -58,7 +67,7 @@ class ClientForm(GroupesMixin, forms.ModelForm):
         model = Client
         fields = ["prenom", "nom", "organisation", "cellulaire", "telephone_autre", "courriel", "canal_prefere",
                   "mode_paiement", "statut", "facturation_ligne1", "facturation_ligne2", "facturation_ville",
-                  "facturation_code_postal", "notes", "ne_pas_relancer"]
+                  "facturation_code_postal", "notes", "ne_pas_relancer", "avis_operations", "proprietaire_non_occupant"]
         widgets = {
             "prenom": forms.TextInput(attrs=_attrs(autocomplete="off", autocapitalize="words")),
             "nom": forms.TextInput(attrs=_attrs(autocomplete="off", autocapitalize="words")),
@@ -75,8 +84,12 @@ class ClientForm(GroupesMixin, forms.ModelForm):
             "facturation_code_postal": forms.TextInput(attrs=_attrs(autocapitalize="characters", maxlength="7")),
             "notes": forms.Textarea(attrs=_attrs(rows=3)),
             "ne_pas_relancer": forms.CheckboxInput(attrs={"class": "h-6 w-6 accent-[#f5c400]"}),
+            "avis_operations": forms.CheckboxInput(attrs={"class": "h-6 w-6 accent-[#f5c400]"}),
+            "proprietaire_non_occupant": forms.CheckboxInput(attrs={"class": "h-6 w-6 accent-[#f5c400]"}),
         }
-        help_texts = {"ne_pas_relancer": ""}
+        help_texts = {"ne_pas_relancer": "", "avis_operations": "", "proprietaire_non_occupant": ""}
+        labels = {"avis_operations": "Recevoir les avis pendant les opérations (début, proximité, c'est fait)",
+                  "proprietaire_non_occupant": "Propriétaire non occupant : avis aux locataires seulement (factures au propriétaire)"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

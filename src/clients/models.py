@@ -103,6 +103,13 @@ class Client(Horodate):
     )
 
     notes = models.TextField(blank=True)
+    avis_operations = models.BooleanField(
+        "avis pendant les opérations", default=True,
+        help_text="Décoché : ce client ne reçoit ni l'avis de début, ni l'avis de proximité, ni le « c'est fait » (demande du client).")
+    proprietaire_non_occupant = models.BooleanField(
+        "propriétaire non occupant", default=False,
+        help_text="Les avis des opérations vont aux locataires inscrits (« Autre personne à joindre », rôle locataire), jamais "
+                  "au propriétaire; factures, relances, reçus et contrat restent au propriétaire, jamais aux locataires.")
     ne_pas_relancer = models.BooleanField("ne pas relancer", default=False,
                                           help_text="Jamais proposé dans les relances du matin (entente de paiement, cas délicat). La relance à la main reste possible.")
     relance_reportee_au = models.DateField("relance reportée au", null=True, blank=True)

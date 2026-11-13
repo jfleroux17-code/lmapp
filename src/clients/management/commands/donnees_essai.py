@@ -294,6 +294,7 @@ class Command(BaseCommand):
         w = c["non_occupant"]
         w.facturation_ligne1, w.facturation_ville, w.facturation_province, w.facturation_code_postal = "88 Maple Street", "Ottawa", "ON", "K1A 0B1"
         w.notes = "Propriétaire non occupant, demeure en Ontario. Le locataire reçoit les avis de déneigement."
+        w.proprietaire_non_occupant = True
         w.save()
         Contact.objects.create(entreprise=ent, client=w, nom="Karine Lefebvre", role="locataire", cellulaire="+14505550112",
                                note="Locataire du rez-de-chaussée")
@@ -329,6 +330,7 @@ class Command(BaseCommand):
         contrat(c["sans_coordonnees"], "400")
         cg = c["ne_pas_relancer"]
         cg.ne_pas_relancer = True
+        cg.avis_operations = False  # ne veut pas d'avis pendant les opérations
         cg.save()
         _, f, _ = contrat(cg, "410")
         Facture.objects.filter(pk=f.pk).update(date_facture=auj - timedelta(days=50))

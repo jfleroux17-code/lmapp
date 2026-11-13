@@ -2,7 +2,13 @@
 
 Messages de service (permis par la LCAP sans consentement) : envoyés aussi aux
 clients désabonnés des messages commerciaux. Un seul avis de chaque genre par
-client et par opération (G3), garanti par la base.
+client (et par destinataire) et par opération (G3), garanti par la base.
+
+Demandes de Louis (décisions de JF, 12 novembre 2026) :
+- opération « sans avis aux clients » (Operation.avis_clients, choisi au démarrage) : rien ne part, quoi qu'il arrive;
+- client qui ne veut pas d'avis (Client.avis_operations décoché) : rien pour lui;
+- propriétaire non occupant (Client.proprietaire_non_occupant) : les avis vont à ses locataires (Contact, rôle locataire,
+  par texto), jamais à lui. Un locataire qui répond STOP : Twilio bloque son numéro seulement.
 """
 from django.contrib.gis.measure import D
 from django.db import IntegrityError, transaction
@@ -31,10 +37,30 @@ def _canal(client, genre):
     return None, None
 
 
-def _creer(operation, client, genre, delai=0, **variables):
+def destinataires(client, genre):
+    """[(canal, adresse)] des avis d'opération de ce client (vide : personne à aviser)."""
+    if not client.avis_operations:
+        return []
+    if client.proprietaire_non_occupant:
+        from clients.models import Contact
+
+        return [(Message.Canal.TEXTO, k.cellulaire) for k in client.contacts.filter(role=Contact.Role.LOCATAIRE).exclude(cellulaire="")]
     canal, dest = _canal(client, genre)
-    if canal is None:
+    return [(canal, dest)] if canal else []
+
+
+def _creer(operation, client, genre, delai=0, **variables):
+    """Crée et envoie l'avis à chaque destinataire du client. Renvoie le premier message, ou None."""
+    if not operation.avis_clients:
         return None
+    premier = None
+    for canal, dest in destinataires(client, genre):
+        m = _creer_un(operation, client, genre, canal, dest, delai, **variables)
+        premier = premier or m
+    return premier
+
+
+def _creer_un(operation, client, genre, canal, dest, delai=0, **variables):
     ent = operation.entreprise
     texte = Gabarit.texte_pour(ent, genre)
     try:
@@ -65,13 +91,18 @@ def clients_a_aviser_au_debut(entreprise):
     """Clients servis joignables (cellulaire ou courriel) : ceux qui recevront l'avis de début."""
     from django.db.models import Q
 
-    return (Client.objects.filter(entreprise=entreprise, statut__in=[Client.Statut.ACTIF, Client.Statut.RECOUVREMENT],
-                                  adresses__active=True).exclude(Q(cellulaire="") & Q(courriel="")).distinct())
+    qs = (Client.objects.filter(entreprise=entreprise, statut__in=[Client.Statut.ACTIF, Client.Statut.RECOUVREMENT],
+                                adresses__active=True, avis_operations=True).distinct())
+    occupants = qs.filter(proprietaire_non_occupant=False).exclude(Q(cellulaire="") & Q(courriel=""))
+    avec_locataire = qs.filter(proprietaire_non_occupant=True, contacts__role="locataire").exclude(contacts__cellulaire="")
+    return Client.objects.filter(pk__in=occupants.values("pk")) | Client.objects.filter(pk__in=avec_locataire.values("pk"))
 
 
 def aviser_debut(operation, delai=0):
     """G5 : à chaque client servi, une fois, au début de l'opération. delai : secondes avant l'envoi
     réel, le temps d'annuler (annuler_avis_debut)."""
+    if not operation.avis_clients:
+        return 0
     deja, n = _deja(operation, Genre.DEBUT), 0
     for c in Client.objects.filter(entreprise=operation.entreprise, statut__in=[Client.Statut.ACTIF, Client.Statut.RECOUVREMENT],
                                    adresses__active=True).distinct():
@@ -107,7 +138,7 @@ def _aviser_adresses(operation, cibles, restants):
 def aviser_proximite(operation, point):
     """G2 : clients dans le rayon de la position de Louis, pas encore servis, position précise."""
     ent = operation.entreprise
-    if not ent.avis_proximite_actif:
+    if not ent.avis_proximite_actif or not operation.avis_clients:
         return 0
     restants = _restants(operation)
     ids = {a.pk for a in restants}
