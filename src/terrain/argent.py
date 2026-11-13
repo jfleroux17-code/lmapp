@@ -353,7 +353,8 @@ def resume_client(client):
 
     from facturation.models import ChequePostdate
 
-    resume = {"du": sum((f.solde_du for f in toutes), ZERO), "factures_client": qs[:10], "credit": credit_restant(client),
+    resume = {"en_attente": client.factures.filter(statut=Facture.Statut.BROUILLON).prefetch_related("lignes").order_by("date_facture", "pk"),
+              "du": sum((f.solde_du for f in toutes), ZERO), "factures_client": qs[:10], "credit": credit_restant(client),
               "cheques_client": client.cheques.filter(statut=ChequePostdate.Statut.EN_MAIN)
               .select_related("facture", "versement__contrat__saison").order_by("date_cheque"),
               "contrats": client.contrats.filter(actif=True).select_related("saison", "adresse").prefetch_related("versements")
@@ -557,9 +558,11 @@ def envoyer_contrat(request, pk):
 
 
 def _nb_rappels(entreprise):
+    """Rappels de versement, factures en attente et factures de passage à valider (bandeau « Factures à envoyer »)."""
     from communications.rappels import a_rappeler
+    from tournee.services import factures_des_passages, factures_en_attente
 
-    return len(a_rappeler(entreprise))
+    return len(a_rappeler(entreprise)) + factures_en_attente(entreprise).count() + factures_des_passages(entreprise).count()
 
 
 def _versements_prets(entreprise):
@@ -586,7 +589,13 @@ def versements_a_envoyer(request):
               for f in _versements_prets(request.entreprise)]
     rappels = [{"v": v, "montant": m, "canaux": mots(v.facture.client), "cheques": _cheques_en_main_pour(v.facture)}
                for v, m in a_rappeler(request.entreprise)]
-    return render(request, "terrain/argent/versements.html", {"lignes": lignes, "rappels": rappels, "ecriture": peut_ecrire(request)})
+    from tournee.services import factures_des_passages, factures_en_attente
+
+    attente = [{"f": f, "canaux": mots(f.client)} for f in factures_en_attente(request.entreprise)]
+    return render(request, "terrain/argent/versements.html", {"lignes": lignes, "rappels": rappels, "attente": attente,
+                                                               "nb_factures": len(lignes) + len(attente),
+                                                               "a_valider": factures_des_passages(request.entreprise).count(),
+                                                               "ecriture": peut_ecrire(request)})
 
 
 @require_POST
@@ -612,10 +621,25 @@ def envoyer_versements(request):
                 problemes.append(f"{client.nom_affiche}, {m.get_canal_display().lower()} pas envoyé : {m.erreur or m.get_statut_display().lower()}")
         return partie
 
+    from tournee.services import factures_en_attente
+
     cochees, rappels_coches = set(request.POST.getlist("facture")), set(request.POST.getlist("rappel"))
+    attente_cochees = set(request.POST.getlist("attente"))
     emises, parties, rappels, problemes = 0, 0, 0, []
     for f in _versements_prets(request.entreprise):
         if str(f.pk) not in cochees:
+            continue
+        try:
+            f.emettre()
+        except ValidationError as e:
+            problemes.append(f"{f.client.nom_affiche} : {' '.join(e.messages)}")
+            continue
+        emises += 1
+        if not canaux(f.client):
+            problemes.append(f"{f.client.nom_affiche} : facture n° {f.numero} émise, mais pas de courriel ni de cellulaire (à remettre en main propre).")
+        parties += expedier(f.client, lambda canal, f=f: envoyer(f, canal))
+    for f in factures_en_attente(request.entreprise):  # passages validés « En attente », jobs à la pièce
+        if str(f.pk) not in attente_cochees:
             continue
         try:
             f.emettre()

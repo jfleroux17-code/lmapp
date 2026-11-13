@@ -539,3 +539,45 @@ class JobsTests(TourneeBase):
         page = self.client.get(f"/clients/{self.a1.client_id}/")
         self.assertContains(page, "été seulement")
         self.assertContains(page, 'value="paysagement"')
+
+
+@override_settings(ALLOWED_HOSTS=["*"])
+class ValidationFacturesPassagesTests(TourneeBase):
+    """Factures des passages validées une à une après l'opération (demande de JF, 13 novembre 2026)."""
+
+    def test_envoyer_en_attente_pas_fait(self):
+        from django.contrib.auth import get_user_model
+
+        u = get_user_model().objects.create_user("louis", password="x" * 12)
+        Membre.objects.create(utilisateur=u, entreprise=self.ent, role="operateur")
+        self.client.defaults["HTTP_HOST"] = HOTE
+        self.client.force_login(u)
+        for a in (self.a1, self.a2, self.a_mont):
+            Contrat.objects.create(entreprise=self.ent, client=a.client, adresse=a, saison=self.saison, type="au_passage", prix=D("45"))
+        op = Operation.objects.create(entreprise=self.ent)
+        with mock.patch("django.utils.timezone.localdate", return_value=date(2026, 12, 5)):
+            for a in (self.a1, self.a2, self.a_mont):
+                services.marquer(op, a, "fait")
+        f1, f2, f3 = (Facture.objects.get(contrat__adresse=a) for a in (self.a1, self.a2, self.a_mont))
+        self.assertTrue(all(f.a_valider for f in (f1, f2, f3)))
+        page = self.client.get("/tournee/factures-passages/")
+        self.assertContains(page, "Pas fait")
+        self.assertContains(page, 'value="envoyer" class="sr-only"')  # rien de coché d'avance (pas d'attribut checked)
+        # Rien de choisi : rien ne change, l'écran reste
+        r = self.client.post("/tournee/factures-passages/", {})
+        self.assertRedirects(r, "/tournee/factures-passages/", fetch_redirect_response=False)
+        r = self.client.post("/tournee/factures-passages/", {f"choix-{f1.pk}": "envoyer", f"choix-{f2.pk}": "attente", f"choix-{f3.pk}": "pas_fait"})
+        self.assertRedirects(r, "/tournee/", fetch_redirect_response=False)
+        f1.refresh_from_db()
+        f2.refresh_from_db()
+        self.assertEqual((f1.statut, f1.a_valider), ("emise", False))
+        self.assertEqual((f2.statut, f2.a_valider), ("brouillon", False))
+        self.assertFalse(Facture.objects.filter(pk=f3.pk).exists())
+        self.assertEqual(op.passages.get(adresse=self.a_mont).statut, "saute")
+        # En attente : dans la fiche du client et dans « Factures à envoyer »
+        self.assertContains(self.client.get(f"/clients/{self.a2.client_id}/"), "Factures en attente d")
+        page = self.client.get("/factures/versements/")
+        self.assertContains(page, "Factures en attente d")
+        r = self.client.post("/factures/versements/envoyer/", {"attente": [f2.pk]}, follow=True)
+        f2.refresh_from_db()
+        self.assertEqual(f2.statut, "emise")

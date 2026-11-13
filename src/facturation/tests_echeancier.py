@@ -128,7 +128,7 @@ class EcheancierTests(TestCase):
         self.assertContains(r, "Tremblay")
         self.assertContains(r, "à remettre en main propre")
         self.assertContains(r, "258,70")  # l'échéancier, taxes comprises
-        self.assertContains(self.client.get("/factures/", HTTP_HOST=HOTE), "2 factures de saison ou rappels à envoyer")
+        self.assertContains(self.client.get("/factures/", HTTP_HOST=HOTE), "Factures à envoyer : 2")
         ids = list(Facture.objects.filter(statut="brouillon").values_list("pk", flat=True))
         r = self.client.post("/factures/versements/envoyer/", {"facture": ids}, HTTP_HOST=HOTE, follow=True)
         self.assertEqual(sorted(Facture.objects.values_list("numero", flat=True)), [500, 501])

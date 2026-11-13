@@ -81,6 +81,25 @@ dans l'ordre habituel (les colonnes sont en « display: contents », l'ordre vie
 <div class="flex flex-col bureau:grid bureau:grid-cols-2 bureau:items-start bureau:gap-x-8">
 <div class="contents bureau:col-start-2 bureau:row-start-1 bureau:block">
 <div class="order-1">
+{% if en_attente %}
+{# Factures pas encore envoyées (demande de JF, 13 novembre 2026) : passages à valider, mises en attente, saison prévue plus tard #}
+<section class="carte mb-4 p-4">
+  <h2 class="mb-2 text-lg font-bold">Factures en attente d'envoi</h2>
+  <div class="divide-y divide-bordure">
+    {% for f in en_attente %}
+      <div class="py-3">
+        <a href="{% url 'terrain:facture' f.pk %}" class="flex justify-between gap-3"><span class="min-w-0 truncate">{{ f.lignes.all.0.description|default:"Facture" }}</span><span class="shrink-0 font-semibold">{{ f.total|argent }}</span></a>
+        <div class="mt-1 flex items-center justify-between gap-3 text-sm">
+          <span class="text-gray-400">{% if f.a_valider %}Passage à valider{% elif f.envoyer_le and f.envoyer_le > aujourdhui %}À envoyer le {{ f.envoyer_le|date_qc:"j F" }}{% else %}Prête à envoyer{% endif %}</span>
+          {% if ecriture %}{% if f.a_valider %}<a href="{% url 'terrain:factures_passages' %}" class="flex min-h-12 items-center text-accent underline underline-offset-4">Valider ›</a>
+          {% elif client.courriel or client.cellulaire %}<form method="post" action="{% url 'terrain:emettre' f.pk %}" x-data="{ envoi: false }" @submit="if (envoi || !confirm('Émettre et envoyer cette facture?')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}<input type="hidden" name="envoyer" value="1">
+            <button class="min-h-12 rounded-xl border-2 border-accent px-3 font-semibold text-accent" :class="{ 'opacity-60': envoi }">Émettre et envoyer</button></form>{% endif %}{% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
 <section class="carte mb-4 p-4">
   {% if du %}
     <div class="text-sm text-gray-400">Doit</div>

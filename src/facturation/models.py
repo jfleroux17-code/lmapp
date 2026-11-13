@@ -256,6 +256,10 @@ class Facture(Horodate):
     numero = models.PositiveIntegerField("numéro", null=True, blank=True, help_text="Donné à l'émission.")
     date_facture = models.DateField("date de la facture", default=timezone.localdate)
     date_echeance = models.DateField("date d'échéance", null=True, blank=True)
+    a_valider = models.BooleanField(
+        "à valider", default=False,
+        help_text="Facture d'un passage (contrat au passage) : à confirmer après l'opération (entrée bien faite?) avant d'être "
+                  "envoyée ou mise en attente (demande de JF, 13 novembre 2026).")
     envoyer_le = models.DateField(
         "à envoyer le", null=True, blank=True,
         help_text="Facture de la saison d'un client inscrit d'avance (ex. en plein été) : gardée en brouillon jusqu'à cette date, "

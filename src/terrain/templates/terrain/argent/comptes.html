@@ -27,7 +27,7 @@
 <h2 class="mb-2 text-lg font-bold">À faire</h2>
 {% if versements_prets or relances_pretes or brouillons or virements_a_confirmer or cheques.a_deposer %}
 <div class="carte mb-5 divide-y divide-bordure">
-  {% if versements_prets %}<a href="{% url 'terrain:versements_a_envoyer' %}" class="rangee-lien"><span>Versements : factures de saison et rappels à envoyer</span><span class="pastille bg-accent text-nuit">{{ versements_prets }}</span></a>{% endif %}
+  {% if versements_prets %}<a href="{% url 'terrain:versements_a_envoyer' %}" class="rangee-lien"><span>Factures à envoyer <span class="text-gray-400">· saison, en attente, rappels</span></span><span class="pastille bg-accent text-nuit">{{ versements_prets }}</span></a>{% endif %}
   {% if relances_pretes %}<a href="{% url 'terrain:relances_a_envoyer' %}" class="rangee-lien"><span>Relances à envoyer</span><span class="pastille bg-accent text-nuit">{{ relances_pretes }}</span></a>{% endif %}
   {% if brouillons %}<a href="{% url 'terrain:factures' %}" class="rangee-lien"><span>Brouillons pas encore émis</span><span class="pastille bg-accent text-nuit">{{ brouillons }}</span></a>{% endif %}
   {% if virements_a_confirmer %}<a href="{% url 'terrain:virements' %}" class="rangee-lien"><span>Virements Interac à confirmer</span><span class="pastille bg-ok text-nuit">{{ virements_a_confirmer }}</span></a>{% endif %}

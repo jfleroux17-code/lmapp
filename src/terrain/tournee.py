@@ -11,6 +11,8 @@ from django.utils.dateparse import parse_datetime
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from facturation.models import Facture
+
 from clients.models import Adresse, Client, Secteur
 from core.acces import ecriture_requise, membre_requis, peut_ecrire
 from communications import avis
@@ -241,40 +243,65 @@ def _nb_factures_passages(entreprise):
 @ecriture_requise
 def factures_passages(request):
     """Contrats au passage : une facture par passage, payable sur réception (décision de JF, 12 novembre 2026).
-    Après l'opération : toutes cochées, émises et envoyées d'une tape (canal préféré du client)."""
+    Après l'opération, chaque facture est validée une à une (demande de JF, 13 novembre 2026) : « Envoyer » (émise et
+    envoyée), « En attente » (gardée pour plus tard : fiche du client et « Factures à envoyer »), ou « Pas fait »
+    (le passage devient Sauté et la facture disparaît). Rien n'est choisi d'avance; une facture sans choix reste ici."""
     from communications.factures import envoyer_facture
     from communications.relances import canaux
     from tournee.services import factures_des_passages
 
     liste = list(factures_des_passages(request.entreprise))
     if request.method == "POST":
-        cochees = set(request.POST.getlist("facture"))
-        emises, parties, problemes = 0, 0, []
+        envoyees, attente, pas_faits, problemes = 0, 0, 0, []
         for f in liste:
-            if str(f.pk) not in cochees:
-                continue
-            try:
-                f.emettre()
-            except ValidationError as e:
-                problemes.append(f"{f.client.nom_affiche} : {' '.join(e.messages)}")
-                continue
-            emises += 1
-            choix = canaux(f.client)
-            if not choix:
-                problemes.append(f"{f.client.nom_affiche} : facture n° {f.numero} émise, pas de courriel ni de cellulaire (à remettre en main propre).")
-            for canal in choix:
+            choix = request.POST.get(f"choix-{f.pk}")
+            if choix == "pas_fait":
+                ligne = f.lignes.select_related("passage__operation", "passage__adresse").filter(passage__isnull=False).first()
+                p = ligne.passage if ligne else None
+                if p is not None:
+                    services.marquer(p.operation, p.adresse, Passage.Statut.SAUTE, raison=Passage.Raison.AUTRE,
+                                     note=(p.note + " " if p.note else "") + "Corrigé après l'opération : pas fait.")
+                pas_faits += 1
+            elif choix == "attente":
+                Facture.objects.filter(pk=f.pk).update(a_valider=False)
+                attente += 1
+            elif choix == "envoyer":
+                Facture.objects.filter(pk=f.pk).update(a_valider=False)
+                f.refresh_from_db()
                 try:
-                    m = envoyer_facture(f, canal)
+                    f.emettre()
                 except ValidationError as e:
                     problemes.append(f"{f.client.nom_affiche} : {' '.join(e.messages)}")
                     continue
-                parties += m.statut == m.Statut.EN_FILE
-        if emises:
-            messages.success(request, f"{emises} facture{'s' if emises > 1 else ''} de passage émise{'s' if emises > 1 else ''}, {parties} envoi{'s' if parties > 1 else ''} en route.")
+                envoyees += 1
+                if not canaux(f.client):
+                    problemes.append(f"{f.client.nom_affiche} : facture n° {f.numero} émise, pas de courriel ni de cellulaire (à remettre en main propre).")
+                for canal in canaux(f.client):
+                    try:
+                        m = envoyer_facture(f, canal)
+                    except ValidationError as e:
+                        problemes.append(f"{f.client.nom_affiche} : {' '.join(e.messages)}")
+                        continue
+                    if m.statut != m.Statut.EN_FILE:
+                        problemes.append(f"{f.client.nom_affiche}, {m.get_canal_display().lower()} pas envoyé : {m.erreur or m.get_statut_display().lower()}")
+        morceaux = [x for x in (
+            f"{envoyees} envoyée{'s' if envoyees > 1 else ''}" if envoyees else "",
+            f"{attente} en attente (fiche du client, Argent, Factures à envoyer)" if attente else "",
+            f"{pas_faits} pas fait{'s' if pas_faits > 1 else ''} : passage corrigé en Sauté, facture effacée" if pas_faits else "") if x]
+        if morceaux:
+            messages.success(request, "Factures des passages : " + ", ".join(morceaux) + ".")
+        else:
+            messages.info(request, "Rien de choisi : choisir Envoyer, En attente ou Pas fait pour chaque facture.")
         for p in problemes:
             messages.error(request, p)
         return redirect("terrain:factures_passages" if factures_des_passages(request.entreprise).exists() else "terrain:tournee")
-    lignes = [{"f": f, "canaux": " et ".join(c.label.lower() for c in canaux(f.client))} for f in liste]
+    lignes = []
+    for f in liste:
+        ligne = f.lignes.select_related("passage__operation").filter(passage__isnull=False).first()
+        p = ligne.passage if ligne else None
+        lignes.append({"f": f, "p": p, "canaux": " et ".join(c.label.lower() for c in canaux(f.client)),
+                       "sur_place": round(p.sur_place_s / 60) if p and p.sur_place_s else None,
+                       "photos": p.operation.photos.filter(adresse_id=p.adresse_id).count() if p else 0})
     return render(request, "terrain/tournee/factures_passages.html", {"lignes": lignes})
 
 

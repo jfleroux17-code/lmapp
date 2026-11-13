@@ -131,7 +131,9 @@
           const champ = document.createElement("input"); champ.type = "hidden"; champ.name = "retour"; champ.value = avant[avant.length - 1].u;
           form.appendChild(champ);
         }
-        if (p.length) { p[p.length - 1].f = 1; garder(p); }
+        // Seuls les écrans de formulaire (sans barre d'onglets : contrat, nouveau client...) sont sautés au retour.
+        // Un écran ordinaire d'où part un bouton (ex. Terminer sur la Tournée) reste dans le chemin du retour.
+        if (p.length && !document.querySelector("nav.barre-onglets")) { p[p.length - 1].f = 1; garder(p); }
       }, true);
       window.retourArriere = function () {
         const p = lire().slice(0, -1);

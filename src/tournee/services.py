@@ -1,5 +1,5 @@
 """Règles de la tournée : marquer un passage, et la facturation au passage (F11)."""
-from django.db import transaction
+from django.db import models, transaction
 from django.utils import timezone
 from django.utils.formats import date_format
 
@@ -27,7 +27,7 @@ def _facturer(passage):
     ent = contrat.entreprise
     jour = timezone.localdate(passage.heure)
     aujourdhui = timezone.localdate()
-    f = Facture.objects.create(entreprise_id=contrat.entreprise_id, client_id=contrat.client_id, adresse=passage.adresse, contrat=contrat,
+    f = Facture.objects.create(entreprise_id=contrat.entreprise_id, client_id=contrat.client_id, adresse=passage.adresse, contrat=contrat, a_valider=True,
                                date_facture=min(jour, aujourdhui), date_echeance=min(jour, aujourdhui) + timedelta(days=ent.jours_paiement_passage))
     heure = timezone.localtime(passage.heure)
     desc = f"Déneigement du {date_format(heure, 'j F')} ({passage.operation.get_type_display().lower()}), {passage.adresse.ligne1}"
@@ -50,8 +50,8 @@ def _retirer_de_la_facture(passage):
 
 
 def factures_des_passages(entreprise):
-    """Brouillons créés par les passages (contrats au passage), à émettre et envoyer."""
-    return (Facture.objects.filter(entreprise=entreprise, statut=Facture.Statut.BROUILLON, lignes__passage__isnull=False)
+    """Brouillons créés par les passages (contrats au passage), à valider après l'opération : entrée bien faite?"""
+    return (Facture.objects.filter(entreprise=entreprise, statut=Facture.Statut.BROUILLON, a_valider=True, lignes__passage__isnull=False)
             .distinct().select_related("client", "adresse").order_by("date_facture", "client__nom", "pk"))
 
 
@@ -83,3 +83,13 @@ def marquer(operation, adresse, statut, raison="", note="", position=None, quand
 
     aviser_passage_fait(p)  # G5, si l'entreprise l'a activé (une fois par opération)
     return p
+
+
+def factures_en_attente(entreprise, client=None):
+    """Factures prêtes, gardées pour un envoi plus tard (passages validés « En attente », jobs à la pièce), hors factures de
+    la saison (elles ont leur section) : l'écran central « Factures à envoyer » et la fiche du client."""
+    qs = Facture.objects.filter(entreprise=entreprise, statut=Facture.Statut.BROUILLON, a_valider=False, versements__isnull=True)
+    qs = qs.filter(models.Q(lignes__passage__isnull=False) | models.Q(jobs__isnull=False))
+    if client is not None:
+        qs = qs.filter(client=client)
+    return qs.distinct().select_related("client", "adresse").order_by("date_facture", "client__nom", "pk")

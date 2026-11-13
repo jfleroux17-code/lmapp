@@ -1,13 +1,14 @@
 {% extends "terrain/base.html" %}
 {% load argent %}
-{% block titre %}Versements à envoyer{% endblock %}
+{% block titre %}Factures à envoyer{% endblock %}
 {% block barre_onglets %}{% endblock %}
 {% block contenu %}
-<h1 class="mb-2 text-2xl font-bold">Versements à envoyer</h1>
-<p class="mb-4 text-gray-400">Une seule facture par client pour la saison, avec ses versements. Ici : les factures de saison à émettre, puis les rappels des versements qui arrivent. Tout est coché; une tape envoie, par le moyen préféré de chaque client. Rien ne part sans votre tape.</p>
-{% if lignes or rappels %}
+<h1 class="mb-2 text-2xl font-bold">Factures à envoyer</h1>
+<p class="mb-4 text-gray-400">Tout ce qui attend d'être envoyé : factures de la saison, factures mises en attente (passages, jobs à la pièce) et rappels des versements qui arrivent. Une tape envoie ce qui est coché, par le moyen préféré de chaque client. Rien ne part sans votre tape.</p>
+{% if a_valider %}<a href="{% url 'terrain:factures_passages' %}" class="mb-4 block rounded-2xl bg-accent/15 p-4 font-semibold text-accent">{{ a_valider }} facture{{ a_valider|pluralize }} de passage à valider d'abord (entrée bien faite?) ›</a>{% endif %}
+{% if lignes or rappels or attente %}
   {% if ecriture %}
-  <form method="post" action="{% url 'terrain:envoyer_versements' %}" x-data="{ envoi: false, n: {{ lignes|length }}, r: {{ rappels|length }} }"
+  <form method="post" action="{% url 'terrain:envoyer_versements' %}" x-data="{ envoi: false, n: {{ nb_factures }}, r: {{ rappels|length }} }"
         @submit="if (envoi || n + r === 0 || !confirm('Envoyer ' + (n ? n + ' facture' + (n > 1 ? 's' : '') : '') + (n && r ? ' et ' : '') + (r ? r + ' rappel' + (r > 1 ? 's' : '') : '') + '?')) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
   {% endif %}
     {% if lignes %}
@@ -22,6 +23,22 @@
             <div class="text-sm text-accent">Saison {{ l.f.contrat.saison }} · {{ l.f.total|argent }} taxes comprises{% if l.echeancier|length > 1 %}, en {{ l.echeancier|length }} versements{% endif %}</div>
             {% for v, m, paye in l.echeancier %}<div class="text-sm text-gray-400">{{ v.rang }}{% if v.rang == 1 %}er{% else %}e{% endif %} : {{ m|argent }} le {{ v.date_prevue|date_qc:"j F" }}</div>{% endfor %}
             {% for c in l.cheques %}<div class="text-sm font-semibold text-ok">Chèque en main{% if c.numero %} n° {{ c.numero }}{% endif %} ({{ c.montant|argent }}, daté du {{ c.date_cheque|date_qc:"j F" }})</div>{% endfor %}
+            <div class="text-sm text-gray-400">{% if l.canaux %}Par {{ l.canaux }}{% else %}<span class="text-danger">Pas de courriel ni de cellulaire : à remettre en main propre</span>{% endif %}</div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if attente %}
+    <h2 class="mb-2 text-lg font-bold">Factures en attente d'envoi</h2>
+    <div class="carte mb-5 divide-y divide-bordure">
+      {% for l in attente %}
+        <div class="flex items-start gap-3 p-4">
+          {% if ecriture %}<input type="checkbox" name="attente" value="{{ l.f.pk }}" checked class="mt-1 h-6 w-6 shrink-0 accent-[#f5c400]"
+                 @change="n += $event.target.checked ? 1 : -1" aria-label="Émettre et envoyer la facture de {{ l.f.client.nom_affiche }}">{% endif %}
+          <div class="min-w-0 flex-1">
+            <a href="{% url 'terrain:facture' l.f.pk %}" class="block truncate font-semibold underline-offset-4 active:underline">{{ l.f.client.nom_affiche }}</a>
+            <div class="text-sm text-accent">{{ l.f.lignes.first.description }} · {{ l.f.total|argent }}</div>
             <div class="text-sm text-gray-400">{% if l.canaux %}Par {{ l.canaux }}{% else %}<span class="text-danger">Pas de courriel ni de cellulaire : à remettre en main propre</span>{% endif %}</div>
           </div>
         </div>
