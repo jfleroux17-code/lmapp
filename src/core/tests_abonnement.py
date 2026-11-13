@@ -140,3 +140,27 @@ class AbonnementTests(TestCase):
         self.assertContains(self.client.get("/admin/"), "Factures de la plateforme")
         self.client.force_login(self.patron)
         self.assertNotEqual(self.client.get("/admin/core/factureplateforme/").status_code, 200)
+
+
+@override_settings(ALLOWED_HOSTS=["*"], PLATEFORME_TAUX_USD_CAD="1.40")
+class TextosAuCoutTests(TestCase):
+    """Louis : textos au coût seulement (décision de JF, 13 novembre 2026)."""
+
+    def test_seulement_le_cout_des_textos_converti(self):
+        ent = Entreprise.objects.create(nom="Louis", slug="louis-c", domaine="lc.exemple.test", abonnement_facture=True,
+                                        tarif_plateforme="textos_cout")
+        U = get_user_model()
+        for i in range(3):  # des utilisateurs : pas facturés
+            Membre.objects.create(utilisateur=U.objects.create_user(f"u{i}", password="x" * 12), entreprise=ent, role="admin")
+        self.assertEqual(abonnement.preparer(ent, NOVEMBRE), (None, False))  # aucun texto : rien à facturer
+        for cout, sens, statut in ((D("0.0079"), "sortant", "envoye"), (D("0.0158"), "sortant", "envoye"), (D("0.0079"), "entrant", "recu"),
+                                   (None, "sortant", "envoye"), (D("0.0079"), "sortant", "prepare")):
+            m = Message.objects.create(entreprise=ent, genre="manuel", canal="texto", sens=sens, statut=statut, destinataire="x",
+                                       contenu="Allo", cout=cout, cout_devise="USD" if cout else "")
+            Message.objects.filter(pk=m.pk).update(cree_le=_le(10))
+        f, cree = abonnement.preparer(ent, NOVEMBRE)
+        self.assertTrue(cree)
+        ligne = f.lignes.get()
+        self.assertEqual((ligne.quantite, ligne.prix_unitaire), (1, D("0.04")))  # 0,0316 $ US × 1,40 = 0,04 $
+        self.assertIn("1 sans coût relevé", ligne.description)
+        self.assertEqual(f.sous_total, D("0.04"))

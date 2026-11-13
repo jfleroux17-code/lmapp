@@ -219,6 +219,7 @@ LMAPP_COUT_NUMERO_TWILIO = _D(env("LMAPP_COUT_NUMERO_TWILIO", "1.15"))
 PLATEFORME_PRIX_ABONNEMENT = _D(env("PLATEFORME_PRIX_ABONNEMENT", "99.00"))  # par mois, un utilisateur compris
 PLATEFORME_PRIX_UTILISATEUR = _D(env("PLATEFORME_PRIX_UTILISATEUR", "25.00"))  # par mois, administrateur ou opérateur de plus
 PLATEFORME_PRIX_TEXTO = _D(env("PLATEFORME_PRIX_TEXTO", "0.03"))  # envoyé ou reçu; courriels et lecture seule gratuits
+PLATEFORME_TAUX_USD_CAD = env("PLATEFORME_TAUX_USD_CAD", "1.40")  # textos au coût : Twilio facture en dollars US
 PLATEFORME_NOM_LEGAL = env("PLATEFORME_NOM_LEGAL", "SLAPP Technologies Inc.")
 PLATEFORME_ADRESSE = env("PLATEFORME_ADRESSE", "204, rue Saint-Charles, bureau 103|Sainte-Thérèse (Québec)  J7E 2B4")  # lignes séparées par « | »
 PLATEFORME_TELEPHONE = env("PLATEFORME_TELEPHONE", "514 360-3227")

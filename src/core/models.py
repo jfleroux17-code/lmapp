@@ -81,6 +81,14 @@ class Entreprise(Horodate):
         help_text="La boîte IMAP lue par l'app, ex. info@ledeneigeur.com.",
     )
     # Abonnement à la plateforme (PRD Q2) : facture du mois préparée par l'app, émise et envoyée par JF
+    class Tarif(models.TextChoices):
+        STANDARD = "standard", "Standard (99 $ par mois, utilisateurs, textos)"
+        TEXTOS_AU_COUT = "textos_cout", "Textos au coût seulement"
+
+    tarif_plateforme = models.CharField(
+        "tarif de la plateforme", max_length=12, choices=Tarif.choices, default=Tarif.STANDARD,
+        help_text="Textos au coût seulement : ni abonnement ni utilisateurs, le coût réel des textos chez Twilio (dollars US) "
+                  "converti au taux PLATEFORME_TAUX_USD_CAD (décision de JF pour Louis, 13 novembre 2026).")
     abonnement_facture = models.BooleanField(
         "abonnement facturé", default=False,
         help_text="Coché : la facture de la plateforme du mois passé est préparée le 1er du mois (brouillon, rien ne part sans JF).")

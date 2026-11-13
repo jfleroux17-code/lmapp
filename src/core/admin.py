@@ -87,7 +87,7 @@ class EntrepriseAdmin(admin.ModelAdmin):
         ("Versements des contrats", {"fields": ["versements_par_defaut", "dates_versements", "jours_avance_versement"]}),
         ("Relances proposées", {"fields": ["relances_proposees", "relances_soldes_anterieurs"]}),
         ("Paiement Interac", {"fields": ["interac_courriel", "interac_instructions"]}),
-        ("Abonnement à la plateforme", {"fields": ["abonnement_facture"],
+        ("Abonnement à la plateforme", {"fields": ["abonnement_facture", "tarif_plateforme"],
                                         "description": "Coché : la facture du mois passé est préparée en brouillon le 1er du mois "
                                                        "(Factures de la plateforme). Rien n'est émis ni envoyé sans Jean-François."}),
     ]
@@ -102,7 +102,10 @@ class EntrepriseAdmin(admin.ModelAdmin):
         premier = abonnement.mois_precedent(abonnement.debut_du_mois(timezone.localdate()))
         for ent in queryset:
             f, cree = abonnement.preparer(ent, premier)
-            self.message_user(request, f"{ent.nom} : {'brouillon préparé' if cree else 'facture déjà là'} ({f}).")
+            if f is None:
+                self.message_user(request, f"{ent.nom} : rien à facturer pour ce mois.")
+            else:
+                self.message_user(request, f"{ent.nom} : {'brouillon préparé' if cree else 'facture déjà là'} ({f}).")
 
     class Media:
         js = ["admin_lmapp/envois_reels.js"]  # confirmation avant d'allumer ou d'éteindre les envois réels

@@ -10,11 +10,12 @@ Le 1er du mois, une facture brouillon du mois passé est préparée pour chaque 
 facturé (`Entreprise.abonnement_facture`). JF la relit (lignes modifiables : rabais, premier mois), l'émet et
 l'envoie depuis l'administration. Rien ne part sans lui.
 """
+from decimal import Decimal
 from datetime import date, timedelta
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Count, Max, Q
+from django.db.models import Count, Max, Q, Sum
 from django.utils import timezone
 
 from facturation.calculs import arrondir, taxes
@@ -56,6 +57,11 @@ def usage(entreprise, premier):
         courriels_recus=Count("pk", filter=Q(canal="courriel", sens="entrant")),
     )
     r["textos"] = r["textos_envoyes"] + r["textos_recus"]
+    # Coût réel chez Twilio (relevé chaque heure par le worker, en dollars US), pour le tarif « textos au coût »
+    factures = qs.filter(Q(canal="texto", sens="sortant", statut=Message.Statut.ENVOYE) | Q(canal="texto", sens="entrant"))
+    r["cout_textos_usd"] = factures.filter(cout_devise="USD").aggregate(s=Sum("cout"))["s"] or ZERO
+    r["textos_sans_cout"] = factures.filter(cout=None).count()
+    r["tarif"] = entreprise.tarif_plateforme
     r["utilisateurs"] = utilisateurs_facturables(entreprise)
     r["lecture_seule"] = Membre.objects.filter(entreprise=entreprise, role=Membre.Role.LECTURE, utilisateur__is_active=True).count()
     return r
@@ -66,6 +72,17 @@ def lignes(u, premier):
     from core.templatetags.dates_qc import date_texte
 
     nom_mois = date_texte(premier, "F Y")
+    if u.get("tarif") == "textos_cout":
+        # Textos au coût seulement (Louis) : le coût réel chez Twilio, converti en dollars canadiens
+        if not u["textos"]:
+            return []
+        taux = Decimal(str(settings.PLATEFORME_TAUX_USD_CAD))
+        cad = arrondir(Decimal(u["cout_textos_usd"]) * taux)
+        usd = f"{u['cout_textos_usd']:.2f}".replace(".", ",")
+        manque = f"; {u['textos_sans_cout']} sans coût relevé" if u["textos_sans_cout"] else ""
+        return [(f"Textos au coût, {nom_mois} : {u['textos_envoyes']} envoyé{'s' if u['textos_envoyes'] > 1 else ''}, "
+                 f"{u['textos_recus']} reçu{'s' if u['textos_recus'] > 1 else ''}, {usd} $ US au taux de "
+                 f"{str(taux).replace('.', ',')}{manque}", 1, cad)]
     sortie = [(f"Abonnement Le Déneigeur, {nom_mois} (un utilisateur compris)", 1, settings.PLATEFORME_PRIX_ABONNEMENT)]
     de_plus = max(0, u["utilisateurs"] - 1)
     if de_plus:
@@ -106,6 +123,8 @@ def preparer(entreprise, premier):
         if existante:
             return existante, False
         u = usage(entreprise, premier)
+        if not lignes(u, premier):  # ex. textos au coût, aucun texto ce mois-là : rien à facturer
+            return None, False
         f = FacturePlateforme.objects.create(entreprise=entreprise, mois=premier, textos_envoyes=u["textos_envoyes"],
                                              textos_recus=u["textos_recus"], utilisateurs=u["utilisateurs"],
                                              courriels=u["courriels_envoyes"] + u["courriels_recus"])
