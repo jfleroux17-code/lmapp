@@ -2,7 +2,6 @@
 {% load argent %}
 {% block titre %}Saison suivante{% endblock %}
 {% block contenu %}
-<a href="{% url 'terrain:comptes' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Comptes</a>
 <h1 class="mb-1 text-2xl font-bold">Préparer la saison {{ a.nom }}</h1>
 <p class="mb-4 text-gray-400">À partir de la saison {{ a.saison.nom }} : mêmes clients actifs et mêmes contrats, prix ajustés, versements reportés d'un an ({{ a.debut|date_qc:"j F Y" }} au {{ a.fin|date_qc:"j F Y" }}). Rien n'est facturé ni envoyé.</p>
 {% if a.existe %}

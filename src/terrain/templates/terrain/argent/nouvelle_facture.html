@@ -1,7 +1,6 @@
 {% extends "terrain/base.html" %}
 {% block titre %}Nouvelle facture{% endblock %}
 {% block contenu %}
-<a href="{% url 'terrain:fiche' client.pk %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ {{ client.nom_affiche }}</a>
 <h1 class="mb-1 text-2xl font-bold">Nouvelle facture</h1>
 <p class="mb-5 text-gray-400">{{ client.nom_affiche }}</p>
 {% if form.errors %}

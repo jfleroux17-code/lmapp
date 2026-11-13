@@ -10,6 +10,7 @@ from clients.models import Client
 from communications.models import Message
 from core.acces import ecriture_requise, membre_requis, peut_ecrire
 from demandes.models import Demande
+from terrain.retour import retour_ou
 
 SOURCE_PAR_CANAL = {Message.Canal.TEXTO: Demande.Source.TEXTO, Message.Canal.COURRIEL: Demande.Source.COURRIEL,
                     Message.Canal.APPEL: Demande.Source.APPEL}
@@ -78,8 +79,22 @@ def choisir_client(request):
     clients = _recherche(request.entreprise, q)[0] if q else []
     demande_pk = request.GET.get("demande")
     d = Demande.objects.filter(pk=demande_pk, entreprise=request.entreprise).first() if demande_pk else None
+    lier = request.GET.get("lier_message", "")
+    m = Message.objects.filter(pk=lier, entreprise=request.entreprise).first() if lier.isdigit() else None
     return render(request, "terrain/demandes/_choisir_client.html", {
-        "clients": clients, "q": q, "demande": d, "message": request.GET.get("message", "")})
+        "clients": clients, "q": q, "demande": d, "message": request.GET.get("message", ""), "lier_message": m})
+
+
+@require_POST
+@ecriture_requise
+def lier_message(request, pk):
+    """Rattacher à un client un message reçu d'un expéditeur inconnu (nouveau numéro, autre adresse courriel)."""
+    m = get_object_or_404(Message, pk=pk, entreprise=request.entreprise, client__isnull=True)
+    client = get_object_or_404(Client, pk=request.POST.get("client") or 0, entreprise=request.entreprise)
+    m.client = client
+    m.save(update_fields=["client"])
+    messages.success(request, f"Message lié à {client.nom_affiche}.")
+    return redirect("terrain:message", pk=m.pk)
 
 
 @require_POST
@@ -113,7 +128,7 @@ def changer(request, pk):
     d.changer_statut(statut, request.POST.get("reglement", "").strip())
     messages.success(request, f"Demande {d.get_statut_display().lower()}.")
     if statut == Demande.Statut.REGLEE:
-        return redirect("terrain:demandes")
+        return retour_ou(request, "terrain:demandes")
     return redirect("terrain:demande", pk=d.pk)
 
 

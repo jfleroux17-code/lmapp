@@ -2,7 +2,6 @@
 {% load argent %}
 {% block titre %}Chèques postdatés{% endblock %}
 {% block contenu %}
-<a href="{% url 'terrain:comptes' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Comptes</a>
 <h1 class="mb-1 text-2xl font-bold">Chèques postdatés</h1>
 <p class="mb-4 text-gray-400">{{ resume.en_main }} chèque{{ resume.en_main|pluralize }} en main ({{ resume.en_main_montant|argent }}). Comptés comme reçus seulement au dépôt. Pour en noter un : la fiche du client, section Argent.</p>
 

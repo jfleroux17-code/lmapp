@@ -69,6 +69,15 @@
     {% for m in messages %}
       <p class="mb-4 rounded-2xl border p-4 {% if m.level_tag == 'error' %}border-danger/50 bg-danger/10 text-danger{% elif m.level_tag == 'success' %}border-ok/50 bg-ok/10 text-ok{% else %}border-bordure bg-carte text-gray-200{% endif %}" role="status">{{ m }}</p>
     {% endfor %}
+{% with confirmation_paiement=confirmation_paiement %}{% if confirmation_paiement %}
+  {# Paiement enregistré : écran vert 2 secondes (se ferme aussi d'une tape), sur l'écran d'où Encaisser est parti #}
+  <div x-data="{ ouvert: true }" x-init="setTimeout(() => ouvert = false, 2000)" x-show="ouvert" x-transition.opacity.duration.300ms @click="ouvert = false"
+       class="fixed inset-0 z-40 flex flex-col items-center justify-center bg-ok px-6 text-center text-nuit" role="status">
+    <svg viewBox="0 0 24 24" width="96" height="96" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+    <div class="mt-2 text-4xl font-bold">{{ confirmation_paiement.titre }}</div>
+    <div class="mt-2 text-xl font-semibold">{{ confirmation_paiement.detail }}</div>
+  </div>
+{% endif %}{% endwith %}
     {% block contenu %}{% endblock %}
   </main>
   {% if user.is_authenticated and request.entreprise %}{% block barre_onglets %}
@@ -113,8 +122,16 @@
       };
       window.addEventListener("pageshow", noter);  // aussi quand le navigateur ressort une page de sa mémoire
       document.addEventListener("submit", (e) => {
-        if ((e.target.getAttribute("method") || "").toLowerCase() !== "post") return;
-        const p = lire(); if (p.length) { p[p.length - 1].f = 1; garder(p); }
+        const form = e.target;
+        if ((form.getAttribute("method") || "").toLowerCase() !== "post") return;
+        const p = lire();
+        // L'écran d'avant celui-ci (formulaires déjà envoyés sautés) : le serveur y revient après l'enregistrement, s'il le prévoit
+        const avant = p.slice(0, -1); while (avant.length && avant[avant.length - 1].f) avant.pop();
+        if (avant.length && !form.querySelector('input[name="retour"]')) {
+          const champ = document.createElement("input"); champ.type = "hidden"; champ.name = "retour"; champ.value = avant[avant.length - 1].u;
+          form.appendChild(champ);
+        }
+        if (p.length) { p[p.length - 1].f = 1; garder(p); }
       }, true);
       window.retourArriere = function () {
         const p = lire().slice(0, -1);

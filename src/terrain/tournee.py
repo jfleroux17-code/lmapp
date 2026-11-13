@@ -287,7 +287,11 @@ def message(request, pk):
 
     routes = {"PhotoAdresse": "terrain:photo", "PhotoPassage": "terrain:voir_photo_passage", "PhotoDemande": "terrain:voir_photo_demande"}
     jointes = [(p, legende, reverse(routes[type(p).__name__], args=[p.pk])) for p, legende in photos.jointes(m)]
-    return render(request, "terrain/message.html", {"m": m, "photos": jointes})
+    from core import telephone as tel
+    from core.acces import peut_ecrire
+    numero = (m.client.cellulaire if m.client else "") or (m.expediteur if m.canal == Message.Canal.TEXTO and m.sens == Message.Sens.ENTRANT else "")
+    return render(request, "terrain/message.html", {"m": m, "photos": jointes, "ecriture": peut_ecrire(request),
+                                                     "telephone": numero, "telephone_affiche": tel.afficher(numero) if numero else ""})
 
 
 # Ordre de la tournée (F1) : boutons haut et bas plutôt que glisser (gants).

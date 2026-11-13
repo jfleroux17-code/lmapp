@@ -15,6 +15,7 @@ from facturation import cheques as logique
 from facturation.models import ChequePostdate, Facture, Versement
 from facturation.templatetags.argent import argent
 from terrain.argent import MontantField
+from terrain.retour import retour_ou
 
 S = ChequePostdate.Statut
 
@@ -61,7 +62,7 @@ def nouveau(request, client_pk):
                                                 cree_le__gte=timezone.now() - timedelta(minutes=1)).exists()
         if not erreurs and doublon:  # double tape
             messages.info(request, "Ce chèque est déjà noté.")
-            return redirect("terrain:fiche", pk=client.pk)
+            return retour_ou(request, "terrain:fiche", pk=client.pk)
         if not erreurs:
             try:
                 c.full_clean()
@@ -70,7 +71,7 @@ def nouveau(request, client_pk):
                                  + (" À déposer dès aujourd'hui." if c.date_cheque <= timezone.localdate() else ""))
                 if request.POST.get("autre"):
                     return redirect("terrain:nouveau_cheque", client_pk=client.pk)
-                return redirect("terrain:fiche", pk=client.pk)
+                return retour_ou(request, "terrain:fiche", pk=client.pk)
             except ValidationError as e:
                 erreurs.extend(e.messages)
         for e in erreurs:

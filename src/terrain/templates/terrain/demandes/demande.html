@@ -21,7 +21,6 @@
   });
 </script>{% endblock %}
 {% block contenu %}
-<a href="{% url 'terrain:demandes' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Demandes</a>
 <div class="carte mb-4 p-4">
   <div class="mb-1 text-sm text-gray-400">{{ d.get_genre_display }} · {{ d.get_source_display|lower }} · {{ d.cree_le|date_qc:"j F Y, H \h i" }}</div>
   <h1 class="mb-1 text-xl font-bold">{{ d.client.nom_affiche|default:d.contact|default:"Inconnu" }}{% if d.urgent and d.statut != "reglee" %} <span class="pastille bg-danger/20 text-danger">Urgent</span>{% endif %}</h1>

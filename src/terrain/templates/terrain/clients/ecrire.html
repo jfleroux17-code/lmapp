@@ -1,13 +1,19 @@
 {% extends "terrain/base.html" %}
 {% block titre %}Écrire à {{ client.nom_affiche }}{% endblock %}
 {% block contenu %}
-<h1 class="mb-4 text-2xl font-bold">Écrire à {{ client.nom_affiche }}</h1>
+<h1 class="mb-4 text-2xl font-bold">{% if reponse_a %}Répondre à{% else %}Écrire à{% endif %} {{ client.nom_affiche }}</h1>
+{% if reponse_a %}
+  <blockquote class="mb-4 border-l-4 border-bordure pl-3 text-gray-400">
+    <div class="text-sm">{{ reponse_a.get_canal_display }} reçu le {{ reponse_a.cree_le|date_qc:"j F, H \h i" }}</div>
+    <div class="line-clamp-6 whitespace-pre-line break-words">{{ reponse_a.contenu }}</div>
+  </blockquote>
+{% endif %}
 {% if not canaux %}
   <p class="carte mb-4 p-4 text-gray-400">Ni cellulaire ni courriel dans la fiche.</p>
   <a href="{% url 'terrain:fiche' client.pk %}" class="gros-bouton border-2 border-bordure text-gray-300">Retour</a>
 {% else %}
 <form method="post" class="space-y-4" x-data="{ canal: '{{ choisi }}', texte: '{{ texte|escapejs }}', envoi: false, photos: {{ photos_choisies|default:0 }},
-    get reste() { return {{ limite }} - {{ reserve_signature }} - (this.photos ? {{ reserve_photos }} : 0) - this.texte.length } }" @submit="if (envoi || (canal === 'texto' && reste < 0)) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
+    get reste() { return {{ limite }} - {{ reserve_signature }} - (this.photos ? {{ reserve_photos }} : 0) - this.texte.length } }" @submit="if (envoi || (canal === 'texto' && reste < 0)) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}{% if reponse_a %}<input type="hidden" name="reponse" value="{{ reponse_a.pk }}">{% endif %}
   <div class="grid gap-2" role="radiogroup" aria-label="Par">
     {% for valeur, nom in canaux %}
       <label class="flex min-h-14 cursor-pointer items-center rounded-xl border-2 px-4 font-semibold" :class="canal === '{{ valeur }}' ? 'border-accent text-accent' : 'border-bordure'">
@@ -16,7 +22,7 @@
     {% endfor %}
   </div>
   <label class="block" x-show="canal === 'courriel'"><span class="mb-2 block text-gray-300">Objet</span>
-    <input name="sujet" class="champ" maxlength="200" placeholder="Message de {{ request.entreprise.nom }}">
+    <input name="sujet" class="champ" maxlength="200" value="{{ sujet }}" placeholder="Message de {{ request.entreprise.nom }}">
   </label>
   <label class="block"><span class="mb-2 block text-gray-300">Message</span>
     <textarea name="texte" rows="5" class="champ" x-model="texte" required>{{ texte }}</textarea>

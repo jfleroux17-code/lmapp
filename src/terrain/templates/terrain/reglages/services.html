@@ -3,7 +3,6 @@
 {% block titre %}Services et prix{% endblock %}
 {% block contenu %}
 {% include "terrain/reglages/_tournee.html" %}
-<a href="{% url 'terrain:reglages' %}" class="mb-3 inline-block text-accent">‹ Réglages</a>
 <h1 class="mb-1 text-2xl font-bold">Services et prix</h1>
 <p class="mb-5 text-gray-400">Les boutons proposés quand tu ajoutes une ligne à une facture. Le prix reste modifiable chaque fois.</p>
 {% if peut %}<a href="{% url 'terrain:reglages_nouveau_service' %}" class="gros-bouton mb-5 bg-accent text-nuit">+ Service</a>{% endif %}

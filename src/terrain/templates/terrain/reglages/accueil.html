@@ -1,7 +1,6 @@
 {% extends "terrain/base.html" %}
 {% block titre %}Réglages{% endblock %}
 {% block contenu %}
-<a href="{% url 'terrain:plus' %}" class="mb-3 inline-block text-accent">‹ Plus</a>
 <h1 class="mb-1 text-2xl font-bold">Réglages</h1>
 <p class="mb-5 text-gray-400">{% if peut %}Ce que tu règles toi-même pour {{ ent.nom }}.{% else %}Consultation seulement : un administrateur de l'entreprise change les réglages.{% endif %}</p>
 <div class="bureau:grid bureau:grid-cols-2 bureau:gap-5">

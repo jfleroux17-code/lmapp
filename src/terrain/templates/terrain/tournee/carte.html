@@ -3,7 +3,6 @@
 {% block titre %}Carte en direct{% endblock %}
 {% block tete %}<link rel="stylesheet" href="{% static 'vendor/leaflet-1.9.4/leaflet.css' %}">{% endblock %}
 {% block contenu %}
-<a href="{% url 'terrain:tournee' %}" class="mb-2 inline-flex min-h-12 items-center text-accent">‹ Tournée</a>
 <h1 class="text-xl font-bold">Carte en direct</h1>
 <p id="etat" class="mb-2 min-h-6 text-sm text-gray-400" role="status">{% if not op %}Aucune opération en cours.{% else %}Chargement…{% endif %}</p>
 <div class="relative -mx-4 overflow-hidden" style="height: calc(100dvh - 15rem); min-height: 18rem;"><div id="carte" class="absolute inset-0"></div></div>

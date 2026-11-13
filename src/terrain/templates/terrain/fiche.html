@@ -29,16 +29,6 @@
 </script>
 {% endblock %}
 {% block contenu %}
-{% if confirmation_paiement %}
-  {# Paiement enregistré : écran vert 2 secondes (se ferme aussi d'une tape) #}
-  <div x-data="{ ouvert: true }" x-init="setTimeout(() => ouvert = false, 2000)" x-show="ouvert" x-transition.opacity.duration.300ms @click="ouvert = false"
-       class="fixed inset-0 z-40 flex flex-col items-center justify-center bg-ok px-6 text-center text-nuit" role="status">
-    <svg viewBox="0 0 24 24" width="96" height="96" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
-    <div class="mt-2 text-4xl font-bold">{{ confirmation_paiement.titre }}</div>
-    <div class="mt-2 text-xl font-semibold">{{ confirmation_paiement.detail }}</div>
-  </div>
-{% endif %}
-<a href="{% url 'terrain:accueil' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Clients</a>
 
 {# Haut de la fiche (audit UX) : qui, où, l'appeler, combien il doit; le reste plus bas #}
 <div class="mb-1 flex items-start justify-between gap-3">

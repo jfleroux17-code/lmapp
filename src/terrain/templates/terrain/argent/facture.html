@@ -2,11 +2,11 @@
 {% load argent %}
 {% block titre %}{{ f }}{% endblock %}
 {% block contenu %}
-<a href="{% url 'terrain:fiche' client.pk %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ {{ client.nom_affiche }}</a>
 
 <div class="mb-4 flex items-start justify-between gap-3">
   <div>
     <h1 class="text-2xl font-bold leading-tight">{% if f.genre == "solde_ouverture" %}Solde antérieur{% elif f.numero %}Facture n° {{ f.numero }}{% else %}Brouillon{% endif %}</h1>
+    <a href="{% url 'terrain:fiche' client.pk %}" class="inline-flex min-h-10 items-center text-lg font-semibold text-accent">{{ client.nom_affiche }}</a>
     <p class="text-gray-400">{{ f.date_facture|date_qc:"j F Y" }}{% if f.date_echeance and f.statut == "emise" and not f.payee %} · payable le {{ f.date_echeance|date_qc:"j F" }}{% endif %}{% if f.saison_origine %} · saison {{ f.saison_origine }}{% endif %}</p>
   </div>
   {% if f.statut == "brouillon" %}<span class="pastille bg-accent/20 text-accent">Brouillon</span>

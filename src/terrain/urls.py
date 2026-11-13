@@ -107,6 +107,7 @@ urlpatterns = [
     path("demandes/<int:pk>/statut/", demandes.changer, name="changer_demande"),
     path("demandes/choisir-client/", demandes.choisir_client, name="choisir_client_demande"),
     path("demandes/<int:pk>/client/", demandes.lier_client, name="lier_client_demande"),
+    path("messages/<int:pk>/client/", demandes.lier_message, name="lier_client_message"),
     path("demandes/<int:pk>/dossier/", demandes.dossier, name="dossier_demande"),
     path("demandes/<int:pk>/photos/", demandes.ajouter_photo, name="photo_demande"),
     path("photos-demande/<int:pk>/", demandes.photo, name="voir_photo_demande"),

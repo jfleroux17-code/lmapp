@@ -16,6 +16,7 @@ from django.views.decorators.http import require_POST
 from clients.models import Adresse, Client, Contact, PhotoAdresse, Secteur
 from core.acces import ecriture_requise, membre_requis, modification_clients_requise
 from core.telephone import afficher
+from terrain.retour import retour_ou
 
 CHAMP = "champ"
 
@@ -172,7 +173,7 @@ def modifier(request, pk):
     form = ClientForm(request.POST or None, instance=client, prefix="c")
     if request.method == "POST" and _enregistrer(form):
         messages.success(request, "Client enregistré.")
-        return redirect("terrain:fiche", pk=client.pk)
+        return retour_ou(request, "terrain:fiche", pk=client.pk)
     return render(request, "terrain/clients/formulaire.html", {
         "titre": f"Modifier : {client.nom_affiche}", "formulaires": [("Client", form)], "annuler_url": client.pk,
     })
@@ -186,7 +187,7 @@ def adresse(request, client_pk, pk=None):
     form = AdresseForm(request.POST or None, instance=instance, prefix="a", entreprise=ent)
     if request.method == "POST" and _enregistrer(form, entreprise=ent, client=client):
         messages.success(request, "Adresse enregistrée." + ("" if pk else " Sa position sera trouvée dans une minute."))
-        return redirect("terrain:fiche", pk=client.pk)
+        return retour_ou(request, "terrain:fiche", pk=client.pk)
     return render(request, "terrain/clients/formulaire.html", {
         "titre": ("Modifier l'adresse" if pk else "Nouvelle adresse") + f" : {client.nom_affiche}",
         "formulaires": [("Adresse", form)], "annuler_url": client.pk,
@@ -219,7 +220,7 @@ def position(request, pk):
         a.geocodage_note = f"{comment} le {formats.date_format(timezone.localdate(), 'j F Y')}."
         a.save(update_fields=["position", "position_source", "position_precision", "geocodage_note", "modifie_le"])
         messages.success(request, "Position enregistrée.")
-        return redirect("terrain:fiche", pk=a.client_id)
+        return retour_ou(request, "terrain:fiche", pk=a.client_id)
     if a.position:
         centre, zoom = (a.position.y, a.position.x), 18
     else:
@@ -242,6 +243,9 @@ def ecrire(request, pk):
     ent = request.entreprise
     demande = Demande.objects.filter(pk=request.GET.get("demande") or 0, client=client).first() if request.GET.get("demande", "").isdigit() else None
     disponibles = photos.disponibles(client, demande)
+    # « Répondre » depuis un message reçu : même canal, message cité au-dessus, même fil de courriel
+    reponse_a = Message.objects.filter(pk=request.GET.get("reponse") or request.POST.get("reponse") or 0, client=client).first() \
+        if (request.GET.get("reponse") or request.POST.get("reponse") or "").isdigit() else None
     canaux = [(Message.Canal.TEXTO, f"Texto au {afficher(client.cellulaire)}")] if client.cellulaire else []
     if client.courriel:
         canaux.append((Message.Canal.COURRIEL, f"Courriel à {client.courriel}"))
@@ -260,7 +264,7 @@ def ecrire(request, pk):
             signature = ent.signature_messages or ent.nom
             try:
                 with transaction.atomic():
-                    m = Message.objects.create(entreprise=ent, client=client, genre=Genre.MANUEL, canal=canal,
+                    m = Message.objects.create(entreprise=ent, client=client, genre=Genre.MANUEL, canal=canal, reponse_a=reponse_a,
                                                destinataire=client.courriel if courriel else client.cellulaire,
                                                sujet=(sujet or f"Message de {ent.nom}") if courriel else "",
                                                contenu=f"{texte}\n\n{signature}")
@@ -280,10 +284,13 @@ def ecrire(request, pk):
                     messages.success(request, f"Message en route vers {m.destinataire}.")
                 else:
                     messages.error(request, f"Message pas envoyé : {m.erreur}")
-                return redirect("terrain:fiche", pk=client.pk)
+                return retour_ou(request, "terrain:fiche", pk=client.pk)
     return render(request, "terrain/clients/ecrire.html", {
         "client": client, "canaux": canaux, "signature": ent.signature_messages or ent.nom,
-        "choisi": request.POST.get("canal") or (client.canal_prefere if client.canal_prefere in dict(canaux) else (canaux[0][0] if canaux else "")),
+        "choisi": request.POST.get("canal") or (reponse_a.canal if reponse_a and reponse_a.canal in dict(canaux) else None)
+                   or (client.canal_prefere if client.canal_prefere in dict(canaux) else (canaux[0][0] if canaux else "")),
+        "reponse_a": reponse_a,
+        "sujet": request.POST.get("sujet") or (("" if (reponse_a.sujet or "").lower().startswith("re:") else "Re: ") + reponse_a.sujet if reponse_a and reponse_a.sujet else ""),
         "photos": disponibles, "maximum": photos.MAXIMUM, "texte": request.POST.get("texte", ""),
         # Compteur du texto : ce qui reste pour le message, une fois la signature (et le lien des photos) comptée
         "photos_choisies": sum(1 for d in disponibles if d["choisie"]), "limite": segments.LIMITE, "reserve_signature": segments.longueur(f"\n\n{ent.signature_messages or ent.nom}"),
@@ -313,7 +320,7 @@ def noter_appel(request, pk):
             if request.POST.get("demande"):
                 return redirect(f"{reverse('terrain:nouvelle_demande')}?message={m.pk}")
             messages.success(request, "Appel noté.")
-            return redirect("terrain:fiche", pk=client.pk)
+            return retour_ou(request, "terrain:fiche", pk=client.pk)
     return render(request, "terrain/clients/appel.html", {"client": client, "sens": request.POST.get("sens", "recu"),
                                                           "resume": request.POST.get("resume", "")})
 
@@ -370,7 +377,7 @@ def contact(request, client_pk, pk=None):
     form = ContactForm(request.POST or None, instance=instance, prefix="k")
     if request.method == "POST" and _enregistrer(form, entreprise=ent, client=client):
         messages.success(request, "Contact enregistré.")
-        return redirect("terrain:fiche", pk=client.pk)
+        return retour_ou(request, "terrain:fiche", pk=client.pk)
     return render(request, "terrain/clients/formulaire.html", {
         "titre": ("Modifier le contact" if pk else "Nouveau contact") + f" : {client.nom_affiche}",
         "formulaires": [("Contact", form)], "annuler_url": client.pk,

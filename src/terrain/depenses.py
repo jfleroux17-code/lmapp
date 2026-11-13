@@ -13,6 +13,7 @@ from facturation import depenses as logique
 from facturation.models import Depense
 from facturation.templatetags.argent import argent
 from terrain.argent import MontantField
+from terrain.retour import retour_ou
 
 
 def _montant(texte, obligatoire=False):
@@ -100,7 +101,7 @@ def nouvelle(request):
             d.save()
             messages.success(request, f"Dépense de {argent(d.total)} notée ({d.get_categorie_display().lower()})"
                              + ("." if d.photo else ", sans photo du reçu."))
-            return redirect("terrain:depenses")
+            return retour_ou(request, "terrain:depenses")
         for e in erreurs:
             messages.error(request, e)
     return render(request, "terrain/depenses/formulaire.html", _contexte(request, d))

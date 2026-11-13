@@ -1,8 +1,8 @@
 <section class="carte mb-4 p-4">
-  <h2 class="mb-1 text-lg font-bold">{% if demande %}Lier à un client{% else %}Client{% endif %}</h2>
-  <p class="mb-3 text-sm text-gray-400">Nom, adresse ou bout de téléphone.{% if not demande %} Pas dans l'app : laisser vide et noter la personne à joindre plus bas.{% endif %}</p>
+  <h2 class="mb-1 text-lg font-bold">{% if demande or lier_message %}Lier à un client{% else %}Client{% endif %}</h2>
+  <p class="mb-3 text-sm text-gray-400">Nom, adresse ou bout de téléphone.{% if not demande and not lier_message %} Pas dans l'app : laisser vide et noter la personne à joindre plus bas.{% endif %}</p>
   <input type="search" name="q" class="champ" placeholder="Chercher un client" autocomplete="off" aria-label="Chercher un client"
          hx-get="{% url 'terrain:choisir_client_demande' %}" hx-trigger="input changed delay:250ms, search" hx-target="next .resultats-client"
-         hx-vals='{"demande": "{{ demande.pk|default:"" }}", "message": "{{ message.pk|default:"" }}"}'>
+         hx-vals='{"demande": "{{ demande.pk|default:"" }}", "message": "{{ message.pk|default:"" }}", "lier_message": "{{ lier_message.pk|default:"" }}"}'>
   <div class="resultats-client" aria-live="polite"></div>
 </section>

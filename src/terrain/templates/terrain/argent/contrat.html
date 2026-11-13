@@ -2,7 +2,6 @@
 {% block titre %}{{ titre }}{% endblock %}
 {% block barre_onglets %}{% endblock %}
 {% block contenu %}
-<a href="{% url 'terrain:fiche' client.pk %}?argent=1#argent" class="mb-3 inline-block text-accent">‹ {{ client.nom_affiche }}</a>
 <h1 class="mb-1 text-2xl font-bold">{{ titre }}</h1>
 <p class="mb-5 text-gray-400">{% if explication %}{{ explication }}{% else %}Pour {{ client.nom_affiche }}. Rien n'est envoyé au client : le PDF et l'envoi sont dans la fiche.{% endif %}</p>
 <form method="post" class="space-y-5" novalidate x-data="{ envoi: false, type: '{{ form.type.value|default:"saisonnier" }}', adresse: '{{ adresse_initiale }}' }" @change="if ($event.target.name === 'type') type = $event.target.value"

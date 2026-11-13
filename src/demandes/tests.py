@@ -149,3 +149,56 @@ class DossierDommageTests(TestCase):
         self.assertFalse(PhotoDemande.objects.exists())
         self.d.refresh_from_db()
         self.assertEqual(self.d.entente, "")
+
+
+@override_settings(ALLOWED_HOSTS=["*"])
+class FluiditeTests(TestCase):
+    """Analyse de fluidité (accord de JF, 12 novembre 2026) : Répondre, Appeler, Lier à un client; retour d'où l'on vient."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.ent = Entreprise.objects.create(nom="Essai", slug="essai", domaine=HOTE, courriel_reponse="essai@example.com")
+        cls.c = Client.objects.create(entreprise=cls.ent, nom="Tremblay", cellulaire="+14505550142", courriel="t@example.com")
+        cls.louis = get_user_model().objects.create_user("louis", password="x" * 12)
+        Membre.objects.create(utilisateur=cls.louis, entreprise=cls.ent, role="admin")
+
+    def setUp(self):
+        self.client.defaults["HTTP_HOST"] = HOTE
+        self.client.force_login(self.louis)
+
+    def test_repondre_a_un_courriel(self):
+        m = Message.objects.create(entreprise=self.ent, client=self.c, genre="recu", canal="courriel", sens="entrant", statut="recu",
+                                   sujet="Facture", contenu="Je paie vendredi", expediteur="t@example.com", message_id_externe="<abc@example.com>")
+        page = self.client.get(f"/messages/{m.pk}/")
+        self.assertContains(page, f"/clients/{self.c.pk}/ecrire/?reponse={m.pk}")
+        self.assertContains(page, "tel:+14505550142")
+        page = self.client.get(f"/clients/{self.c.pk}/ecrire/?reponse={m.pk}")
+        self.assertContains(page, "Je paie vendredi")
+        self.assertContains(page, 'value="Re: Facture"')
+        self.assertEqual(page.context["choisi"], "courriel")
+        r = self.client.post(f"/clients/{self.c.pk}/ecrire/", {"canal": "courriel", "texte": "Merci!", "sujet": "Re: Facture",
+                                                                "reponse": m.pk, "retour": f"/messages/{m.pk}/"})
+        self.assertRedirects(r, f"/messages/{m.pk}/", fetch_redirect_response=False)  # revient d'où l'on vient
+        envoye = Message.objects.get(sens="sortant")
+        self.assertEqual(envoye.reponse_a, m)
+        from communications.courriel import construire
+        self.assertEqual(construire(envoye)["In-Reply-To"], "<abc@example.com>")
+
+    def test_retour_refuse_une_adresse_externe(self):
+        r = self.client.post(f"/clients/{self.c.pk}/ecrire/", {"canal": "texto", "texte": "Allo", "retour": "https://ailleurs.example/"})
+        self.assertRedirects(r, f"/clients/{self.c.pk}/", fetch_redirect_response=False)
+        r = self.client.post(f"/clients/{self.c.pk}/ecrire/", {"canal": "texto", "texte": "Allo", "retour": "//ailleurs.example/"})
+        self.assertRedirects(r, f"/clients/{self.c.pk}/", fetch_redirect_response=False)
+
+    def test_lier_un_message_d_un_inconnu(self):
+        m = Message.objects.create(entreprise=self.ent, genre="recu", canal="texto", sens="entrant", statut="recu",
+                                   contenu="C'est mon nouveau numéro", expediteur="+14505550199")
+        page = self.client.get(f"/messages/{m.pk}/")
+        self.assertContains(page, "Lier à un client")
+        self.assertContains(page, "tel:+14505550199")
+        self.assertContains(self.client.get(f"/demandes/choisir-client/?q=tremb&lier_message={m.pk}"), f"/messages/{m.pk}/client/")
+        r = self.client.post(f"/messages/{m.pk}/client/", {"client": self.c.pk}, follow=True)
+        self.assertContains(r, "Message lié à Tremblay")
+        self.assertContains(r, "Répondre par texto")
+        m.refresh_from_db()
+        self.assertEqual(m.client, self.c)

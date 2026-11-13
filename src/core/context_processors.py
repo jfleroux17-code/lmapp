@@ -46,3 +46,12 @@ def onglet(request):
     chemin = getattr(request, "path", "") or ""
     nom = next((n for n, prefixes in ONGLETS if chemin.startswith(prefixes)), "clients")  # sinon : recherche, fiches, adresses, photos
     return {"onglet": nom, "racine_onglet": RACINES[nom], "est_racine": chemin in RACINES.values()}
+
+
+def confirmation_paiement(request):
+    """Écran vert après un paiement (audit UX), montré sur l'écran où l'on revient (fiche, comptes, à collecter).
+    Paresseux : la session n'est vidée que si une page complète l'affiche (pas par un fragment HTMX)."""
+    session = getattr(request, "session", None)
+    if session is None:
+        return {}
+    return {"confirmation_paiement": lambda: session.pop("confirmation_paiement", None)}

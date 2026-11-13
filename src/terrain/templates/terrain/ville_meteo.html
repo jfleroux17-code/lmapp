@@ -1,7 +1,6 @@
 {% extends "terrain/base.html" %}
 {% block titre %}Ville de la météo{% endblock %}
 {% block contenu %}
-<a href="{% url 'terrain:plus' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Plus</a>
 <h1 class="mb-1 text-2xl font-bold">Ville de la météo</h1>
 <p class="mb-4 text-gray-400">Environnement Canada n'a pas de prévisions pour chaque municipalité. Choisir la ville voisine dont la météo ressemble le plus à celle des clients.</p>
 {% if m.villes_proches %}

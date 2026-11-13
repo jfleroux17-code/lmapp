@@ -1,7 +1,6 @@
 {% extends "terrain/base.html" %}
 {% block titre %}Export pour le comptable{% endblock %}
 {% block contenu %}
-<a href="{% url 'terrain:comptes' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Comptes</a>
 <h1 class="mb-2 text-2xl font-bold">Export pour le comptable</h1>
 <p class="mb-4 text-gray-300">Fichiers CSV qui s'ouvrent dans Excel. Période proposée : la saison {{ saison.nom }}.</p>
 <form method="get" class="space-y-4">

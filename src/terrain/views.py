@@ -130,7 +130,6 @@ def fiche(request, pk):
         "messages_client": client.messages.order_by("-cree_le")[:10],
         "demandes_client": client.demandes.order_by("statut", "-cree_le")[:10],
         **resume_client(client),
-        "confirmation_paiement": request.session.pop("confirmation_paiement", None),
     }
     return render(request, "terrain/fiche.html", contexte)
 

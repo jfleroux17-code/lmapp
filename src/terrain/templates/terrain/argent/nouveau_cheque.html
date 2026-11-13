@@ -2,8 +2,8 @@
 {% load argent %}
 {% block titre %}Chèque postdaté{% endblock %}
 {% block contenu %}
-<a href="{% url 'terrain:fiche' client.pk %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ {{ client.nom_affiche }}</a>
 <h1 class="mb-1 text-2xl font-bold">Chèque postdaté</h1>
+<p class="text-lg font-semibold">{{ client.nom_affiche }}</p>
 <p class="mb-4 text-gray-400">Gardé en main jusqu'à sa date. Compté comme reçu seulement quand vous le déposez.</p>
 
 {% if deja %}

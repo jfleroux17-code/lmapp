@@ -2,7 +2,6 @@
 {% block titre %}Saisons{% endblock %}
 {% block contenu %}
 {% include "terrain/reglages/_tournee.html" %}
-<a href="{% url 'terrain:reglages' %}" class="mb-3 inline-block text-accent">‹ Réglages</a>
 <h1 class="mb-1 text-2xl font-bold">Saisons</h1>
 <p class="mb-5 text-gray-400">Dates de chaque saison. Pour reprendre les contrats d'une saison à l'autre : <a class="text-accent underline" href="{% url 'terrain:saison_suivante' %}">Préparer la saison suivante</a>.</p>
 {% if peut %}<a href="{% url 'terrain:reglages_nouvelle_saison' %}" class="gros-bouton mb-5 border-2 border-accent text-accent">+ Saison</a>{% endif %}

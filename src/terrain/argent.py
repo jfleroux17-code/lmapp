@@ -20,6 +20,7 @@ from clients.models import Client
 from core import telephone
 from core.acces import ecriture_requise, membre_requis, peut_ecrire, peut_modifier_clients
 from facturation.models import Facture, LigneFacture, Paiement, Service
+from terrain.retour import retour_ou
 
 ZERO = Decimal("0.00")
 
@@ -217,7 +218,7 @@ def paiement(request, pk):
         "detail": f"{dict(Paiement.Mode.choices)[d['mode']]}" + (" · reçu envoyé" if recu_parti else "")
                   + ("" if reste <= 0 else f" · reste {argent(reste)}"),
     }
-    return redirect("terrain:fiche", pk=f.client_id)
+    return retour_ou(request, "terrain:fiche", pk=f.client_id)
 
 
 def _cheque_postdate(request, f, d):
@@ -240,7 +241,7 @@ def _cheque_postdate(request, f, d):
         return redirect(f"/factures/{f.pk}/?payer=1")
     messages.success(request, f"Chèque postdaté de {argent(c.montant)} daté du {c.date_cheque:%d/%m/%Y} noté (en main). "
                               "Il sera à déposer à sa date (Argent, Chèques). La facture reste due d'ici là.")
-    return redirect("terrain:fiche", pk=f.client_id)
+    return retour_ou(request, "terrain:fiche", pk=f.client_id)
 
 
 def _annoncer_recu(request, paiements):

@@ -8,6 +8,7 @@ from django.views.decorators.http import require_POST
 from clients.models import Adresse, Balisage
 from core.acces import ecriture_requise, membre_requis, peut_ecrire
 from tournee.models import arrets
+from terrain.retour import retour_ou
 
 
 @membre_requis
@@ -43,7 +44,7 @@ def poser(request, adresse_pk):
         messages.success(request, f"{a.ligne1} : {nombre} balise{'s' if nombre > 1 else ''} posée{'s' if nombre > 1 else ''}.")
     except IntegrityError:
         messages.error(request, f"{a.ligne1} : des balises y sont déjà notées.")
-    return redirect(request.POST.get("retour") or "terrain:balises")
+    return retour_ou(request, "terrain:balises")
 
 
 @require_POST
@@ -53,4 +54,4 @@ def retirer(request, pk):
     b.retirees_le = timezone.localdate()
     b.save(update_fields=["retirees_le"])
     messages.success(request, f"{b.adresse.ligne1} : balises retirées.")
-    return redirect(request.POST.get("retour") or f"/balises/?vue=retirer")
+    return retour_ou(request, "/balises/?vue=retirer")

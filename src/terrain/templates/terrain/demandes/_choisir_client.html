@@ -2,8 +2,8 @@
 <ul class="mt-3 space-y-2">
   {% for c in clients %}
     <li>
-      {% if demande %}
-        <form method="post" action="{% url 'terrain:lier_client_demande' demande.pk %}">{% csrf_token %}
+      {% if demande or lier_message %}
+        <form method="post" action="{% if demande %}{% url 'terrain:lier_client_demande' demande.pk %}{% else %}{% url 'terrain:lier_client_message' lier_message.pk %}{% endif %}">{% csrf_token %}
           <input type="hidden" name="client" value="{{ c.pk }}">
           <button class="carte flex min-h-14 w-full items-center justify-between gap-3 px-4 py-2 text-left active:bg-bordure">
             <span class="min-w-0"><span class="block truncate font-semibold">{{ c.nom_affiche }}</span>{% with a=c.adresses.all.0 %}{% if a %}<span class="block truncate text-sm text-gray-400">{{ a.ligne1 }}</span>{% endif %}{% endwith %}</span>

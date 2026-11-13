@@ -30,6 +30,10 @@ def construire(message):
     m["Subject"] = message.sujet or ent.nom
     m["Date"] = formatdate(localtime=True)
     m["Message-ID"] = make_msgid(idstring=f"lmapp{message.pk}", domain=adresse.split("@")[1])
+    origine = message.reponse_a
+    if origine is not None and origine.message_id_externe:  # « Répondre » à un courriel reçu : même fil chez le client
+        m["In-Reply-To"] = origine.message_id_externe
+        m["References"] = origine.message_id_externe
     jointes = ([message.facture] if message.facture_id else []) + [f for f in message.factures_jointes.order_by("date_facture", "pk")
                                                                     if f.pk != message.facture_id]
     from communications import photos

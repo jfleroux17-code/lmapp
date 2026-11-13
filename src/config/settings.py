@@ -133,6 +133,7 @@ TEMPLATES = [
                 "core.context_processors.environnement",
                 "core.context_processors.messages_non_lus",
                 "core.context_processors.onglet",
+                "core.context_processors.confirmation_paiement",
             ],
             "builtins": ["core.templatetags.dates_qc"],  # filtre date_qc partout, sans {% load %}
         },

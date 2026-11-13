@@ -1,7 +1,6 @@
 {% extends "terrain/base.html" %}
 {% block titre %}Nouvelle demande{% endblock %}
 {% block contenu %}
-<a href="{% if client %}{% url 'terrain:fiche' client.pk %}{% else %}{% url 'terrain:demandes' %}{% endif %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Retour</a>
 <h1 class="mb-1 text-2xl font-bold">Nouvelle demande</h1>
 {% if client %}<p class="mb-4 text-gray-400">{{ client.nom_affiche }}{% if message %} · à partir d'un {{ message.get_canal_display|lower }} reçu le {{ message.cree_le|date_qc:"j F" }}{% endif %} · <a href="{% url 'terrain:nouvelle_demande' %}{% if message %}?message={{ message.pk }}&amp;autre=1{% else %}?autre=1{% endif %}" class="text-accent">changer de client</a></p>
 {% else %}{% if message %}<p class="mb-3 text-gray-400">À partir d'un {{ message.get_canal_display|lower }} reçu le {{ message.cree_le|date_qc:"j F" }}</p>{% endif %}

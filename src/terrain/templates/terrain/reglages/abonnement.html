@@ -1,7 +1,6 @@
 {% extends "terrain/base.html" %}{% load argent %}
 {% block titre %}Mon abonnement{% endblock %}
 {% block contenu %}
-<a href="{% url 'terrain:reglages' %}" class="mb-3 inline-block text-accent">‹ Réglages</a>
 <h1 class="mb-1 text-2xl font-bold">Mon abonnement</h1>
 <p class="mb-5 text-gray-400">Ce que la plateforme compte pour {{ ent.nom }} : les textos envoyés et reçus, les courriels et les utilisateurs.</p>
 <div class="bureau:grid bureau:grid-cols-2 bureau:gap-5">

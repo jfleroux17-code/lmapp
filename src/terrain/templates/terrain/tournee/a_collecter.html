@@ -2,7 +2,6 @@
 {% load argent %}
 {% block titre %}À collecter{% endblock %}
 {% block contenu %}
-<a href="{% url 'terrain:tournee' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Tournée</a>
 <h1 class="mb-1 text-2xl font-bold">À collecter</h1>
 <p class="mb-4 text-gray-400">Clients qui paient comptant et qui doivent de l'argent, dans l'ordre de la tournée.</p>
 <div class="carte mb-4 p-4"><div class="text-sm text-gray-400">Total à collecter</div><div class="text-2xl font-bold text-ok">{{ total|argent }}</div></div>

@@ -2,7 +2,6 @@
 {% block titre %}Utilisateurs{% endblock %}
 {% block contenu %}
 {% include "terrain/reglages/_tournee.html" %}
-<a href="{% url 'terrain:reglages' %}" class="mb-3 inline-block text-accent">‹ Réglages</a>
 <h1 class="mb-1 text-2xl font-bold">Utilisateurs</h1>
 <p class="mb-5 text-gray-400">Qui a accès à l'app. Une personne invitée reçoit un texto avec un lien pour choisir son mot de passe (valide 3 jours).</p>
 {% if invitation %}

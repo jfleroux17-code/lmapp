@@ -2,7 +2,6 @@
 {% load argent %}
 {% block titre %}Dépenses{% endblock %}
 {% block contenu %}
-<a href="{% url 'terrain:comptes' %}" class="mb-3 inline-flex min-h-12 items-center text-accent">‹ Comptes</a>
 <h1 class="mb-1 text-2xl font-bold">Dépenses</h1>
 <p class="mb-4 text-gray-400">Une photo du reçu, le total, la catégorie. Les taxes payées se calculent toutes seules.</p>
 {% if ecriture %}<a href="{% url 'terrain:nouvelle_depense' %}" class="gros-bouton mb-5 min-h-20 bg-accent text-xl text-nuit">+ Dépense (photo du reçu)</a>{% endif %}

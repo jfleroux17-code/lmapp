@@ -64,9 +64,9 @@ class ArgentTerrainTests(TestCase):
         self.assertContains(r, "Comptant de 50,00 $ enregistré. Reste 64,98 $.")
         # Écran vert, puis la fiche du client (nouveau solde); une seule fois
         self.assertEqual(r.redirect_chain[-1][0], f"/clients/{f.client_id}/")
-        self.assertTrue(r.context["confirmation_paiement"]["titre"].startswith("Reçu 50,00"))
-        self.assertIn("reste 64,98", r.context["confirmation_paiement"]["detail"])
-        self.assertIsNone(self.client.get(f"/clients/{f.client_id}/").context["confirmation_paiement"])
+        self.assertContains(r, "Reçu 50,00")
+        self.assertContains(r, "reste 64,98")
+        self.assertNotContains(self.client.get(f"/clients/{f.client_id}/"), 'class="mt-2 text-4xl font-bold"')
         r = self.client.post(f"/factures/{f.pk}/paiement/", {"mode": "comptant", "montant": "50"}, follow=True)
         self.assertContains(r, "déjà enregistré")  # double tape
         self.assertEqual(f.paiements.count(), 1)
@@ -74,9 +74,15 @@ class ArgentTerrainTests(TestCase):
         self.assertContains(r, "Plus que le solde")
         r = self.client.post(f"/factures/{f.pk}/paiement/", {"mode": "interac", "montant": "64,98", "reference": "CA1234"}, follow=True)
         self.assertContains(r, "Facture payée au complet.")
-        self.assertEqual(r.context["confirmation_paiement"]["titre"], "Payée")
+        self.assertContains(r, ">Payée<")
         self.assertEqual(f.paiements.get(mode="interac").reference, "CA1234")
         self.assertNotContains(self.client.get(f"/factures/{f.pk}/"), "Paiement reçu")
+        # Encaissé depuis les comptes à recevoir : on y revient, avec l'écran vert
+        g, _ = self.creer()
+        g.emettre()
+        r = self.client.post(f"/factures/{g.pk}/paiement/", {"mode": "comptant", "montant": "1", "retour": "/comptes/"}, follow=True)
+        self.assertEqual(r.redirect_chain[-1][0], "/comptes/")
+        self.assertContains(r, "Reçu 1,00")
 
     def test_cheque_postdate_depuis_encaisser(self):
         from facturation.models import ChequePostdate
