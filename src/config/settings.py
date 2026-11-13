@@ -55,6 +55,11 @@ IMAP_PORT = int(env("IMAP_PORT", "993"))
 # Rapports DMARC (audit de sécurité, point 4) : boîte dmarc@, lue par manage.py rapports_dmarc
 DMARC_IMAP_UTILISATEUR = env("DMARC_IMAP_UTILISATEUR", "")
 DMARC_IMAP_MOT_DE_PASSE = env("DMARC_IMAP_MOT_DE_PASSE", "")
+# Redémarrage de ld1 confirmé par courriel (audit, point 7) : boîte system@, adresse de JF, dossier d'échange
+SYSTEME_IMAP_UTILISATEUR = env("SYSTEME_IMAP_UTILISATEUR", "")
+SYSTEME_IMAP_MOT_DE_PASSE = env("SYSTEME_IMAP_MOT_DE_PASSE", "")
+LMAPP_REDEMARRAGE_COURRIEL = env("LMAPP_REDEMARRAGE_COURRIEL", "")
+LMAPP_REDEMARRAGE_DOSSIER = env("LMAPP_REDEMARRAGE_DOSSIER", "/redemarrage")
 IMAP_UTILISATEUR = env("IMAP_UTILISATEUR", "")
 IMAP_MOT_DE_PASSE = env("IMAP_MOT_DE_PASSE", "")
 IMAP_DOSSIER_ENVOYES = env("IMAP_DOSSIER_ENVOYES", "INBOX.Sent")

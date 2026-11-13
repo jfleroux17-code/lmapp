@@ -1,0 +1,6 @@
+[Unit]
+Description=LMAPP : redémarrage de ld1 confirmé par courriel (audit, point 7)
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /usr/local/sbin/lmapp-redemarrage

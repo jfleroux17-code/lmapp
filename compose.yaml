@@ -96,6 +96,7 @@ services:
     volumes:
       - ./sauvegardes:/sauvegardes:ro
       - ./etat:/etat:ro  # silence des alertes (outils/silence.sh)
+      - ./etat/redemarrage:/redemarrage  # redémarrage confirmé par courriel (core/redemarrage.py, outils/redemarrage_hote.sh)
     networks:
       - interne
       - edge

@@ -255,6 +255,10 @@ def boucle(intervalle=60, complet_toutes=10):
     while True:
         try:
             v.traiter(tout_verifier(complet=tour % complet_toutes == 0))
+            if tour % complet_toutes == 0:
+                from core.redemarrage import verifier as redemarrage
+
+                redemarrage()  # audit, point 7 : redémarrage de ld1 confirmé par courriel
         except Exception:  # noqa: BLE001
             log.exception("vérification en erreur")
         tour += 1
