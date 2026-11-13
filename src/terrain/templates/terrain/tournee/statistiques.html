@@ -1,0 +1,22 @@
+{% extends "terrain/base.html" %}
+{% load argent %}
+{% block titre %}Temps par client{% endblock %}
+{% block contenu %}
+<h1 class="mb-1 text-2xl font-bold">Temps par client</h1>
+<p class="mb-3 text-gray-400">Saison {{ saison|default:"–" }} : temps sur place mesuré par la position du cellulaire, et ce que la saison rapporte par heure sur place. Les plus bas en premier : les prix à revoir.</p>
+{% if saisons|length > 1 %}
+<form method="get" class="mb-4"><select name="saison" class="champ" onchange="this.form.submit()" aria-label="Saison">{% for s in saisons %}<option value="{{ s.pk }}" {% if s == saison %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></form>
+{% endif %}
+<div class="carte divide-y divide-bordure">
+  {% for l in lignes %}
+    <a href="{% url 'terrain:fiche' l.client.pk %}" class="block p-4 active:bg-bordure">
+      <div class="flex justify-between gap-3"><span class="min-w-0 truncate font-semibold">{{ l.client.nom_affiche }}</span>
+        <span class="shrink-0 font-bold {% if l.par_heure is not None and l.par_heure < 60 %}text-danger{% else %}text-gray-200{% endif %}">{% if l.par_heure is not None %}{{ l.par_heure }} $/h{% else %}–{% endif %}</span></div>
+      <div class="text-sm text-gray-400">{{ l.n }} passage{{ l.n|pluralize }}{% if l.moyenne is not None %} · {{ l.moyenne }} min en moyenne · environ {{ l.heures }} h{% endif %}{% if l.mesures < l.n %} · {{ l.mesures }} mesuré{{ l.mesures|pluralize }} au GPS{% endif %}{% if l.prix %} · saison {{ l.prix|argent }}{% endif %}</div>
+    </a>
+  {% empty %}
+    <p class="p-4 text-gray-400">Aucun passage mesuré cette saison. Les temps se calculent à la fin de chaque opération, avec la position allumée.</p>
+  {% endfor %}
+</div>
+<p class="mt-3 text-sm text-gray-500">Revenu par heure : prix de la saison (avant taxes) divisé par le temps sur place estimé (moyenne mesurée × passages). Le trajet n'est pas compté.</p>
+{% endblock %}

@@ -384,6 +384,16 @@ class Command(BaseCommand):
             Passage.objects.create(entreprise=ent, operation=op, adresse=a, statut="saute" if saute else "fait",
                                    raison="auto" if saute else "", heure=op.debut + timedelta(minutes=12 * (i + 1)),
                                    note="Auto dans l'entrée" if saute else "")
+        # Positions du cellulaire pendant l'opération : arrivée à chaque entrée quelques minutes avant la tape « Fait »
+        # (temps par entrée, lot C), sauf une entrée sans position
+        from tournee.models import PositionGPS
+        from tournee.temps import calculer
+        for i, passage in enumerate(op.passages.filter(statut="fait").select_related("adresse").order_by("heure")):
+            if i == 2:
+                continue
+            PositionGPS.objects.create(operation=op, position=passage.adresse.position, precision_m=12,
+                                       moment=passage.heure - timedelta(minutes=4 + i % 4))
+        calculer(op)
         from tournee import services as tournee_services
         for passage in op.passages.filter(statut="fait"):  # client au passage : sa facture du passage, à envoyer
             tournee_services._facturer(passage)

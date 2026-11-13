@@ -125,7 +125,7 @@ Ordre proposé : lot A, puis la facturation (une facture par saison, une par pas
 - [x] (8) « Propriétaire non occupant (ne pas envoyer les avis de déneigement) » : le propriétaire garde factures, relances, reçus et contrat; les avis de déneigement vont aux locataires inscrits (« Autre personne à joindre »). ARRÊT d'un locataire : ses avis seulement.
 
 **Lot C : temps mesuré**
-- [ ] (1) Temps passé à chaque entrée (par la position), gardé par opération; rapport de tournée, statistiques à la demande et en fin de saison, par client, pour ajuster le prix.
+- [x] (1) Temps passé à chaque entrée (par la position), gardé par opération; rapport de tournée, statistiques à la demande et en fin de saison, par client, pour ajuster le prix. Fait le 13 novembre 2026 : `tournee/temps.py` (calculé à la fin de l'opération), rapport (Tournée, Dernières opérations), « Temps par client » (Plus), revenu par heure sur place.
 - [ ] (3) Job de déneigement manuel depuis la fiche : départ (GPS), distance et temps de route, temps sur place; gardé; facturation à la pièce d'après ces données.
 
 **Lot D : clients d'été (paysagement)**

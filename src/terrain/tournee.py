@@ -647,3 +647,63 @@ def carte_donnees(request):
     })
     r["Cache-Control"] = "no-store"
     return r
+
+
+# Temps par entrée (lot C, demande de Louis) : rapport d'une opération, statistiques par client pour ajuster les prix
+
+@membre_requis
+def rapport_operation(request, pk):
+    from tournee.temps import minutes
+
+    op = get_object_or_404(Operation, pk=pk, entreprise=request.entreprise)
+    passages = list(op.passages.select_related("adresse__client").order_by("heure", "pk"))
+    faits = [p for p in passages if p.statut == Passage.Statut.FAIT]
+    mesures = [p.sur_place_s for p in faits if p.sur_place_s is not None]
+    lignes = [{"p": p, "sur_place": minutes(p.sur_place_s), "trajet": minutes(p.trajet_s), "depuis": minutes(p.depuis_precedent_s)} for p in passages]
+    duree = ((op.fin or timezone.now()) - op.debut).total_seconds()
+    return render(request, "terrain/tournee/rapport_operation.html", {
+        "op": op, "lignes": lignes, "nb_faits": len(faits), "nb_sautes": len(passages) - len(faits),
+        "duree_min": round(duree / 60), "moyenne_sur_place": minutes(sum(mesures) / len(mesures)) if mesures else None,
+        "nb_sans_gps": len(faits) - len(mesures),
+    })
+
+
+@membre_requis
+def statistiques(request):
+    """Par client, pour la saison : passages faits, temps sur place (moyen, total), prix de la saison et revenu par heure
+    sur place (plus bas en premier : les prix à revoir). Fin d'année ou n'importe quand."""
+    from collections import defaultdict
+    from decimal import Decimal
+
+    from facturation.models import Contrat, Saison
+    from terrain.contrats import saison_courante
+    from tournee.temps import minutes
+
+    ent = request.entreprise
+    saisons = list(Saison.objects.filter(entreprise=ent).order_by("-debut"))
+    saison = next((s for s in saisons if str(s.pk) == request.GET.get("saison")), None) or saison_courante(ent)
+    lignes = []
+    if saison:
+        par_client = defaultdict(lambda: {"n": 0, "mesures": [], "client": None})
+        qs = (Passage.objects.filter(entreprise=ent, statut=Passage.Statut.FAIT, heure__date__gte=saison.debut, heure__date__lte=saison.fin)
+              .select_related("adresse__client"))
+        for p in qs:
+            x = par_client[p.adresse.client_id]
+            x["client"] = p.adresse.client
+            x["n"] += 1
+            if p.sur_place_s is not None:
+                x["mesures"].append(p.sur_place_s)
+        prix = defaultdict(Decimal)
+        for c in Contrat.objects.filter(entreprise=ent, saison=saison, type=Contrat.Type.SAISONNIER):
+            prix[c.client_id] += c.prix
+        for client_id, x in par_client.items():
+            total = sum(x["mesures"])
+            # Temps estimé pour tous les passages : la moyenne mesurée, appliquée aux passages sans GPS
+            heures = (total / len(x["mesures"]) * x["n"] / 3600) if x["mesures"] else None
+            p = prix.get(client_id)
+            lignes.append({"client": x["client"], "n": x["n"], "mesures": len(x["mesures"]),
+                           "moyenne": minutes(total / len(x["mesures"])) if x["mesures"] else None,
+                           "heures": round(heures, 1) if heures else None, "prix": p,
+                           "par_heure": (p / Decimal(str(heures))).quantize(Decimal("1")) if p and heures else None})
+        lignes.sort(key=lambda l: (l["par_heure"] is None, l["par_heure"] or 0))
+    return render(request, "terrain/tournee/statistiques.html", {"saison": saison, "saisons": saisons, "lignes": lignes})

@@ -1,0 +1,22 @@
+{% extends "terrain/base.html" %}
+{% block titre %}Rapport de tournée{% endblock %}
+{% block contenu %}
+<h1 class="mb-1 text-2xl font-bold">{{ op.get_type_display }}, {{ op.debut|date_qc:"j F Y" }}</h1>
+<p class="mb-4 text-gray-400">{{ op.debut|date_qc:"H \h i" }} à {% if op.fin %}{{ op.fin|date_qc:"H \h i" }}{% else %}en cours{% endif %} · {{ duree_min }} min · {{ nb_faits }} fait{{ nb_faits|pluralize }}, {{ nb_sautes }} sauté{{ nb_sautes|pluralize }}{% if not op.avis_clients %} · sans avis aux clients{% endif %}</p>
+<div class="carte mb-4 grid grid-cols-2 gap-3 p-4">
+  <div><div class="text-sm text-gray-400">Temps moyen sur place</div><div class="text-2xl font-bold">{% if moyenne_sur_place is not None %}{{ moyenne_sur_place }} min{% else %}–{% endif %}</div></div>
+  <div><div class="text-sm text-gray-400">Entrées sans position</div><div class="text-2xl font-bold">{{ nb_sans_gps }}</div></div>
+</div>
+<p class="mb-3 text-sm text-gray-500">Sur place : de l'arrivée (position du cellulaire près de l'entrée) à la tape « Fait ». Sans position : seulement le temps depuis l'entrée précédente (trajet et travail).</p>
+<div class="carte divide-y divide-bordure">
+  {% for l in lignes %}
+    <a href="{% url 'terrain:fiche' l.p.adresse.client_id %}" class="block p-4 active:bg-bordure">
+      <div class="flex justify-between gap-3"><span class="min-w-0 truncate font-semibold">{{ l.p.adresse.ligne1 }}</span><span class="shrink-0 text-gray-400">{{ l.p.heure|date_qc:"H \h i" }}</span></div>
+      <div class="text-sm text-gray-400">{{ l.p.adresse.client.nom_affiche }} · {% if l.p.statut == "saute" %}<span class="text-danger">sauté ({{ l.p.get_raison_display|lower }})</span>{% else %}{% if l.sur_place is not None %}<span class="text-gray-200">{{ l.sur_place }} min sur place</span>{% if l.trajet is not None %}, {{ l.trajet }} min de trajet{% endif %}{% elif l.depuis is not None %}{{ l.depuis }} min depuis la précédente{% else %}pas de mesure{% endif %}{% endif %}</div>
+    </a>
+  {% empty %}
+    <p class="p-4 text-gray-400">Aucun passage.</p>
+  {% endfor %}
+</div>
+<a href="{% url 'terrain:statistiques_temps' %}" class="mt-4 block text-accent">Temps par client, pour la saison ›</a>
+{% endblock %}

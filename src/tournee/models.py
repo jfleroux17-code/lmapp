@@ -57,6 +57,9 @@ class Operation(Horodate):
         if self.fin is None:
             self.fin = timezone.now()
             self.save(update_fields=["fin", "modifie_le"])
+            from tournee.temps import calculer
+
+            calculer(self)  # temps par entrée, gardés avec les passages
 
     @classmethod
     def en_cours_de(cls, entreprise):
@@ -94,6 +97,13 @@ class Passage(Horodate):
     position = gis.PointField(srid=4326, geography=True, null=True, blank=True)
     # F11 : la ligne de facture créée pour un client « au passage »
     ligne_facture = models.OneToOneField("facturation.LigneFacture", on_delete=models.SET_NULL, null=True, blank=True, related_name="passage")
+    # Temps mesurés (demande de Louis, 12 novembre 2026), calculés à la fin de l'opération (tournee/temps.py) et gardés :
+    # les positions, elles, sont effacées après 120 jours.
+    arrivee = models.DateTimeField("arrivée", null=True, blank=True, help_text="Premier point GPS près de l'entrée.")
+    sur_place_s = models.PositiveIntegerField("temps sur place (s)", null=True, blank=True, help_text="De l'arrivée à la tape « Fait ».")
+    trajet_s = models.PositiveIntegerField("trajet (s)", null=True, blank=True, help_text="De l'entrée précédente à l'arrivée.")
+    depuis_precedent_s = models.PositiveIntegerField("depuis l'entrée précédente (s)", null=True, blank=True,
+                                                     help_text="Trajet et travail, de la tape précédente (ou du début) à celle-ci; sert sans GPS.")
 
     class Meta:
         verbose_name = "passage"

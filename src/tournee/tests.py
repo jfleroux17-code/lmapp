@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal as D
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -432,3 +433,52 @@ class CarteDirectTests(TestCase):
     def test_operateur_refuse(self):
         self.client.force_login(self.op_)
         self.assertEqual(self.client.get("/tournee/carte/donnees/", HTTP_HOST="cd.exemple.test").status_code, 403)
+
+
+class TempsParEntreeTests(TourneeBase):
+    """Lot C (demande de Louis) : temps sur place mesuré par la position, gardé sur le passage; statistiques par client."""
+
+    def test_temps_sur_place_trajet_et_sans_gps(self):
+        from datetime import datetime, timedelta
+
+        from django.contrib.gis.geos import Point
+        from django.utils import timezone
+
+        from tournee.models import PositionGPS
+        from tournee.temps import calculer
+
+        Adresse.objects.filter(pk=self.a1.pk).update(position=Point(-74.1300, 45.9500, srid=4326))
+        Adresse.objects.filter(pk=self.a2.pk).update(position=Point(-74.1200, 45.9600, srid=4326))
+        debut = timezone.make_aware(datetime(2026, 12, 5, 3, 0))
+        op = Operation.objects.create(entreprise=self.ent, debut=debut)
+        services.marquer(op, self.a1, "fait", quand=debut + timedelta(minutes=20))
+        services.marquer(op, self.a2, "fait", quand=debut + timedelta(minutes=40))
+        services.marquer(op, self.a_mont, "fait", quand=debut + timedelta(minutes=55))  # pas de position : depuis la précédente
+        PositionGPS.objects.create(operation=op, position=Point(-74.1395, 45.9450, srid=4326), moment=debut + timedelta(minutes=5), precision_m=10)  # en route
+        PositionGPS.objects.create(operation=op, position=Point(-74.13005, 45.95002, srid=4326), moment=debut + timedelta(minutes=12), precision_m=10)
+        PositionGPS.objects.create(operation=op, position=Point(-74.1201, 45.9600, srid=4326), moment=debut + timedelta(minutes=31), precision_m=400)  # trop imprécis
+        PositionGPS.objects.create(operation=op, position=Point(-74.1201, 45.9600, srid=4326), moment=debut + timedelta(minutes=33), precision_m=20)
+        self.assertEqual(calculer(op), 3)
+        p1, p2, p3 = op.passages.order_by("heure")
+        self.assertEqual((p1.sur_place_s, p1.trajet_s, p1.depuis_precedent_s), (8 * 60, 12 * 60, 20 * 60))
+        self.assertEqual((p2.sur_place_s, p2.trajet_s), (7 * 60, 13 * 60))
+        self.assertEqual((p3.sur_place_s, p3.depuis_precedent_s), (None, 15 * 60))
+
+    @override_settings(ALLOWED_HOSTS=["*"])
+    def test_rapport_et_statistiques(self):
+        from django.contrib.auth import get_user_model
+
+        u = get_user_model().objects.create_user("louis", password="x" * 12)
+        Membre.objects.create(utilisateur=u, entreprise=self.ent, role="operateur")
+        Contrat.objects.create(entreprise=self.ent, client=self.a1.client, adresse=self.a1, saison=self.saison, prix=D("450"))
+        op = Operation.objects.create(entreprise=self.ent)
+        p = services.marquer(op, self.a1, "fait")
+        Passage.objects.filter(pk=p.pk).update(sur_place_s=15 * 60)
+        op.fin = op.debut
+        op.save()
+        self.client.defaults["HTTP_HOST"] = HOTE
+        self.client.force_login(u)
+        self.assertContains(self.client.get(f"/tournee/operations/{op.pk}/"), "1, rue Tremblay")
+        with mock.patch("django.utils.timezone.localdate", return_value=date(2026, 12, 1)):
+            r = self.client.get("/tournee/statistiques/")
+        self.assertEqual([(l["client"].nom, l["moyenne"], l["par_heure"]) for l in r.context["lignes"]], [("Tremblay", 15, D("1800"))])
