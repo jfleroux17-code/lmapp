@@ -96,6 +96,45 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 - [x] **Corriger la position d'une adresse dans l'app** (PRD A13) : **en prod le 8 novembre 2026** (carte Leaflet, tuiles OpenStreetMap). carte plein écran avec repère fixe au centre (on déplace la carte, pas le point), bouton « Je suis devant » (GPS du téléphone), Enregistrer ou Annuler. La position devient `manuelle` ou `gps`, jamais écrasée par le géocodage.
 - [x] **Revoir le visuel** : **visuel C (sombre plus net) choisi par JF et en prod le 8 novembre 2026** : noir pur, 20 px de base, cartes et titres plus marqués, onglet actif plein.
 
+### Demandes de Louis du 12 novembre 2026 (relayées par JF, classées)
+
+Ordre proposé : lot A, puis B, C, D, E, F, G. Rien n'est commencé.
+
+**Lot A : petites corrections d'écran**
+- [ ] (6) « + Nouvelle demande » : chercher et choisir le client; « Lier à un client » sur une demande qui n'en a pas.
+- [ ] (11a) Adresse complète toujours visible (suite et code postal à côté de la rue, jamais dans « Plus de détails ») : nouveau client, nouvelle adresse, modifier l'adresse.
+- [ ] (12) Contrat : « + Nouvelle adresse de service » sur place (deux contrats de la même saison pour deux adresses : déjà permis, mais seulement avec une adresse déjà inscrite).
+- [ ] (13) « Relancer » en haut de la fiche : arriver sur le bloc de relance bien en vue (et vérifier Encaisser et les autres ancres).
+- [ ] (14) Encaisser : option « Chèque postdaté » (date future : chèque en main, déposé à sa date).
+- [ ] (4) Dépenses : choisir une capture ou une photo de la photothèque (reçus de l'app Shell), pas seulement la caméra.
+- [ ] (9) Flèche de retour en haut (sans enregistrer), partout sauf les 5 onglets.
+- [ ] (10) Fluidité : analyse écran par écran du retour après un enregistrement (ex. message ouvert depuis la fiche : retour à la fiche; « Répondre » sur un message), **présentée à JF avant d'être appliquée**.
+
+**Lot B : tournée avec ou sans avis aux clients (avant les premières neiges)**
+- [ ] (7) Au démarrage, chaque fois (jamais retenu par le cellulaire) : « Avec avis aux clients » ou « Sans avis aux clients » (choix de Louis, selon son jugement, pas de règle d'heure). Sans avis : position active pour les statistiques, **aucun avis** pendant toute l'opération (début, proximité, terminé, manuels). Bandeau visible sur l'écran de tournée. La position ne dépend plus des avis.
+- [ ] (2) Fiche du client : ne pas recevoir les avis de proximité ni les avis « terminé ».
+- [ ] (8) « Propriétaire non occupant (ne pas envoyer les avis de déneigement) » : le propriétaire garde factures, relances, reçus et contrat; les avis de déneigement vont aux locataires inscrits (« Autre personne à joindre »). ARRÊT d'un locataire : ses avis seulement.
+
+**Lot C : temps mesuré**
+- [ ] (1) Temps passé à chaque entrée (par la position), gardé par opération; rapport de tournée, statistiques à la demande et en fin de saison, par client, pour ajuster le prix.
+- [ ] (3) Job de déneigement manuel depuis la fiche : départ (GPS), distance et temps de route, temps sur place; gardé; facturation à la pièce d'après ces données.
+
+**Lot D : clients d'été (paysagement)**
+- [ ] (5) Fiche du client : hiver, été, ou été et hiver. Factures à la pièce (temps, matériel, déplacement) depuis la fiche, PDF envoyé au client. Tournée, contrats et avis d'hiver sans les clients d'été seulement.
+
+**Lot E : nouveau client en un passage**
+- [ ] (11b) Création : où mettre la neige, obstacles, nombre de versements, services et prix de la saison, puis contrat, facture PDF et « Envoyer la facture » dans la fiche. Client existant : prix des saisons précédentes dans la fiche.
+
+**Lot F : cartes**
+- [ ] (16) Entrées numérotées sur la carte en direct **et** dans « Ordre de la tournée » : jaune pas encore fait, vert fait, rouge sauté; adresses mal placées (géocodage à la ville près) listées à part.
+
+**Lot G : météo**
+- [ ] (15) Option 1 retenue par JF : modèles d'Environnement Canada (GeoMet, grille fine) au point exact de chaque ville desservie; avertissements officiels de la page régionale.
+
+**Questions à JF avant les lots concernés** : facture d'un nouveau client = 1er versement ou contrat au complet (E)? Taux de Louis pour le temps et le déplacement, l'hiver et l'été ($/heure, $/km, minimum) (C, D)? Factures d'un propriétaire non occupant jamais aux locataires (B)?
+
+**Android** : rien à refaire (app web). Essai de 10 minutes sur un vrai Android à faire en test (connexion, tournée, position, photo, notification).
+
 ### Possible sans attendre
 
 - [x] Premiers écrans de Louis (PWA mobile) : connexion, recherche, fiche client. En prod le 7 novembre 2026.
