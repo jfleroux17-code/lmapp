@@ -581,3 +581,43 @@ class ValidationFacturesPassagesTests(TourneeBase):
         r = self.client.post("/factures/versements/envoyer/", {"attente": [f2.pk]}, follow=True)
         f2.refresh_from_db()
         self.assertEqual(f2.statut, "emise")
+
+
+@override_settings(ALLOWED_HOSTS=["*"])
+class PhotosJobTests(TourneeBase):
+    """Photos d'une job à la pièce, envoyées au client avec un message par défaut modifiable (demande de Louis)."""
+
+    def test_photos_puis_message_au_client(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.utils import timezone
+
+        from communications.models import Gabarit, Message
+        from tournee.models import Job, PhotoJob
+
+        u = get_user_model().objects.create_user("louis", password="x" * 12)
+        Membre.objects.create(utilisateur=u, entreprise=self.ent, role="operateur")
+        self.client.defaults["HTTP_HOST"] = HOTE
+        self.client.force_login(u)
+        Client.objects.filter(pk=self.a1.client_id).update(prenom="Ginette", cellulaire="+14505550101")
+        j = Job.objects.create(entreprise=self.ent, client=self.a1.client, adresse=self.a1, genre="paysagement", fin_le=timezone.now())
+        jpeg = b"\xff\xd8\xff\xe0" + b"0" * 200
+        r = self.client.post(f"/jobs/{j.pk}/photos/", {"photo": SimpleUploadedFile("a.jpg", jpeg, "image/jpeg")})
+        self.assertEqual(r.json()["photos"], 1)
+        self.assertEqual(self.client.post(f"/jobs/{j.pk}/photos/", {"photo": SimpleUploadedFile("a.txt", b"pas une photo", "text/plain")}).status_code, 400)
+        p = PhotoJob.objects.get()
+        self.assertEqual(self.client.get(f"/photos-job/{p.pk}/")["Content-Type"], "image/jpeg")
+        page = self.client.get(f"/jobs/{j.pk}/")
+        self.assertContains(page, f"/clients/{self.a1.client_id}/ecrire/?job={j.pk}")
+        # Écrire : message par défaut proposé (modifiable), photo de la job cochée
+        page = self.client.get(f"/clients/{self.a1.client_id}/ecrire/?job={j.pk}")
+        self.assertContains(page, "Bonjour Ginette, c")
+        self.assertEqual(page.context["choisi"], "texto")  # fin de job : texto d'avance
+        self.assertTrue(next(d for d in page.context["photos"] if d["cle"] == f"j{p.pk}")["choisie"])
+        self.client.post(f"/clients/{self.a1.client_id}/ecrire/?job={j.pk}", {"canal": "texto", "texte": "C'est fait, merci!", "photo": [f"j{p.pk}"]})
+        m = Message.objects.get(client=self.a1.client)
+        self.assertEqual(list(m.photos_jobs.all()), [p])
+        self.assertIn("/m/", m.contenu)  # lien secret vers les photos
+        self.assertEqual(self.client.get(m.contenu.split(" : ")[1].split()[0].replace(f"https://{HOTE}", "")).status_code, 200)
+        # Le message type se modifie comme les autres
+        Gabarit.objects.create(entreprise=self.ent, genre="job_faite", texte="Salut {client}, c'est beau au {adresse}!")
+        self.assertContains(self.client.get(f"/clients/{self.a1.client_id}/ecrire/?job={j.pk}"), "Salut Ginette")

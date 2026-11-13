@@ -1,6 +1,7 @@
 {% extends "terrain/base.html" %}
 {% load argent %}
 {% block titre %}{{ j.get_genre_display }}{% endblock %}
+{% block tete %}{% load static %}<script src="{% static 'terrain/photo.js' %}"></script>{% endblock %}
 {% block contenu %}
 <h1 class="mb-1 text-2xl font-bold">{{ j.get_genre_display }}</h1>
 <p class="mb-4 text-gray-400"><a href="{% url 'terrain:fiche' j.client_id %}" class="text-accent">{{ j.client.nom_affiche }}</a>{% if j.adresse %} · {{ j.adresse.ligne1 }}{% endif %}</p>
@@ -16,6 +17,22 @@
     <input type="hidden" name="quoi" value="arrivee"><input type="hidden" name="lat"><input type="hidden" name="lon"><input type="hidden" name="precision">
     <button class="gros-bouton mb-3 min-h-[72px] bg-accent text-xl font-bold text-nuit" :class="{ 'opacity-60': envoi }">Je suis arrivé</button>
   </form>
+{% endif %}
+{# Photos du travail (demande de Louis) : caméra ou photothèque, réduites dans le cellulaire, envoyées au client à la fin #}
+<section class="carte mb-4 p-4" x-data="photosJob('{% url 'terrain:job_photo' j.pk %}')">{% csrf_token %}
+  <div class="mb-2 flex items-center justify-between"><h2 class="text-lg font-bold">Photos du travail</h2><span class="text-sm text-gray-400">{{ j.photos.count }} photo{{ j.photos.count|pluralize }}</span></div>
+  {% if j.photos.exists %}<div class="mb-3 grid grid-cols-3 gap-2">{% for p in j.photos.all %}
+    <div class="relative"><a href="{% url 'terrain:voir_photo_job' p.pk %}" target="_blank" rel="noopener"><img src="{% url 'terrain:voir_photo_job' p.pk %}" alt="Photo du {{ p.prise_le|date_qc:'j F, H \h i' }}" class="h-24 w-full rounded-lg object-cover" loading="lazy"></a>
+      <form method="post" action="{% url 'terrain:retirer_photo_job' p.pk %}" onsubmit="return confirm('Retirer cette photo?')" class="absolute right-1 top-1">{% csrf_token %}<button class="h-8 w-8 rounded-full bg-nuit/80 text-lg leading-none" aria-label="Retirer la photo">×</button></form></div>
+  {% endfor %}</div>{% endif %}
+  <label class="gros-bouton cursor-pointer border-2 border-accent text-accent" :class="{ 'opacity-60': envoi }">
+    <span x-text="envoi ? 'Envoi de la photo…' : '+ Photo (caméra ou photothèque)'">+ Photo</span>
+    <input type="file" accept="image/*" multiple class="sr-only" @change="ajouter($event)">
+  </label>
+  <p x-show="erreur" x-text="erreur" class="mt-2 text-sm text-danger"></p>
+</section>
+{% if j.fin_le %}
+  <a href="{% url 'terrain:ecrire' j.client_id %}?job={{ j.pk }}" class="gros-bouton mb-3 bg-accent text-nuit">Écrire au client{% if j.photos.exists %} avec les photos{% endif %}</a>
 {% endif %}
 {% if not j.fin_le %}
   <form method="post" action="{% url 'terrain:job_etape' j.pk %}" x-data="{ envoi: false }" @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
@@ -36,6 +53,25 @@
 {% endif %}
 <script>
   document.addEventListener("alpine:init", () => {
+    Alpine.data("photosJob", (url) => ({
+      envoi: false, erreur: "",
+      async ajouter(e) {
+        const fichiers = [...e.target.files];
+        if (!fichiers.length || this.envoi) return;
+        this.envoi = true; this.erreur = "";
+        const jeton = document.querySelector("[name=csrfmiddlewaretoken]").value;
+        for (const f of fichiers) {
+          const d = new FormData();
+          const reduite = await window.reduirePhoto(f);
+          d.append("photo", reduite || f, "job.jpg");
+          try {
+            const r = await fetch(url, { method: "POST", body: d, credentials: "same-origin", headers: { "X-CSRFToken": jeton } });
+            if (!r.ok) { this.erreur = (await r.json()).erreur || "Photo refusée."; }
+          } catch (x) { this.erreur = "Pas de réseau : la photo n'est pas partie."; }
+        }
+        window.location.reload();
+      },
+    }));
     Alpine.data("jobGps", (id, dejaNote) => ({
       etat: "",
       init() {

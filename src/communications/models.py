@@ -26,6 +26,7 @@ class Genre(models.TextChoices):
     GROUPE_COMMERCIAL = "groupe_comm", "Message commercial"
     CONTRAT = "contrat", "Contrat"
     RAPPEL_VERSEMENT = "rappel_vers", "Rappel de versement"
+    JOB_FAITE = "job_faite", "Travail terminé (job à la pièce)"
     APPEL = "appel", "Appel noté"
 
 
@@ -44,6 +45,8 @@ GABARITS_PAR_DEFAUT = {
     Genre.RELANCE_3: "Bonjour {client}, dernier avis : le solde de {montant} ({factures}) est impayé depuis le {depuis}. Merci de le régler sans tarder ou de nous appeler. {paiement}",
     # Reçu de paiement (C13)
     Genre.RECU_PAIEMENT: "Bonjour {client}, nous avons bien reçu votre paiement de {montant} ({mode}) le {date}, pour {factures}. {solde} Merci!",
+    # Fin d'une job à la pièce (demande de Louis) : proposé dans « Écrire », modifiable avant l'envoi, photos jointes
+    Genre.JOB_FAITE: "Bonjour {client}, c'est terminé! Voici les photos du travail. Merci de votre confiance!",
 }
 # Variables permises par genre (vérifiées quand un déneigeur modifie sa copie)
 VARIABLES_PAR_GENRE = {
@@ -54,6 +57,7 @@ VARIABLES_PAR_GENRE = {
     Genre.RELANCE_2: ["client", "montant", "factures", "depuis", "paiement"],
     Genre.RELANCE_3: ["client", "montant", "factures", "depuis", "paiement"],
     Genre.RECU_PAIEMENT: ["client", "montant", "mode", "date", "factures", "solde"],
+    Genre.JOB_FAITE: ["client", "adresse"],
 }
 
 
@@ -215,6 +219,7 @@ class Message(Horodate):
     photos_adresses = models.ManyToManyField("clients.PhotoAdresse", blank=True, related_name="messages")
     photos_passages = models.ManyToManyField("tournee.PhotoPassage", blank=True, related_name="messages")
     photos_demandes = models.ManyToManyField("demandes.PhotoDemande", blank=True, related_name="messages")
+    photos_jobs = models.ManyToManyField("tournee.PhotoJob", blank=True, related_name="messages")
     jeton = models.CharField(max_length=40, null=True, blank=True, unique=True, editable=False,
                              help_text="Lien secret des photos jointes à un texto (/m/<jeton>/).")
     statut = models.CharField(max_length=10, choices=Statut.choices, default=Statut.PREPARE)

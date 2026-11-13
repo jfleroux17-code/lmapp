@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from clients.models import Client
-from core.acces import ecriture_requise
+from core.acces import ecriture_requise, membre_requis
 from tournee import jobs as regles
 from tournee.models import Job
 
@@ -88,3 +88,48 @@ def etape(request, pk):
         messages.success(request, "Job annulée.")
         return redirect("terrain:fiche", pk=client_id)
     return redirect("terrain:job", pk=j.pk)
+
+
+@require_POST
+@ecriture_requise
+def ajouter_photo(request, pk):
+    """Photo de la job (caméra ou photothèque, réduite dans le cellulaire par photo.js), en fetch."""
+    from clients.models import PhotoAdresse
+    from tournee.models import PhotoJob
+
+    j = get_object_or_404(Job, pk=pk, entreprise=request.entreprise)
+    f = request.FILES.get("photo")
+    if f is None:
+        return JsonResponse({"erreur": "Photo absente."}, status=400)
+    if f.size > PhotoAdresse.MAX_OCTETS:
+        return JsonResponse({"erreur": "Photo trop lourde (plus de 8 Mo)."}, status=400)
+    octets = f.read()
+    mime = PhotoAdresse.type_de(octets[:16])
+    if mime is None:
+        return JsonResponse({"erreur": "Ce fichier n'est pas une photo."}, status=400)
+    p = PhotoJob.objects.create(entreprise=request.entreprise, job=j, image=octets, type_mime=mime, taille=len(octets), prise_par=request.user)
+    return JsonResponse({"id": p.pk, "photos": j.photos.count()})
+
+
+@membre_requis
+def voir_photo(request, pk):
+    from django.http import HttpResponse
+
+    from tournee.models import PhotoJob
+
+    p = get_object_or_404(PhotoJob, pk=pk, entreprise=request.entreprise)
+    r = HttpResponse(bytes(p.image), content_type=p.type_mime)
+    r["Cache-Control"] = "private, max-age=604800, immutable"
+    return r
+
+
+@require_POST
+@ecriture_requise
+def retirer_photo(request, pk):
+    from tournee.models import PhotoJob
+
+    p = get_object_or_404(PhotoJob, pk=pk, entreprise=request.entreprise)
+    job_id = p.job_id
+    p.delete()
+    messages.success(request, "Photo retirée.")
+    return redirect("terrain:job", pk=job_id)

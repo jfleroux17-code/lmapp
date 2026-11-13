@@ -263,6 +263,19 @@ def position(request, pk):
     return render(request, "terrain/clients/position.html", {"a": a, "lat": centre[0], "lng": centre[1], "zoom": zoom})
 
 
+def _texte_job(entreprise, client, job):
+    """Message de fin d'une job à la pièce, d'après le message type (Messages types, modifiable par Louis)."""
+    if job is None:
+        return ""
+    from communications.models import Gabarit, Genre
+
+    texte = Gabarit.texte_pour(entreprise, Genre.JOB_FAITE)
+    try:
+        return texte.format(client=client.prenom or client.nom_affiche, adresse=job.adresse.ligne1 if job.adresse else "votre adresse")
+    except (KeyError, IndexError, ValueError):
+        return texte
+
+
 @ecriture_requise
 def ecrire(request, pk):
     """Écrire à un client (E2, E3) : texto ou courriel, depuis le numéro et l'adresse d'affaires; signature ajoutée.
@@ -276,7 +289,10 @@ def ecrire(request, pk):
     client = get_object_or_404(Client, pk=pk, entreprise=request.entreprise)
     ent = request.entreprise
     demande = Demande.objects.filter(pk=request.GET.get("demande") or 0, client=client).first() if request.GET.get("demande", "").isdigit() else None
-    disponibles = photos.disponibles(client, demande)
+    # Fin d'une job à la pièce (demande de Louis) : ses photos cochées, message par défaut proposé (modifiable)
+    from tournee.models import Job
+    job = Job.objects.filter(pk=request.GET.get("job") or 0, client=client).first() if request.GET.get("job", "").isdigit() else None
+    disponibles = photos.disponibles(client, demande, job)
     # « Répondre » depuis un message reçu : même canal, message cité au-dessus, même fil de courriel
     reponse_a = Message.objects.filter(pk=request.GET.get("reponse") or request.POST.get("reponse") or 0, client=client).first() \
         if (request.GET.get("reponse") or request.POST.get("reponse") or "").isdigit() else None
@@ -322,10 +338,11 @@ def ecrire(request, pk):
     return render(request, "terrain/clients/ecrire.html", {
         "client": client, "canaux": canaux, "signature": ent.signature_messages or ent.nom,
         "choisi": request.POST.get("canal") or (reponse_a.canal if reponse_a and reponse_a.canal in dict(canaux) else None)
+                   or (Message.Canal.TEXTO if job is not None and client.cellulaire else None)  # fin de job : Louis écrit par texto
                    or (client.canal_prefere if client.canal_prefere in dict(canaux) else (canaux[0][0] if canaux else "")),
         "reponse_a": reponse_a,
         "sujet": request.POST.get("sujet") or (("" if (reponse_a.sujet or "").lower().startswith("re:") else "Re: ") + reponse_a.sujet if reponse_a and reponse_a.sujet else ""),
-        "photos": disponibles, "maximum": photos.MAXIMUM, "texte": request.POST.get("texte", ""),
+        "photos": disponibles, "maximum": photos.MAXIMUM, "texte": request.POST.get("texte", "") or _texte_job(ent, client, job),
         # Compteur du texto : ce qui reste pour le message, une fois la signature (et le lien des photos) comptée
         "photos_choisies": sum(1 for d in disponibles if d["choisie"]), "limite": segments.LIMITE, "reserve_signature": segments.longueur(f"\n\n{ent.signature_messages or ent.nom}"),
         "reserve_photos": segments.longueur(f"\nPhotos : https://{ent.domaine}/m/{'x' * 32}/"),

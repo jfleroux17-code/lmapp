@@ -15,21 +15,27 @@ MAXIMUM = 5
 def _sources():
     from clients.models import PhotoAdresse
     from demandes.models import PhotoDemande
-    from tournee.models import PhotoPassage
+    from tournee.models import PhotoJob, PhotoPassage
 
     # préfixe de la clé : (modèle, champ du message, route de l'image pour les membres)
-    return {"a": (PhotoAdresse, "photos_adresses", "terrain:photo"),
+    return {"j": (PhotoJob, "photos_jobs", "terrain:voir_photo_job"),
+            "a": (PhotoAdresse, "photos_adresses", "terrain:photo"),
             "p": (PhotoPassage, "photos_passages", "terrain:voir_photo_passage"),
             "d": (PhotoDemande, "photos_demandes", "terrain:voir_photo_demande")}
 
 
-def disponibles(client, demande=None):
-    """Les photos qu'on peut joindre à un message à ce client, plus récentes d'abord (au plus 30)."""
+def disponibles(client, demande=None, job=None):
+    """Les photos qu'on peut joindre à un message à ce client, plus récentes d'abord (au plus 30). Celles de la
+    demande ou de la job donnée sont cochées d'avance."""
     from clients.models import PhotoAdresse
     from demandes.models import PhotoDemande
-    from tournee.models import PhotoPassage
+    from tournee.models import PhotoJob, PhotoPassage
 
     liste = []
+    for p in PhotoJob.objects.filter(job__client=client).select_related("job").order_by("-prise_le")[:12]:
+        liste.append({"cle": f"j{p.pk}", "url": reverse("terrain:voir_photo_job", args=[p.pk]), "quand": p.prise_le,
+                      "legende": f"{p.job.get_genre_display()}, {formats.date_format(timezone.localtime(p.prise_le), 'j F')}",
+                      "choisie": job is not None and p.job_id == job.pk})
     for p in PhotoDemande.objects.filter(demande__client=client).select_related("demande").order_by("-cree_le")[:12]:
         liste.append({"cle": f"d{p.pk}", "url": reverse("terrain:voir_photo_demande", args=[p.pk]), "quand": p.cree_le,
                       "legende": f"Demande : {p.demande.get_genre_display().lower()}", "choisie": demande is not None and p.demande_id == demande.pk})
@@ -70,6 +76,8 @@ def jointes(message):
         resultat.append((p, f"Demande : {p.demande.get_genre_display().lower()}, {formats.date_format(timezone.localtime(p.cree_le), 'j F Y')}"))
     for p in message.photos_passages.select_related("adresse").order_by("prise_le", "pk"):
         resultat.append((p, f"Passage au {p.adresse.ligne1}, {formats.date_format(timezone.localtime(p.prise_le), 'j F Y, H \\h i')}"))
+    for p in message.photos_jobs.select_related("job").order_by("prise_le", "pk"):
+        resultat.append((p, f"{p.job.get_genre_display()}, {formats.date_format(timezone.localtime(p.prise_le), 'j F Y')}"))
     for p in message.photos_adresses.select_related("adresse").order_by("cree_le", "pk"):
         resultat.append((p, f"Entrée du {p.adresse.ligne1}"))
     return resultat

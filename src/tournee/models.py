@@ -221,3 +221,25 @@ class Job(models.Model):
     @property
     def sur_place_min(self):
         return round((self.fin_le - (self.arrivee_le or self.depart_le)).total_seconds() / 60) if self.fin_le else None
+
+
+class PhotoJob(models.Model):
+    """Photo d'une job à la pièce (demande de Louis, 13 novembre 2026) : prise pendant ou après le travail, envoyée au
+    client avec le message de fin (lien secret par texto, pièce jointe par courriel). Gardée dans la base, comme les
+    autres photos; effacée avec la job."""
+
+    entreprise = models.ForeignKey(Entreprise, on_delete=models.PROTECT, related_name="photos_jobs")
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="photos")
+    image = models.BinaryField()
+    type_mime = models.CharField(max_length=20)
+    taille = models.PositiveIntegerField(help_text="Octets.")
+    prise_le = models.DateTimeField("prise le", default=timezone.now)
+    prise_par = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        verbose_name = "photo de job"
+        verbose_name_plural = "photos de jobs"
+        ordering = ["prise_le", "pk"]
+
+    def __str__(self):
+        return f"Photo de {self.job} ({self.prise_le:%Y-%m-%d %H:%M})"

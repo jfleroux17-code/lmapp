@@ -20,7 +20,7 @@ def effacer(client):
     from clients.models import PhotoAdresse
     from communications.models import ArchiveCourriel
     from facturation.models import Facture
-    from tournee.models import Passage, PhotoPassage
+    from tournee.models import Passage, PhotoJob, PhotoPassage
 
     with transaction.atomic():
         garde = client.factures.exclude(statut=Facture.Statut.BROUILLON).exists()
@@ -42,7 +42,8 @@ def effacer(client):
         bilan["contacts"] = client.contacts.all().delete()[0]
         adresses = client.adresses.all()
         bilan["photos"] = (PhotoAdresse.objects.filter(adresse__in=adresses).delete()[0]
-                           + PhotoPassage.objects.filter(adresse__in=adresses).delete()[0])
+                           + PhotoPassage.objects.filter(adresse__in=adresses).delete()[0]
+                           + PhotoJob.objects.filter(job__client=client).delete()[0])  # photos des jobs à la pièce
         Passage.objects.filter(adresse__in=adresses).update(note="")
         champs = dict(active=False, ou_mettre_neige="", obstacles="", borne_fontaine=False, entree_en_pente=False, consignes="",
                       position=None, position_source="", geocodage_note="")
