@@ -9,12 +9,17 @@
 
 ## Ce que fait le logiciel
 
-- Tournée : arrêts dans l'ordre du déneigeur, « Fait » ou « Sauté » d'une tape, gros boutons utilisables avec des gants, fonctionne sans réseau, itinéraire dans Apple Plans, Google Maps ou Waze, photos et notes au passage, balises.
-- Avis aux clients par texto : début des opérations, « on arrive d'ici environ X minutes » selon la position du cellulaire, déneigement fait. Textos en bon français, avec les accents.
-- Factures : TPS et TVQ calculées, numérotation sans trou, PDF, envoi par courriel ou par texto avec un lien, versements des contrats saisonniers préparés d'avance.
-- Argent : paiements comptant, virements Interac reconnus dans les courriels, chèques postdatés, crédit au compte, comptes à recevoir, relances graduées (rappel, deuxième avis, dernier avis), reçus.
-- Messages : textos et courriels des clients au même endroit, demandes à régler (oubli, plainte, dommage), envoi à tous les clients ou à un secteur.
-- Bureau : vue sur l'ordinateur, carte en direct de la tournée, météo d'Environnement Canada, rapport de la saison et export pour le comptable.
+- Tournée : arrêts dans l'ordre du déneigeur, numérotés sur une carte, « Fait » ou « Sauté » d'une tape, gros boutons utilisables avec des gants, fonctionne sans réseau, itinéraire dans Apple Plans, Google Maps ou Waze, photos et notes au passage, balises.
+- Avis aux clients par texto, avec ou sans à chaque tempête (la nuit : aucun texto) : début des opérations, « on arrive d'ici environ X minutes » selon la position du cellulaire. Un client peut refuser les avis; propriétaire non occupant : avis à ses locataires.
+- Temps passé à chaque entrée mesuré par la position du cellulaire, rapport de tournée, revenu par heure par client en fin de saison.
+- Météo au point exact de la ville desservie (modèle à haute résolution d'Environnement Canada) : neige, verglas, pluie, température par tranches de 6 heures.
+- Jobs à la pièce (déneigement manuel, paysagement l'été) : départ, arrivée, temps sur place et distance; facture au taux horaire et au kilomètre. Clients d'été, d'hiver ou des deux saisons.
+- Factures : une seule facture par client et par saison, TPS et TVQ calculées, versements imprimés dessus, rappels de versement envoyés d'une tape; date d'envoi choisie pour un client inscrit d'avance; contrats au passage facturés à chaque passage, payables sur réception; numérotation sans trou, PDF, envoi par courriel ou par texto avec un lien.
+- Argent : paiements comptant, virements Interac reconnus dans les courriels, chèques postdatés, crédit au compte, comptes à recevoir, relances graduées (rappel, deuxième avis, dernier avis) sur les versements échus, reçus.
+- Nouveau client en un passage : client, adresse, services et prix, versements, facture prête à envoyer.
+- Messages : textos et courriels des clients au même endroit, répondre, appeler, demandes à régler (oubli, plainte, dommage), envoi à tous les clients ou à un secteur.
+- Bureau : vue sur l'ordinateur, carte en direct de la tournée, rapport de la saison et export pour le comptable, dépenses par photo du reçu.
+- Sécurité : un compte par personne, double authentification avec Google Authenticator.
 - Import de la liste de clients à partir d'un fichier Excel ou d'un autre logiciel.
 
 ## Prix (taxes en sus)

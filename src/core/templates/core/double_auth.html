@@ -37,7 +37,7 @@
     <a href="{{ lien }}" class="gros-bouton mb-4 border-2 border-accent text-accent">Ajouter à Google Authenticator</a>
     <style>.qr svg { width: 100%; height: auto; display: block; }</style>
     <div class="qr mx-auto mb-3 w-64 rounded-xl bg-white p-2" aria-label="Code QR à scanner avec Google Authenticator">{{ qr|safe }}</div>
-    <details class="mb-5"><summary class="flex min-h-12 cursor-pointer items-center text-gray-400">Pas de caméra? Taper la clé à la main</summary>
+    <details class="mb-5"><summary class="flex min-h-12 cursor-pointer items-center font-semibold text-accent underline underline-offset-4">Pas de caméra? Afficher la clé pour la taper à la main</summary>
       <p class="mt-2 break-all font-mono text-lg tracking-wide">{{ secret }}</p>
       <p class="text-sm text-gray-500">Type : basé sur l'heure. Nom du compte : Le Déneigeur.</p>
     </details>
