@@ -102,14 +102,15 @@ Questions de la section 10 du PRD, les plus importantes d'abord.
 Ordre proposé : lot A, puis la facturation (une facture par saison, une par passage : avant l'import du fichier de Louis), puis B, C, D, E, F, G. Rien n'est commencé.
 
 **Lot A : petites corrections d'écran**
-- [ ] (6) « + Nouvelle demande » : chercher et choisir le client; « Lier à un client » sur une demande qui n'en a pas.
-- [ ] (11a) Adresse complète toujours visible (suite et code postal à côté de la rue, jamais dans « Plus de détails ») : nouveau client, nouvelle adresse, modifier l'adresse.
-- [ ] (12) Contrat : « + Nouvelle adresse de service » sur place (deux contrats de la même saison pour deux adresses : déjà permis, mais seulement avec une adresse déjà inscrite).
-- [ ] (13) « Relancer » en haut de la fiche : arriver sur le bloc de relance bien en vue (et vérifier Encaisser et les autres ancres).
-- [ ] (14) Encaisser : option « Chèque postdaté » (date future : chèque en main, déposé à sa date).
-- [ ] (4) Dépenses : choisir une capture ou une photo de la photothèque (reçus de l'app Shell), pas seulement la caméra.
-- [ ] (9) Flèche de retour en haut (sans enregistrer), partout sauf les 5 onglets.
-- [ ] (10) Fluidité : analyse écran par écran du retour après un enregistrement (ex. message ouvert depuis la fiche : retour à la fiche; « Répondre » sur un message), **présentée à JF avant d'être appliquée**.
+- [x] (6) « + Nouvelle demande » : chercher et choisir le client; « Lier à un client » sur une demande qui n'en a pas.
+- [x] (11a) Adresse complète toujours visible (suite et code postal à côté de la rue, jamais dans « Plus de détails ») : nouveau client, nouvelle adresse, modifier l'adresse.
+- [x] (12) Contrat : « + Nouvelle adresse de service » sur place (deux contrats de la même saison pour deux adresses : déjà permis, mais seulement avec une adresse déjà inscrite).
+- [x] (13) « Relancer » en haut de la fiche : arriver sur le bloc de relance bien en vue (et vérifier Encaisser et les autres ancres).
+- [x] (14) Encaisser : option « Chèque postdaté » (date future : chèque en main, déposé à sa date).
+- [x] (4) Dépenses : choisir une capture ou une photo de la photothèque (reçus de l'app Shell), pas seulement la caméra.
+- [x] (9) Flèche de retour en haut (sans enregistrer), partout sauf les 5 onglets.
+- Lot A en test le 12 novembre 2026 (380 tests, vérifié dans Chrome); prod avec le go de JF.
+- [ ] (10) Fluidité : analyse écran par écran du retour après un enregistrement (ex. message ouvert depuis la fiche : retour à la fiche; « Répondre » sur un message), **présentée à JF avant d'être appliquée** (analyse présentée le 12 novembre 2026, en attente de son accord).
 
 **Lot B : tournée avec ou sans avis aux clients (avant les premières neiges)**
 - [ ] (7) Au démarrage, chaque fois (jamais retenu par le cellulaire) : « Avec avis aux clients » ou « Sans avis aux clients » (choix de Louis, selon son jugement, pas de règle d'heure). Sans avis : position active pour les statistiques, **aucun avis** pendant toute l'opération (début, proximité, terminé, manuels). Bandeau visible sur l'écran de tournée. La position ne dépend plus des avis.
