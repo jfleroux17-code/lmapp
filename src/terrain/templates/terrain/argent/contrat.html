@@ -5,7 +5,7 @@
 <a href="{% url 'terrain:fiche' client.pk %}?argent=1#argent" class="mb-3 inline-block text-accent">‹ {{ client.nom_affiche }}</a>
 <h1 class="mb-1 text-2xl font-bold">{{ titre }}</h1>
 <p class="mb-5 text-gray-400">{% if explication %}{{ explication }}{% else %}Pour {{ client.nom_affiche }}. Rien n'est envoyé au client : le PDF et l'envoi sont dans la fiche.{% endif %}</p>
-<form method="post" class="space-y-5" novalidate x-data="{ envoi: false, type: '{{ form.type.value|default:"saisonnier" }}' }" @change="if ($event.target.name === 'type') type = $event.target.value"
+<form method="post" class="space-y-5" novalidate x-data="{ envoi: false, type: '{{ form.type.value|default:"saisonnier" }}', adresse: '{{ adresse_initiale }}' }" @change="if ($event.target.name === 'type') type = $event.target.value"
       @submit="if (envoi) { $event.preventDefault() } else { envoi = true }">{% csrf_token %}
   {% if form.non_field_errors %}<p class="rounded-xl bg-danger/10 p-3 text-danger">{{ form.non_field_errors|join:" " }}</p>{% endif %}
   {% for champ in form %}
@@ -21,6 +21,12 @@
         {{ champ }}
         {% if champ.errors %}<span class="mt-1 block text-danger">{{ champ.errors|join:" " }}</span>{% elif champ.help_text %}<span class="mt-1 block text-sm text-gray-500">{{ champ.help_text }}</span>{% endif %}
       </label>
+    {% endif %}
+    {% if champ.name == "adresse" %}
+      <fieldset x-show="adresse === 'nouvelle'" x-cloak class="space-y-4 rounded-2xl border-2 border-accent/60 p-4">
+        <legend class="px-1 font-bold text-accent">Nouvelle adresse de service</legend>
+        {% with form=form_adresse %}{% if form.non_field_errors %}<p class="rounded-xl bg-danger/10 p-3 text-danger">{{ form.non_field_errors|join:" " }}</p>{% endif %}{% include "terrain/clients/_champs.html" %}{% endwith %}
+      </fieldset>
     {% endif %}
   {% endfor %}
   <div class="sticky bottom-0 -mx-4 grid grid-cols-2 gap-3 border-t border-bordure bg-nuit/95 px-4 py-3 backdrop-blur" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">

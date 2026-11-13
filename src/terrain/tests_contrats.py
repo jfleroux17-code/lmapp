@@ -57,6 +57,25 @@ class ContratsFicheTests(TestCase):
         # Le même contrat deux fois : refusé
         self.assertContains(self.client.post(url, self.donnees()), "déjà un contrat")
 
+    def test_deuxieme_adresse_creee_dans_le_contrat(self):
+        url = f"/clients/{self.client_.pk}/contrats/nouveau/"
+        self.client.post(url, self.donnees())
+        page = self.client.get(url)
+        self.assertContains(page, "+ Nouvelle adresse de service")
+        self.assertContains(page, 'name="a-code_postal"')
+        nouvelle = {"adresse": "nouvelle", "a-ligne1": "", "a-ville": "Sainte-Adèle"}
+        r = self.client.post(url, self.donnees(**nouvelle))  # rue manquante : rien d'enregistré, la nouvelle adresse reste ouverte
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "adresse: 'nouvelle'")
+        self.assertEqual((Contrat.objects.count(), self.client_.adresses.count()), (1, 1))
+        nouvelle.update({"a-ligne1": "22, chemin du Lac", "a-ligne2": "app. 3", "a-code_postal": "j8b 1a1"})
+        r = self.client.post(url, self.donnees(**nouvelle))
+        self.assertEqual(r.status_code, 302)
+        a = self.client_.adresses.get(ligne1="22, chemin du Lac")
+        self.assertEqual((a.ligne2, a.code_postal), ("app. 3", "J8B 1A1"))
+        self.assertEqual(Contrat.objects.get(adresse=a).saison, self.saison)
+        self.assertEqual(Contrat.objects.filter(client=self.client_, saison=self.saison).count(), 2)
+
     def test_taxes_incluses_et_trop_de_versements(self):
         url = f"/clients/{self.client_.pk}/contrats/nouveau/"
         # 3 versements : une seule date dans les réglages, refusé avec la piste

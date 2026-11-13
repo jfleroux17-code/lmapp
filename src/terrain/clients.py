@@ -86,9 +86,10 @@ class ClientForm(GroupesMixin, forms.ModelForm):
 
 class AdresseForm(GroupesMixin, forms.ModelForm):
     GROUPES = [
-        (None, ["ligne1", "ville", "secteur"]),
-        ("Plus de détails : appartement, code postal, terrain, consignes",
-         ["ligne2", "code_postal", "ou_mettre_neige", "obstacles", "borne_fontaine", "entree_en_pente", "consignes", "active"]),
+        # Adresse complète toujours visible : suite et code postal avec la rue (demande de Louis, 12 novembre 2026)
+        (None, ["ligne1", "ligne2", "ville", "code_postal", "secteur"]),
+        ("Plus de détails : terrain, consignes",
+         ["ou_mettre_neige", "obstacles", "borne_fontaine", "entree_en_pente", "consignes", "active"]),
     ]
 
     class Meta:

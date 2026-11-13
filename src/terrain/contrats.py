@@ -13,7 +13,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from clients.models import Client
+from clients.models import Adresse, Client
 from core.acces import modification_clients_requise
 from facturation import calculs
 from facturation.models import Contrat, Facture, Saison, Service
@@ -34,9 +34,12 @@ class ContratForm(forms.ModelForm):
         fields = ["saison", "adresse", "type", "prix", "services", "prix_texte", "notes"]
         widgets = {"services": forms.CheckboxSelectMultiple, "prix": forms.TextInput(attrs={"inputmode": "decimal"})}
 
-    def __init__(self, *args, client=None, **kwargs):
+    NOUVELLE = "nouvelle"
+
+    def __init__(self, *args, client=None, nouvelle_adresse=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.client = client
+        self.nouvelle_adresse = nouvelle_adresse
         ent = client.entreprise
         self.fields["saison"].queryset = Saison.objects.filter(entreprise=ent).order_by("-debut")
         self.fields["saison"].empty_label = None
@@ -57,13 +60,16 @@ class ContratForm(forms.ModelForm):
         self.order_fields(["saison", "adresse", "type", "prix", "taxes_incluses", "versements", "services", "prix_texte", "notes"])
         _habiller(self)
         self.fields["services"].widget.attrs = {"class": "h-6 w-6 accent-[#f5c400]"}
+        # Une autre adresse du même client, créée sur place (demande de Louis, 12 novembre 2026)
+        self.fields["adresse"].widget.choices = list(self.fields["adresse"].choices) + [(self.NOUVELLE, "+ Nouvelle adresse de service")]
+        self.fields["adresse"].widget.attrs["x-model"] = "adresse"
 
     def clean(self):
         d = super().clean()
         if self.errors:
             return d
         ent = self.client.entreprise
-        doublon = Contrat.objects.filter(client=self.client, saison=d["saison"], adresse=d.get("adresse"), actif=True).exclude(pk=self.instance.pk)
+        doublon = Contrat.objects.none() if self.nouvelle_adresse else Contrat.objects.filter(client=self.client, saison=d["saison"], adresse=d.get("adresse"), actif=True).exclude(pk=self.instance.pk)
         if doublon.exists():
             raise ValidationError("Ce client a déjà un contrat pour cette adresse et cette saison : le modifier plutôt.")
         saisonnier = d["type"] == Contrat.Type.SAISONNIER
@@ -88,10 +94,12 @@ def _modifiable(contrat):
     return not contrat.factures.exists()
 
 
-def _enregistrer(request, form, contrat_existant):
+def _enregistrer(request, form, contrat_existant, form_adresse=None):
     d = form.cleaned_data
     with transaction.atomic():
         c = form.save(commit=False)
+        if form_adresse is not None:
+            c.adresse = form_adresse.save()
         c.prix = d["prix"]
         c.prix_texte = d.get("prix_texte", "")[:300]
         c.save()
@@ -106,6 +114,34 @@ def _enregistrer(request, form, contrat_existant):
     return redirect(f"/clients/{c.client_id}/?argent=1#argent")
 
 
+def _formulaires(request, contrat, client):
+    """Formulaire du contrat, et celui de la nouvelle adresse si « + Nouvelle adresse de service » est choisie."""
+    from terrain.clients import AdresseForm
+    ent = request.entreprise
+    nouvelle = request.method == "POST" and request.POST.get("adresse") == ContratForm.NOUVELLE
+    donnees = None
+    if request.method == "POST":
+        donnees = request.POST.copy()
+        if nouvelle:
+            donnees["adresse"] = ""
+    form = ContratForm(donnees, instance=contrat, client=client, nouvelle_adresse=nouvelle)
+    fa = AdresseForm(request.POST if nouvelle else None, instance=Adresse(entreprise=ent, client=client),
+                     prefix="a", entreprise=ent)
+    return form, (fa if nouvelle else None)
+
+
+def _contexte(form, fa, client, **autres):
+    from terrain.clients import AdresseForm
+    if fa is None:
+        ent = client.entreprise
+        fa = AdresseForm(instance=Adresse(entreprise=ent, client=client), prefix="a", entreprise=ent)
+        nouvelle = False
+    else:
+        nouvelle = True
+    adresse = ContratForm.NOUVELLE if nouvelle else (form["adresse"].value() or "")
+    return {"form": form, "form_adresse": fa, "adresse_initiale": adresse, "client": client, **autres}
+
+
 @modification_clients_requise
 def nouveau(request, client_pk):
     client = get_object_or_404(Client, pk=client_pk, entreprise=request.entreprise)
@@ -113,10 +149,10 @@ def nouveau(request, client_pk):
         messages.error(request, "Aucune saison : en créer une d'abord (Plus, Réglages, Saisons).")
         return redirect("terrain:fiche", pk=client.pk)
     contrat = Contrat(entreprise=request.entreprise, client=client)
-    form = ContratForm(request.POST or None, instance=contrat, client=client)
-    if request.method == "POST" and form.is_valid():
-        return _enregistrer(request, form, False)
-    return render(request, "terrain/argent/contrat.html", {"form": form, "client": client, "titre": "Nouveau contrat"})
+    form, fa = _formulaires(request, contrat, client)
+    if request.method == "POST" and form.is_valid() and (fa is None or fa.is_valid()):
+        return _enregistrer(request, form, False, fa)
+    return render(request, "terrain/argent/contrat.html", _contexte(form, fa, client, titre="Nouveau contrat"))
 
 
 @modification_clients_requise
@@ -126,10 +162,10 @@ def modifier(request, pk):
     if not _modifiable(contrat):
         messages.error(request, "Ce contrat a déjà des factures : il ne se modifie plus. Ajuster par une facture ou un crédit.")
         return redirect(f"/clients/{client.pk}/?argent=1#argent")
-    form = ContratForm(request.POST or None, instance=contrat, client=client)
-    if request.method == "POST" and form.is_valid():
-        return _enregistrer(request, form, True)
-    return render(request, "terrain/argent/contrat.html", {"form": form, "client": client, "titre": f"Contrat {contrat.saison}", "contrat": contrat})
+    form, fa = _formulaires(request, contrat, client)
+    if request.method == "POST" and form.is_valid() and (fa is None or fa.is_valid()):
+        return _enregistrer(request, form, True, fa)
+    return render(request, "terrain/argent/contrat.html", _contexte(form, fa, client, titre=f"Contrat {contrat.saison}", contrat=contrat))
 
 
 @require_POST
